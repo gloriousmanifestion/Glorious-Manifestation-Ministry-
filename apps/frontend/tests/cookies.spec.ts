@@ -16,9 +16,7 @@ test.describe('Cookies page', () => {
 
 	test('Pastoral School branding links to home', async ({ page }) => {
 		await page.goto('/cookies');
-		const logoLink = page
-			.getByRole('link', { name: /PGM \| Pastoral School/ })
-			.first();
+		const logoLink = page.getByRole('link', { name: /PGM \| Pastoral School/ }).first();
 		await expect(logoLink).toBeVisible();
 		await expect(logoLink).toHaveAttribute('href', '/');
 	});

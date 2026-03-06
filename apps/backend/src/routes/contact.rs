@@ -1,6 +1,6 @@
 use axum::{extract::State, http::StatusCode, response::Json, routing::post, Router};
 use serde::Deserialize;
-use sqlx::SqlitePool;
+use sqlx::AnyPool;
 use uuid::Uuid;
 
 #[derive(Debug, Deserialize)]
@@ -11,14 +11,14 @@ pub struct ContactRequest {
     pub message: String,
 }
 
-pub fn contact_routes(pool: SqlitePool) -> Router {
+pub fn contact_routes(pool: AnyPool) -> Router {
     Router::new()
         .route("/contact", post(submit_contact))
         .with_state(pool)
 }
 
 async fn submit_contact(
-    State(pool): State<SqlitePool>,
+    State(pool): State<AnyPool>,
     axum::Json(req): axum::Json<ContactRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if req.name.trim().is_empty() {

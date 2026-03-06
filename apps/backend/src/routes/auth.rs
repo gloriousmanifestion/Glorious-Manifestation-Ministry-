@@ -6,7 +6,7 @@ use axum::{
     Router,
 };
 use serde::{Deserialize, Serialize};
-use sqlx::SqlitePool;
+use sqlx::AnyPool;
 use uuid::Uuid;
 
 use crate::auth::{create_token, AuthUser};
@@ -62,7 +62,7 @@ fn verify_password(password: &str, hash: &str) -> Result<bool, String> {
         .is_ok())
 }
 
-pub fn auth_routes(pool: SqlitePool) -> Router {
+pub fn auth_routes(pool: AnyPool) -> Router {
     Router::new()
         .route("/auth/register", post(register))
         .route("/auth/login", post(login))
@@ -74,7 +74,7 @@ pub fn auth_routes(pool: SqlitePool) -> Router {
 }
 
 async fn register(
-    State(pool): State<SqlitePool>,
+    State(pool): State<AnyPool>,
     axum::Json(req): axum::Json<RegisterRequest>,
 ) -> Result<Json<AuthResponse>, (StatusCode, Json<serde_json::Value>)> {
     if req.name.trim().is_empty() {
@@ -171,7 +171,7 @@ async fn register(
 }
 
 async fn login(
-    State(pool): State<SqlitePool>,
+    State(pool): State<AnyPool>,
     axum::Json(req): axum::Json<LoginRequest>,
 ) -> Result<Json<AuthResponse>, (StatusCode, Json<serde_json::Value>)> {
     let user: Option<User> = sqlx::query_as(
@@ -216,7 +216,7 @@ async fn login(
 }
 
 async fn me(
-    State(pool): State<SqlitePool>,
+    State(pool): State<AnyPool>,
     AuthUser(user_id): AuthUser,
 ) -> Result<Json<UserResponse>, (StatusCode, Json<serde_json::Value>)> {
     let user: Option<User> = sqlx::query_as(
@@ -242,7 +242,7 @@ async fn me(
 }
 
 async fn update_me(
-    State(pool): State<SqlitePool>,
+    State(pool): State<AnyPool>,
     AuthUser(user_id): AuthUser,
     axum::Json(req): axum::Json<SelectCourseRequest>,
 ) -> Result<Json<UserResponse>, (StatusCode, Json<serde_json::Value>)> {
@@ -276,7 +276,7 @@ async fn update_me(
 }
 
 async fn verify(
-    State(pool): State<SqlitePool>,
+    State(pool): State<AnyPool>,
     AuthUser(user_id): AuthUser,
 ) -> Result<Json<UserResponse>, (StatusCode, Json<serde_json::Value>)> {
     sqlx::query("UPDATE users SET verified = 1 WHERE id = ?")
@@ -308,7 +308,7 @@ async fn verify(
 }
 
 async fn complete_payment(
-    State(pool): State<SqlitePool>,
+    State(pool): State<AnyPool>,
     AuthUser(user_id): AuthUser,
 ) -> Result<Json<UserResponse>, (StatusCode, Json<serde_json::Value>)> {
     sqlx::query("UPDATE users SET payment_complete = 1 WHERE id = ?")
@@ -347,7 +347,7 @@ struct CourseRow {
 }
 
 async fn list_courses(
-    State(pool): State<SqlitePool>,
+    State(pool): State<AnyPool>,
 ) -> Result<Json<Vec<CourseRow>>, (StatusCode, Json<serde_json::Value>)> {
     let courses: Vec<CourseRow> = sqlx::query_as("SELECT id, name, duration FROM courses")
         .fetch_all(&pool)

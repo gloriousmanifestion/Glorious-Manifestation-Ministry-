@@ -33,22 +33,10 @@ test.describe('Careers page', () => {
 			'href',
 			'/admissions'
 		);
-		await expect(footer.getByRole('link', { name: 'Events' })).toHaveAttribute(
-			'href',
-			'/events'
-		);
-		await expect(footer.getByRole('link', { name: 'Contact' })).toHaveAttribute(
-			'href',
-			'/contact'
-		);
-		await expect(footer.getByRole('link', { name: 'Privacy' })).toHaveAttribute(
-			'href',
-			'/privacy'
-		);
+		await expect(footer.getByRole('link', { name: 'Events' })).toHaveAttribute('href', '/events');
+		await expect(footer.getByRole('link', { name: 'Contact' })).toHaveAttribute('href', '/contact');
+		await expect(footer.getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', '/privacy');
 		await expect(footer.getByRole('link', { name: 'Terms' })).toHaveAttribute('href', '/terms');
-		await expect(footer.getByRole('link', { name: 'Cookies' })).toHaveAttribute(
-			'href',
-			'/cookies'
-		);
+		await expect(footer.getByRole('link', { name: 'Cookies' })).toHaveAttribute('href', '/cookies');
 	});
 });
