@@ -1,11 +1,12 @@
 # Dependencies
 node_modules/
 target/
+# SvelteKit generated output (any app)
+.svelte-kit/
 _build/
 deps/
 envs/prod.env
 envs/staging.env
-/.svelte-kit/*
 envs/env.env
 # Build outputs
 dist/
