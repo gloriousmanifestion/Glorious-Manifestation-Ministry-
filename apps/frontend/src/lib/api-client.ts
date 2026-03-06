@@ -24,7 +24,11 @@ export async function proxyToBackend(
 	const method = (init.method ?? event.request.method) as string;
 	const hasBody = method !== 'GET' && method !== 'HEAD';
 	const body = init.body ?? (hasBody ? await event.request.arrayBuffer() : undefined);
-	const headers = new Headers(init.headers);
+	// Forward incoming headers (including Authorization) then let caller overrides win.
+	const headers = new Headers(event.request.headers);
+	new Headers(init.headers).forEach((value, key) => {
+		headers.set(key, value);
+	});
 	if (hasBody && body && !headers.has('Content-Type')) {
 		const ct = event.request.headers.get('Content-Type');
 		if (ct) headers.set('Content-Type', ct);
