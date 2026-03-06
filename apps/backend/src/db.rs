@@ -22,6 +22,10 @@ fn ensure_sqlite_database_exists(db_url: &str) -> Result<(), std::io::Error> {
 }
 
 pub async fn init_db() -> Result<AnyPool, sqlx::Error> {
+    // Required when using sqlx::any: install compiled-in drivers (sqlite, postgres) so
+    // AnyConnectOptions::from_str() can connect. Safe to call multiple times.
+    sqlx::any::install_default_drivers();
+
     let db_url = env::var("DATABASE_URL").unwrap_or_else(|_| {
         let data_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("data");
         format!("sqlite://{}/pms.db", data_dir.display())
