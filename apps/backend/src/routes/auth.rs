@@ -126,7 +126,7 @@ async fn register(
     .bind(&now)
     .execute(&pool)
     .await
-    .map_err(|_e| {
+    .map_err(|e| {
         if let sqlx::Error::Database(db) = &e {
             if db.message().contains("UNIQUE constraint failed") {
                 return (
@@ -180,7 +180,7 @@ async fn login(
     .bind(&req.email)
     .fetch_optional(&pool)
     .await
-    .map_err(|_e| {
+    .map_err(|e| {
         tracing::error!("Login query error: {:?}", e);
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -225,7 +225,7 @@ async fn me(
     .bind(&user_id)
     .fetch_optional(&pool)
     .await
-    .map_err(|_e| {
+    .map_err(|e| {
         tracing::error!("Me query error: {:?}", e);
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -265,7 +265,7 @@ async fn update_me(
     .bind(&user_id)
     .fetch_optional(&pool)
     .await
-    .map_err(|e| {
+    .map_err(|_e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({"error": "fetch_failed", "message": "Could not fetch user"})),
@@ -297,7 +297,7 @@ async fn verify(
     .bind(&user_id)
     .fetch_optional(&pool)
     .await
-    .map_err(|e| {
+    .map_err(|_e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({"error": "fetch_failed", "message": "Could not fetch user"})),
@@ -329,7 +329,7 @@ async fn complete_payment(
     .bind(&user_id)
     .fetch_optional(&pool)
     .await
-    .map_err(|e| {
+    .map_err(|_e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({"error": "fetch_failed", "message": "Could not fetch user"})),

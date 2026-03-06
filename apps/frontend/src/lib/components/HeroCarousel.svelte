@@ -73,7 +73,8 @@
 
 	<!-- Dot indicators -->
 	<div class="absolute bottom-4 left-0 right-0 flex justify-center gap-2" role="tablist" aria-label="Carousel navigation">
-		{#each slides as _, i}
+		<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
+		{#each slides as _slideForIndicator, i}
 			<button
 				type="button"
 				class="h-2.5 w-2.5 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-transparent {currentIndex === i ? 'bg-white scale-125' : 'bg-white/50'}"
