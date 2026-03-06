@@ -671,20 +671,6 @@ jobs:
           fi
           printf 'PUBLIC_API_URL=%s\n' "$API_URL" > frontend.env
 
-      - name: Ensure deploy directories exist on VM
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ secrets.VM_IP }}
-          username: ${{ secrets.VM_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.VM_SSH_PORT || 22 }}
-          script: |
-            set -e
-            APP_NAME="${{ steps.deploy_env.outputs.app_name }}"
-            sudo mkdir -p /tmp/pgm-deploy "/opt/${APP_NAME}/frontend/staging" "/opt/${APP_NAME}/frontend/production"
-            sudo chown -R www-data:www-data "/opt/${APP_NAME}/frontend" 2>/dev/null || true
-            echo "Created /tmp/pgm-deploy and /opt/${APP_NAME}/frontend/staging and production"
-
       - name: Copy frontend to VM
         uses: appleboy/scp-action@v1
         with:
@@ -709,7 +695,7 @@ jobs:
             SERVICE_NAME="${{ steps.deploy_env.outputs.service_name }}"
             ENV_NAME="${{ steps.deploy_env.outputs.environment }}"
             
-            echo "=== Ensuring deploy directories exist ==="
+            echo "=== Creating required deploy directories (same pattern as backend) ==="
             sudo mkdir -p "/opt/${APP_NAME}/frontend/staging" "/opt/${APP_NAME}/frontend/production"
             sudo chown -R www-data:www-data "/opt/${APP_NAME}/frontend"
             echo "=== Deploying to $ENV_NAME environment ==="
