@@ -65,10 +65,10 @@
 			</div>
 		</section>
 
-		<!-- Contact form -->
-		<section class="px-4 sm:px-6 pb-12 sm:pb-16">
-			<AnimateOnView animation="fade-up">
-				<div class="mx-auto max-w-xl">
+		<!-- Contact form + details: two columns on desktop -->
+		<section class="px-4 sm:px-6 pb-20 sm:pb-28">
+			<div class="mx-auto max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
+				<AnimateOnView animation="fade-up">
 					<form onsubmit={handleSubmit} class="space-y-4 rounded-2xl border border-slate-200/80 bg-slate-50/50 p-6 sm:p-8">
 						<h2 class="text-lg font-semibold text-slate-900">Send us a message</h2>
 						{#if success}
@@ -131,14 +131,9 @@
 							</button>
 						{/if}
 					</form>
-				</div>
-			</AnimateOnView>
-		</section>
+				</AnimateOnView>
 
-		<!-- Contact details - single elegant block -->
-		<section class="px-4 sm:px-6 pb-20 sm:pb-28">
-			<AnimateOnView animation="fade-up">
-				<div class="mx-auto max-w-xl">
+				<AnimateOnView animation="fade-up" stagger={1}>
 					<div class="space-y-8">
 						<div class="border-b border-slate-200/80 pb-8">
 							<p class="text-xs font-medium uppercase tracking-wider text-slate-400">Email</p>
@@ -183,7 +178,7 @@
 						</div>
 					</div>
 
-					<div class="mt-16 text-center">
+					<div class="mt-16 text-center lg:text-left">
 						<a
 							href="/register"
 							class="inline-block rounded-full bg-slate-900 px-8 py-3.5 text-sm font-medium text-white transition hover:bg-slate-800"
@@ -191,8 +186,8 @@
 							Register now
 						</a>
 					</div>
-				</div>
-			</AnimateOnView>
+				</AnimateOnView>
+			</div>
 		</section>
 	</main>
 
