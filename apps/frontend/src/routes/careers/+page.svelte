@@ -1,0 +1,110 @@
+<script lang="ts">
+	import '../../app.css';
+	import { plusUrl, businessUrl } from '$lib/urls';
+	import Footer from '$lib/components/Footer.svelte';
+</script>
+
+<svelte:head>
+	<title>Careers — 1nga Solutions</title>
+	<meta
+		name="description"
+		content="Join 1nga Solutions and its subsidiaries. Build the future of digital transformation with us."
+	/>
+</svelte:head>
+
+<div class="min-h-screen flex flex-col bg-[#FFFCFA]">
+	<!-- Nav -->
+	<header class="sticky top-0 left-0 right-0 z-50 border-b border-slate-200 bg-[#FFFCFA]/90 backdrop-blur-xl">
+		<nav class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+			<a href="/" class="inline-flex items-center gap-2 text-xl font-semibold tracking-tight text-slate-900 transition hover:text-amber-600">
+				<img src="/oneauth-logo.svg" alt="" class="h-7 w-auto" aria-hidden="true" />
+				<span>1nga Solutions</span>
+			</a>
+			<a
+				href={plusUrl}
+				target="_blank"
+				rel="noopener noreferrer"
+				class="rounded-full border border-slate-300 bg-transparent px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:border-amber-500/60 hover:text-amber-600"
+			>
+				Sign in
+			</a>
+		</nav>
+	</header>
+
+	<main class="flex-1">
+		<!-- Hero -->
+		<section class="relative px-6 pt-16 pb-20 text-center">
+			<p class="mb-4 text-sm font-medium uppercase tracking-[0.2em] text-slate-500">Careers</p>
+			<h1 class="mx-auto max-w-3xl text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
+				Build the future with us
+			</h1>
+			<p class="mx-auto mt-6 max-w-2xl text-lg text-slate-600">
+				Join 1nga Solutions and our subsidiaries. We're transforming how businesses, communities, and cities operate—and we're looking for people who think differently.
+			</p>
+		</section>
+
+		<!-- Why join us -->
+		<section class="border-t border-slate-200 bg-[#FFF8F3]/60 py-20 px-6">
+			<div class="mx-auto max-w-6xl">
+				<h2 class="text-center text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Why join 1nga Solutions?</h2>
+				<p class="mx-auto mt-4 max-w-2xl text-center text-slate-600">
+					We're a digital transformation hub. Our team spans payments, learning, agriculture, energy, B2B, and more.
+				</p>
+				<ul class="mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+					<li class="rounded-2xl border border-slate-200 bg-white/80 p-6 shadow-sm">
+						<h3 class="text-lg font-semibold text-slate-900">Impact at scale</h3>
+						<p class="mt-2 text-sm text-slate-600">Work on products that touch businesses, communities, and cities across multiple industries.</p>
+					</li>
+					<li class="rounded-2xl border border-slate-200 bg-white/80 p-6 shadow-sm">
+						<h3 class="text-lg font-semibold text-slate-900">One identity, many products</h3>
+						<p class="mt-2 text-sm text-slate-600">Move across Wave, 1nga Online, Farms, Mawatt, skiLit, and more—one ecosystem, endless possibilities.</p>
+					</li>
+					<li class="rounded-2xl border border-slate-200 bg-white/80 p-6 shadow-sm">
+						<h3 class="text-lg font-semibold text-slate-900">Growth & learning</h3>
+						<p class="mt-2 text-sm text-slate-600">We invest in our people. Learn, upskill, and grow with us.</p>
+					</li>
+				</ul>
+			</div>
+		</section>
+
+		<!-- Open positions -->
+		<section class="border-t border-slate-200 py-20 px-6">
+			<div class="mx-auto max-w-4xl">
+				<h2 class="text-center text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Open positions</h2>
+				<p class="mx-auto mt-4 max-w-2xl text-center text-slate-600">
+					We're always looking for talented people. Check back soon for new roles, or get in touch to tell us how you'd like to contribute.
+				</p>
+				<div class="mt-12 rounded-2xl border border-slate-200 bg-slate-50/50 p-12 text-center">
+					<p class="text-slate-600">No open positions at the moment.</p>
+					<p class="mt-2 text-sm text-slate-500">We'll post new roles here as they become available.</p>
+					<a
+						href={businessUrl}
+						target="_blank"
+						rel="noopener noreferrer"
+						class="mt-6 inline-block rounded-full border border-slate-300 px-6 py-3 text-sm font-medium text-slate-700 transition hover:border-amber-500/60 hover:text-amber-600"
+					>
+						Partner with us
+					</a>
+				</div>
+			</div>
+		</section>
+
+		<!-- CTA -->
+		<section class="border-t border-slate-200 bg-[#FFF4ED]/40 py-16 px-6">
+			<div class="mx-auto max-w-2xl text-center">
+				<h2 class="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">Interested in joining?</h2>
+				<p class="mt-4 text-slate-600">
+					Reach out through our partner channel or contact 1nga Solutions at the details provided on this website.
+				</p>
+				<a
+					href="mailto:careers@1nga.com"
+					class="mt-6 inline-block rounded-full bg-amber-500 px-6 py-3 text-sm font-semibold text-black transition hover:bg-amber-400"
+				>
+					Get in touch
+				</a>
+			</div>
+		</section>
+	</main>
+
+	<Footer />
+</div>

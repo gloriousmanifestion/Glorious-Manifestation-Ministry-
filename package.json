@@ -4,7 +4,7 @@
   "private": true,
   "description": "A production-ready monorepo template for solo projects",
   "scripts": {
-    "frontend": "pnpm --filter frontend",
+    "frontend": "pnpm --filter website",
     "backend": "pnpm --filter backend",
     "docs": "pnpm --filter docs",
     "apply-template": "node scripts/apply-template-config.mjs"

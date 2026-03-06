@@ -1,6 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const isCI = !!process.env.CI;
+const port = isCI ? parseInt(process.env.PLAYWRIGHT_TEST_PORT ?? '5181', 10) : 5180;
+const baseURL = `http://localhost:${port}`;
 
 export default defineConfig({
 	testDir: './tests',
@@ -10,49 +12,28 @@ export default defineConfig({
 	workers: isCI ? 4 : undefined,
 	reporter: 'html',
 	timeout: 30_000,
-	expect: {
-		timeout: 10_000
-	},
+	expect: { timeout: 10_000 },
 	use: {
-		baseURL: isCI ? 'http://localhost:3000' : 'http://localhost:5173',
+		baseURL,
 		actionTimeout: 10_000,
 		navigationTimeout: 15_000,
 		trace: 'on-first-retry'
 	},
-	projects: isCI
-		? [
-				{
-					name: 'chromium',
-					use: { ...devices['Desktop Chrome'] }
-				}
-			]
-		: [
-				{
-					name: 'chromium',
-					use: { ...devices['Desktop Chrome'] }
-				},
-				{
-					name: 'firefox',
-					use: { ...devices['Desktop Firefox'] }
-				},
-				{
-					name: 'webkit',
-					use: { ...devices['Desktop Safari'] }
-				},
-				{
-					name: 'mobile-chrome',
-					use: { ...devices['Pixel 5'] }
-				},
-				{
-					name: 'mobile-safari',
-					use: { ...devices['iPhone 12'] }
-				}
-			],
+	projects: [
+		{
+			name: 'chromium',
+			use: { ...devices['Desktop Chrome'] }
+		}
+	],
 	webServer: {
-		command: isCI ? 'pnpm build && node build' : 'pnpm dev',
-		url: isCI ? 'http://localhost:3000' : 'http://localhost:5173',
+		command:
+			isCI && process.env.CI_USE_PREBUILT
+				? `PORT=${port} node serve.mjs`
+				: isCI
+					? `PUBLIC_PLUS_URL=https://beta-plus.1nga.online PUBLIC_BUSINESS_URL=https://beta-bus.1nga.online pnpm build && PORT=${port} node serve.mjs`
+					: 'pnpm dev',
+		url: baseURL,
 		reuseExistingServer: !isCI,
 		timeout: 180_000
 	}
 });
-

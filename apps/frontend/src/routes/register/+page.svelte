@@ -1,0 +1,322 @@
+<script lang="ts">
+	import { goto } from '$app/navigation';
+	import Nav from '$lib/components/Nav.svelte';
+	import Footer from '$lib/components/Footer.svelte';
+	import { auth } from '$lib/auth';
+	import { SITE } from '$lib/config';
+
+	const steps = [
+		{ id: 1, title: 'Personal info', desc: 'Your contact details' },
+		{ id: 2, title: 'Ministry info', desc: 'Your calling & church' },
+		{ id: 3, title: 'Review', desc: 'Confirm & submit' }
+	];
+
+	let currentStep = $state(1);
+	let formData = $state({
+		name: '',
+		email: '',
+		phone: '',
+		password: '',
+		confirmPassword: '',
+		ministryRole: '',
+		churchName: '',
+		calling: ''
+	});
+	let errors = $state<Record<string, string>>({});
+	let submitting = $state(false);
+	let submitError = $state('');
+
+	function validateStep(step: number): boolean {
+		errors = {};
+		submitError = '';
+		if (step === 1) {
+			if (!formData.name.trim()) errors.name = 'Name is required';
+			if (!formData.email.trim()) errors.email = 'Email is required';
+			else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) errors.email = 'Valid email required';
+			if (!formData.phone.trim()) errors.phone = 'Phone is required';
+			if (!formData.password) errors.password = 'Password is required';
+			else if (formData.password.length < 8) errors.password = 'Password must be at least 8 characters';
+			if (formData.password !== formData.confirmPassword) errors.confirmPassword = 'Passwords do not match';
+		}
+		if (step === 2) {
+			if (!formData.calling.trim()) errors.calling = 'Ministry calling is required';
+			if (!formData.ministryRole.trim()) errors.ministryRole = 'Role is required';
+			if (!formData.churchName.trim()) errors.churchName = 'Church name is required';
+		}
+		return Object.keys(errors).length === 0;
+	}
+
+	function next() {
+		if (validateStep(currentStep)) {
+			if (currentStep < 3) currentStep++;
+			else submit();
+		}
+	}
+
+	function prev() {
+		if (currentStep > 1) currentStep--;
+	}
+
+	async function submit() {
+		if (submitting) return;
+		submitting = true;
+		submitError = '';
+		try {
+			await auth.register({
+				name: formData.name,
+				email: formData.email,
+				phone: formData.phone,
+				password: formData.password,
+				ministryRole: formData.ministryRole,
+				churchName: formData.churchName,
+				calling: formData.calling,
+				selectedCourseId: null
+			});
+			goto('/dashboard');
+		} catch (e) {
+			submitError = e instanceof Error ? e.message : 'Registration failed. Please try again.';
+		} finally {
+			submitting = false;
+		}
+	}
+
+</script>
+
+<svelte:head>
+	<title>Register — {SITE.name} Pastoral School</title>
+	<meta name="description" content="Register for the Pastoral School at Prophetic Glorious Manifestation." />
+</svelte:head>
+
+<div class="min-h-screen flex flex-col bg-slate-50">
+	<Nav />
+
+	<main class="flex-1 pt-20 sm:pt-24 pb-12 sm:pb-16">
+		<div class="mx-auto max-w-5xl px-4 sm:px-6">
+			<div class="mb-10 text-center">
+				<h1 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+					Create your account
+				</h1>
+				<p class="mt-2 text-slate-600">
+					Join our Pastoral School. Complete the form below to get started.
+				</p>
+			</div>
+
+			<div class="flex flex-col overflow-hidden rounded-2xl border border-pink-200/50 bg-white shadow-xl lg:flex-row">
+				<!-- Stepper (left) -->
+				<aside class="border-b border-pink-200/50 bg-gradient-to-b from-pink-50/80 to-purple-50/50 px-4 py-6 sm:px-8 sm:py-10 lg:w-72 lg:border-b-0 lg:border-r">
+					<nav class="flex flex-col gap-1" aria-label="Registration steps">
+						{#each steps as step}
+							<button
+								type="button"
+								class="flex items-center gap-4 rounded-xl px-4 py-3 text-left transition-all duration-200 {currentStep === step.id
+									? 'bg-white shadow-md ring-1 ring-pink-200/60'
+									: currentStep > step.id
+										? 'text-pink-600'
+										: 'text-slate-500 hover:bg-white/60'}"
+								onclick={() => currentStep > step.id && (currentStep = step.id)}
+							>
+								<span
+									class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold {currentStep === step.id
+										? 'bg-gradient-to-br from-pink-500 to-purple-600 text-white'
+										: currentStep > step.id
+											? 'bg-pink-100 text-pink-600'
+											: 'bg-slate-200 text-slate-500'}"
+								>
+									{#if currentStep > step.id}
+										<svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+											<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+										</svg>
+									{:else}
+										{step.id}
+									{/if}
+								</span>
+								<div>
+									<p class="font-medium text-slate-900">{step.title}</p>
+									<p class="text-xs text-slate-500">{step.desc}</p>
+								</div>
+							</button>
+						{/each}
+					</nav>
+				</aside>
+
+				<!-- Form content (right) -->
+				<div class="flex-1 p-4 sm:p-6 lg:p-12">
+					{#if currentStep === 1}
+						<div class="space-y-6">
+							<h2 class="text-xl font-semibold text-slate-900">Personal information</h2>
+							<div>
+								<label for="name" class="block text-sm font-medium text-slate-700">Full name</label>
+								<input
+									id="name"
+									type="text"
+									bind:value={formData.name}
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 {errors.name ? 'border-red-300' : ''}"
+									placeholder="John Doe"
+								/>
+								{#if errors.name}
+									<p class="mt-1 text-sm text-red-600">{errors.name}</p>
+								{/if}
+							</div>
+							<div>
+								<label for="email" class="block text-sm font-medium text-slate-700">Email</label>
+								<input
+									id="email"
+									type="email"
+									bind:value={formData.email}
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 {errors.email ? 'border-red-300' : ''}"
+									placeholder="John@example.com"
+								/>
+								{#if errors.email}
+									<p class="mt-1 text-sm text-red-600">{errors.email}</p>
+								{/if}
+							</div>
+							<div>
+								<label for="phone" class="block text-sm font-medium text-slate-700">Phone number</label>
+								<input
+									id="phone"
+									type="tel"
+									bind:value={formData.phone}
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 {errors.phone ? 'border-red-300' : ''}"
+									placeholder="080 1234 5678"
+								/>
+								{#if errors.phone}
+									<p class="mt-1 text-sm text-red-600">{errors.phone}</p>
+								{/if}
+							</div>
+							<div>
+								<label for="password" class="block text-sm font-medium text-slate-700">Password</label>
+								<input
+									id="password"
+									type="password"
+									bind:value={formData.password}
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 {errors.password ? 'border-red-300' : ''}"
+									placeholder="At least 8 characters"
+								/>
+								{#if errors.password}
+									<p class="mt-1 text-sm text-red-600">{errors.password}</p>
+								{/if}
+							</div>
+							<div>
+								<label for="confirmPassword" class="block text-sm font-medium text-slate-700">Confirm password</label>
+								<input
+									id="confirmPassword"
+									type="password"
+									bind:value={formData.confirmPassword}
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 {errors.confirmPassword ? 'border-red-300' : ''}"
+									placeholder="Re-enter your password"
+								/>
+								{#if errors.confirmPassword}
+									<p class="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>
+								{/if}
+							</div>
+						</div>
+					{:else if currentStep === 2}
+						<div class="space-y-6">
+							<h2 class="text-xl font-semibold text-slate-900">Ministry information</h2>
+							<div>
+								<label for="calling" class="block text-sm font-medium text-slate-700">Ministry calling</label>
+								<select
+									id="calling"
+									bind:value={formData.calling}
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 {errors.calling ? 'border-red-300' : ''}"
+								>
+									<option value="">Select your calling</option>
+									<option value="pastor">Pastor</option>
+									<option value="minister">Minister</option>
+									<option value="prophet">Prophet</option>
+									<option value="evangelist">Evangelist</option>
+									<option value="teacher">Teacher</option>
+									<option value="other">Other</option>
+								</select>
+								{#if errors.calling}
+									<p class="mt-1 text-sm text-red-600">{errors.calling}</p>
+								{/if}
+							</div>
+							<div>
+								<label for="ministryRole" class="block text-sm font-medium text-slate-700">Current ministry role</label>
+								<input
+									id="ministryRole"
+									type="text"
+									bind:value={formData.ministryRole}
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 {errors.ministryRole ? 'border-red-300' : ''}"
+									placeholder="e.g. Associate Pastor, Youth Minister"
+								/>
+								{#if errors.ministryRole}
+									<p class="mt-1 text-sm text-red-600">{errors.ministryRole}</p>
+								{/if}
+							</div>
+							<div>
+								<label for="churchName" class="block text-sm font-medium text-slate-700">Church / ministry name</label>
+								<input
+									id="churchName"
+									type="text"
+									bind:value={formData.churchName}
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 {errors.churchName ? 'border-red-300' : ''}"
+									placeholder="Your church or ministry"
+								/>
+								{#if errors.churchName}
+									<p class="mt-1 text-sm text-red-600">{errors.churchName}</p>
+								{/if}
+							</div>
+						</div>
+					{:else}
+						<div class="space-y-6">
+							<h2 class="text-xl font-semibold text-slate-900">Review your application</h2>
+							<div class="rounded-xl border border-slate-200 bg-slate-50/50 p-6">
+								<dl class="grid gap-4 sm:grid-cols-2">
+									<div>
+										<dt class="text-sm font-medium text-slate-500">Name</dt>
+										<dd class="mt-1 font-medium text-slate-900">{formData.name}</dd>
+									</div>
+									<div>
+										<dt class="text-sm font-medium text-slate-500">Email</dt>
+										<dd class="mt-1 font-medium text-slate-900">{formData.email}</dd>
+									</div>
+									<div>
+										<dt class="text-sm font-medium text-slate-500">Phone</dt>
+										<dd class="mt-1 font-medium text-slate-900">{formData.phone}</dd>
+									</div>
+									<div>
+										<dt class="text-sm font-medium text-slate-500">Calling</dt>
+										<dd class="mt-1 font-medium text-slate-900">{formData.calling}</dd>
+									</div>
+									<div>
+										<dt class="text-sm font-medium text-slate-500">Church</dt>
+										<dd class="mt-1 font-medium text-slate-900">{formData.churchName}</dd>
+									</div>
+								</dl>
+							</div>
+							<p class="text-sm text-slate-600">
+								By submitting, you'll be taken to your dashboard. There you'll verify your account, choose a course, and complete payment.
+							</p>
+							{#if submitError}
+								<p class="text-sm text-red-600">{submitError}</p>
+							{/if}
+						</div>
+					{/if}
+
+					<!-- Actions -->
+					<div class="mt-6 sm:mt-10 flex items-center justify-between gap-4 border-t border-slate-200 pt-6 sm:pt-8">
+						<button
+							type="button"
+							onclick={prev}
+							class="rounded-xl px-5 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 {currentStep === 1 ? 'invisible' : ''}"
+						>
+							Back
+						</button>
+						<button
+							type="button"
+							onclick={next}
+							disabled={submitting}
+							class="rounded-xl bg-gradient-to-r from-pink-500 to-purple-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:from-pink-600 hover:to-purple-700 disabled:opacity-60 disabled:cursor-not-allowed"
+						>
+							{currentStep === 3 ? (submitting ? 'Creating account…' : 'Create account') : 'Continue'}
+						</button>
+					</div>
+				</div>
+			</div>
+		</div>
+	</main>
+
+	<Footer />
+</div>
