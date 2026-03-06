@@ -885,6 +885,24 @@ jobs:
             printf 'VAULT_ENCRYPTION_KEY=%s\n' "$VAULT_ENCRYPTION_KEY" >> backend.env
           fi
 
+      - name: Ensure deploy directory exists on VM
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SSH_IP }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script: |
+            set -e
+            DEPLOY_DIR="${{ steps.deploy_env.outputs.deploy_dir }}"
+            VAULT_DIR="${{ steps.deploy_env.outputs.vault_dir }}"
+            echo "Creating deploy directory: $DEPLOY_DIR"
+            sudo mkdir -p "$DEPLOY_DIR"
+            echo "Creating vault directory: $VAULT_DIR"
+            sudo mkdir -p "$VAULT_DIR"
+            sudo chown www-data:www-data "$VAULT_DIR"
+            echo "Done."
+
       - name: Deploy backend to VM (systemd)
         uses: appleboy/scp-action@v1
         with:
