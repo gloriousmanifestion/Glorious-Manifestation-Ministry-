@@ -1,2 +1,2 @@
-/.svelte-kit/*
+/apps/frontend/.svelte-kit/*
 !/.svelte-kit/.gitkeep
