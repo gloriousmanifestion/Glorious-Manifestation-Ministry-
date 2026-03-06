@@ -1,6 +1,6 @@
-# __TEMPLATE_APP_NAME__
+# Prophetic Glorious Manifestation
 
-__TEMPLATE_APP_DESCRIPTION__
+Pastoral School for pastors, ministers and prophets. Owerri, Imo State.
 
 ## 📋 Using this template (customize your new repo)
 

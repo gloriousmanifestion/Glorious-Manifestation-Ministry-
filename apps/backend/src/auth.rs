@@ -7,7 +7,6 @@ use axum_extra::TypedHeader;
 use headers::{authorization::Bearer, Authorization};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
 const JWT_SECRET: &[u8] = b"pms-secret-change-in-production"; // TODO: use env var
 
@@ -55,10 +54,14 @@ where
         let TypedHeader(auth) =
             TypedHeader::<Authorization<Bearer>>::from_request_parts(parts, _state)
                 .await
-                .map_err(|_| (StatusCode::UNAUTHORIZED, "Missing or invalid authorization header"))?;
-        let claims = verify_token(auth.token()).map_err(|_| {
-            (StatusCode::UNAUTHORIZED, "Invalid or expired token")
-        })?;
+                .map_err(|_| {
+                    (
+                        StatusCode::UNAUTHORIZED,
+                        "Missing or invalid authorization header",
+                    )
+                })?;
+        let claims = verify_token(auth.token())
+            .map_err(|_| (StatusCode::UNAUTHORIZED, "Invalid or expired token"))?;
         Ok(AuthUser(claims.sub))
     }
 }

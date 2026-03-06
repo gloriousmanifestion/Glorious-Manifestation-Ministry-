@@ -204,6 +204,8 @@
 						<AnimateOnView animation="fade-up" stagger={i}>
 							<div class="rounded-2xl border border-pink-200/50 bg-white p-6 shadow-sm">
 								<h3 class="font-semibold text-slate-900">{faq.q}</h3>
+								<!-- The answer content is authored by us and does not include user input. -->
+								<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 								<p class="mt-2 text-sm text-slate-600 leading-relaxed">{@html faq.a}</p>
 							</div>
 						</AnimateOnView>

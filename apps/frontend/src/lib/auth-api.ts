@@ -69,6 +69,19 @@ function getAuthHeaders(): HeadersInit {
 	return headers;
 }
 
+type ErrorResponse = {
+	error?: unknown;
+	message?: unknown;
+};
+
+function getErrorMessage(json: unknown, fallback: string): string {
+	if (!json || typeof json !== 'object') return fallback;
+	const data = json as ErrorResponse;
+	const message = typeof data.message === 'string' ? data.message : undefined;
+	const error = typeof data.error === 'string' ? data.error : undefined;
+	return message ?? error ?? fallback;
+}
+
 export async function register(data: RegisterRequest): Promise<AuthResponse> {
 	const res = await fetch(`${API_BASE}/auth/register`, {
 		method: 'POST',
@@ -79,9 +92,9 @@ export async function register(data: RegisterRequest): Promise<AuthResponse> {
 			church_name: data.church_name
 		})
 	});
-	const json = await safeJson<Record<string, unknown>>(res);
+	const json = await safeJson<unknown>(res);
 	if (!res.ok) {
-		throw new Error((json.message as string) || (json.error as string) || 'Registration failed');
+		throw new Error(getErrorMessage(json, 'Registration failed'));
 	}
 	return json as AuthResponse;
 }
@@ -92,9 +105,9 @@ export async function login(data: LoginRequest): Promise<AuthResponse> {
 		headers: getAuthHeaders(),
 		body: JSON.stringify(data)
 	});
-	const json = await safeJson<Record<string, unknown>>(res);
+	const json = await safeJson<unknown>(res);
 	if (!res.ok) {
-		throw new Error((json.message as string) || (json.error as string) || 'Login failed');
+		throw new Error(getErrorMessage(json, 'Login failed'));
 	}
 	return json as AuthResponse;
 }
@@ -104,9 +117,9 @@ export async function getMe(): Promise<UserResponse | null> {
 		headers: getAuthHeaders()
 	});
 	if (res.status === 401) return null;
-	const json = await safeJson<Record<string, unknown>>(res);
+	const json = await safeJson<unknown>(res);
 	if (!res.ok) {
-		throw new Error((json.message as string) || (json.error as string) || 'Failed to fetch user');
+		throw new Error(getErrorMessage(json, 'Failed to fetch user'));
 	}
 	return json as UserResponse;
 }
@@ -116,9 +129,9 @@ export async function verifyAccount(): Promise<UserResponse> {
 		method: 'POST',
 		headers: getAuthHeaders()
 	});
-	const json = await safeJson<Record<string, unknown>>(res);
+	const json = await safeJson<unknown>(res);
 	if (!res.ok) {
-		throw new Error((json.message as string) || (json.error as string) || 'Verification failed');
+		throw new Error(getErrorMessage(json, 'Verification failed'));
 	}
 	return json as UserResponse;
 }
@@ -129,9 +142,9 @@ export async function selectCourse(courseId: string | null): Promise<UserRespons
 		headers: getAuthHeaders(),
 		body: JSON.stringify({ selected_course_id: courseId })
 	});
-	const json = await safeJson<Record<string, unknown>>(res);
+	const json = await safeJson<unknown>(res);
 	if (!res.ok) {
-		throw new Error((json.message as string) || (json.error as string) || 'Failed to update course');
+		throw new Error(getErrorMessage(json, 'Failed to update course'));
 	}
 	return json as UserResponse;
 }
@@ -141,9 +154,9 @@ export async function completePayment(): Promise<UserResponse> {
 		method: 'POST',
 		headers: getAuthHeaders()
 	});
-	const json = await safeJson<Record<string, unknown>>(res);
+	const json = await safeJson<unknown>(res);
 	if (!res.ok) {
-		throw new Error((json.message as string) || (json.error as string) || 'Payment failed');
+		throw new Error(getErrorMessage(json, 'Payment failed'));
 	}
 	return json as UserResponse;
 }
@@ -152,7 +165,9 @@ export async function getCourses(): Promise<Array<{ id: string; name: string; du
 	const res = await fetch(`${API_BASE}/auth/courses`, {
 		headers: getAuthHeaders()
 	});
-	const json = await safeJson<Array<{ id: string; name: string; duration: string }> | Record<string, unknown>>(res);
+	const json = await safeJson<
+		Array<{ id: string; name: string; duration: string }> | Record<string, unknown>
+	>(res);
 	if (!res.ok) {
 		const err = json as Record<string, unknown>;
 		throw new Error((err.message as string) || (err.error as string) || 'Failed to fetch courses');

@@ -1,23 +1,23 @@
 # Example systemd unit for backend (staging).
-# IMPORTANT: Create a service file named: __TEMPLATE_BACKEND_STAGING_SERVICE_FILE__
+# IMPORTANT: Create a service file named: pgm-backend-staging.service
 # (e.g., solo-template-backend-staging.service) in infra/systemd/ before deploying.
 # The CI/CD workflow expects this file to exist.
-# Copy to /etc/systemd/system/__TEMPLATE_SYSTEMD_BACKEND_STAGING__.service on the VM.
-# Path: /opt/__TEMPLATE_DEPLOY_APP_NAME__/backend/backend
-# Set APP_NAME via VM_APP_NAME secret or use __TEMPLATE_DEPLOY_APP_NAME__.
+# Copy to /etc/systemd/system/pgm-backend-staging.service on the VM.
+# Path: /opt/pgm/backend/backend
+# Set APP_NAME via VM_APP_NAME secret or use pgm.
 
 [Unit]
-Description=__TEMPLATE_APP_NAME__ Backend API (staging)
+Description=Prophetic Glorious Manifestation Backend API (staging)
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/opt/__TEMPLATE_DEPLOY_APP_NAME__/backend/backend
+ExecStart=/opt/pgm/backend/backend
 Restart=on-failure
 RestartSec=5
-WorkingDirectory=/opt/__TEMPLATE_DEPLOY_APP_NAME__/backend
-EnvironmentFile=-/etc/default/__TEMPLATE_SYSTEMD_BACKEND_STAGING__
+WorkingDirectory=/opt/pgm/backend
+EnvironmentFile=-/etc/default/pgm-backend-staging
 
 [Install]
 WantedBy=multi-user.target

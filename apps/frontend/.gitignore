@@ -1,2 +1,2 @@
-/apps/frontend/.svelte-kit/*
-!/.svelte-kit/.gitkeep
+# SvelteKit generated output
+.svelte-kit/

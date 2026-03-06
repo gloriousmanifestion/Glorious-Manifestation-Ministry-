@@ -1,9 +1,12 @@
-# PGM backend API (production). Port 5800.
+# Example systemd unit for backend (production).
+# IMPORTANT: Create a service file named: pgm-backend-production.service
+# (e.g., solo-template-backend-production.service) in infra/systemd/ before deploying.
+# The CI/CD workflow expects this file to exist.
 # Copy to /etc/systemd/system/pgm-backend-production.service on the VM.
 # Path: /opt/pgm/backend/backend
 
 [Unit]
-Description=PGM Backend API (production)
+Description=Prophetic Glorious Manifestation Backend API (production)
 After=network-online.target
 Wants=network-online.target
 
@@ -14,7 +17,6 @@ Restart=on-failure
 RestartSec=5
 WorkingDirectory=/opt/pgm/backend
 EnvironmentFile=-/etc/default/pgm-backend-production
-Environment=PORT=5800
 
 [Install]
 WantedBy=multi-user.target

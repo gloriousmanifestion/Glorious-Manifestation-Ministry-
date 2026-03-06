@@ -26,7 +26,7 @@ pub async fn init_db() -> Result<SqlitePool, sqlx::Error> {
         let data_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("data");
         format!("sqlite://{}/pms.db", data_dir.display())
     });
-    ensure_database_exists(&db_url).map_err(|e| sqlx::Error::Io(e.into()))?;
+    ensure_database_exists(&db_url).map_err(sqlx::Error::Io)?;
     let pool = SqlitePoolOptions::new()
         .max_connections(5)
         .connect(&db_url)

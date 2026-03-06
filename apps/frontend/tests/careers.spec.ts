@@ -22,13 +22,33 @@ test.describe('Careers page', () => {
 		await expect(partner).toHaveAttribute('href', BUSINESS_STAGING);
 	});
 
-	test('footer has Contact, Careers, Terms, Privacy, and Cookies links', async ({ page }) => {
+	test('footer has quick and legal links', async ({ page }) => {
 		await page.goto('/careers');
 		const footer = page.locator('footer');
-		await expect(footer.getByRole('link', { name: 'Contact' })).toHaveAttribute('href', '/contact');
-		await expect(footer.getByRole('link', { name: 'Careers' })).toHaveAttribute('href', '/careers');
+		await expect(footer.getByRole('link', { name: 'Programs' })).toHaveAttribute(
+			'href',
+			'/programs'
+		);
+		await expect(footer.getByRole('link', { name: 'Admissions' })).toHaveAttribute(
+			'href',
+			'/admissions'
+		);
+		await expect(footer.getByRole('link', { name: 'Events' })).toHaveAttribute(
+			'href',
+			'/events'
+		);
+		await expect(footer.getByRole('link', { name: 'Contact' })).toHaveAttribute(
+			'href',
+			'/contact'
+		);
+		await expect(footer.getByRole('link', { name: 'Privacy' })).toHaveAttribute(
+			'href',
+			'/privacy'
+		);
 		await expect(footer.getByRole('link', { name: 'Terms' })).toHaveAttribute('href', '/terms');
-		await expect(footer.getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', '/privacy');
-		await expect(footer.getByRole('link', { name: 'Cookies' })).toHaveAttribute('href', '/cookies');
+		await expect(footer.getByRole('link', { name: 'Cookies' })).toHaveAttribute(
+			'href',
+			'/cookies'
+		);
 	});
 });

@@ -2,7 +2,7 @@ use axum::{
     extract::State,
     http::StatusCode,
     response::Json,
-    routing::{get, patch, post},
+    routing::{get, post},
     Router,
 };
 use serde::{Deserialize, Serialize};
@@ -92,7 +92,9 @@ async fn register(
     if req.password.len() < 8 {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({"error": "password_too_short", "message": "Password must be at least 8 characters"})),
+            Json(
+                serde_json::json!({"error": "password_too_short", "message": "Password must be at least 8 characters"}),
+            ),
         ));
     }
 
@@ -194,7 +196,9 @@ async fn login(
     if !verify_password(&req.password, &user.password_hash).unwrap_or(false) {
         return Err((
             StatusCode::UNAUTHORIZED,
-            Json(serde_json::json!({"error": "invalid_credentials", "message": "Invalid email or password"})),
+            Json(
+                serde_json::json!({"error": "invalid_credentials", "message": "Invalid email or password"}),
+            ),
         ));
     }
 
@@ -261,7 +265,7 @@ async fn update_me(
     .bind(&user_id)
     .fetch_optional(&pool)
     .await
-    .map_err(|e| {
+    .map_err(|_e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({"error": "fetch_failed", "message": "Could not fetch user"})),
@@ -293,7 +297,7 @@ async fn verify(
     .bind(&user_id)
     .fetch_optional(&pool)
     .await
-    .map_err(|e| {
+    .map_err(|_e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({"error": "fetch_failed", "message": "Could not fetch user"})),
@@ -325,7 +329,7 @@ async fn complete_payment(
     .bind(&user_id)
     .fetch_optional(&pool)
     .await
-    .map_err(|e| {
+    .map_err(|_e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({"error": "fetch_failed", "message": "Could not fetch user"})),
