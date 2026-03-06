@@ -613,35 +613,31 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Download frontend artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-deploy-v${{ needs.get-version.outputs.version }}
-          merge-multiple: false
-
-      # Deploy uses frontend-deploy.tar.gz from the build job (not apps/frontend/out).
-      - name: Verify deploy artifact
+      - name: Pull latest changes
         run: |
-          TAR=""
-          if [ -f "frontend-deploy.tar.gz" ]; then
-            TAR="frontend-deploy.tar.gz"
-          else
-            TAR=$(find . -name "frontend-deploy.tar.gz" -type f 2>/dev/null | head -1)
-            if [ -n "$TAR" ]; then
-              cp "$TAR" frontend-deploy.tar.gz
-              TAR="frontend-deploy.tar.gz"
-            fi
-          fi
-          if [ -z "$TAR" ] || [ ! -f "$TAR" ]; then
-            echo "Error: frontend-deploy.tar.gz was not downloaded (deploy expects the deploy tarball, not apps/frontend/out)."
-            echo "Contents of workspace:"
-            ls -la
-            find . -maxdepth 3 -type f -name "*.tar.gz" 2>/dev/null || true
-            exit 1
-          fi
-          echo "Deploy artifact OK:"
-          ls -lh frontend-deploy.tar.gz
-          tar -tzf frontend-deploy.tar.gz | head -15
+          git fetch origin ${{ github.event.pull_request.base.ref }}
+          git checkout ${{ github.event.pull_request.base.ref }}
+          git pull origin ${{ github.event.pull_request.base.ref }} --rebase || git pull origin ${{ github.event.pull_request.base.ref }} --no-rebase
+
+      - name: Clean setup-pnpm (avoid worker.js MODULE_NOT_FOUND on self-hosted)
+        run: rm -rf "$HOME/setup-pnpm"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Enable pnpm via Corepack
+        run: corepack enable && corepack prepare pnpm@10 --activate
+
+      - name: Ensure pnpm store path exists
+        run: mkdir -p $(pnpm store path)
+
+      - name: Add pnpm to PATH
+        run: echo "PATH=$PNPM_HOME:$PATH" >> $GITHUB_ENV
+
+      - name: Install dependencies
+        run: pnpm install
 
       - name: Determine deployment environment (deploy step)
         id: deploy_env
@@ -655,13 +651,32 @@ jobs:
             echo "port=5801" >> $GITHUB_OUTPUT
             echo "api_port=5800" >> $GITHUB_OUTPUT
             echo "service_name=pgm-frontend-production" >> $GITHUB_OUTPUT
+            echo "service_file=pgm-frontend-production.service" >> $GITHUB_OUTPUT
           else
             echo "environment=staging" >> $GITHUB_OUTPUT
             echo "deploy_dir=/opt/${APP_NAME}/frontend/staging" >> $GITHUB_OUTPUT
             echo "port=5801" >> $GITHUB_OUTPUT
             echo "api_port=5800" >> $GITHUB_OUTPUT
             echo "service_name=pgm-frontend-staging" >> $GITHUB_OUTPUT
+            echo "service_file=pgm-frontend-staging.service" >> $GITHUB_OUTPUT
           fi
+
+      - name: Build frontend with env-aware API URL
+        env:
+          PUBLIC_API_URL: ${{ secrets.PUBLIC_API_URL }}
+        run: pnpm frontend build
+
+      - name: Package frontend for VM deploy
+        run: |
+          mkdir -p deploy/frontend
+          cp -r apps/frontend/build deploy/frontend/build
+          cp apps/frontend/package.json deploy/frontend/
+          cp apps/frontend/serve.mjs deploy/frontend/
+          cp infra/systemd/${{ steps.deploy_env.outputs.service_file }} deploy/frontend/frontend.service
+          tar -czvf frontend-deploy.tar.gz -C deploy frontend
+          echo "Deploy tarball:"
+          ls -lh frontend-deploy.tar.gz
+          tar -tzf frontend-deploy.tar.gz | head -15
 
       - name: Create frontend .env for VM
         run: |
@@ -682,7 +697,7 @@ jobs:
           target: "/tmp/pgm-deploy/"
 
       - name: Install and restart frontend systemd service
-        uses: appleboy/ssh-action@v1.0.0
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.VM_IP }}
           username: ${{ secrets.VM_USER }}
@@ -690,35 +705,23 @@ jobs:
           port: ${{ secrets.VM_SSH_PORT || 22 }}
           script: |
             set -e
-            APP_NAME="${{ steps.deploy_env.outputs.app_name }}"
             DEPLOY_DIR="${{ steps.deploy_env.outputs.deploy_dir }}"
             SERVICE_NAME="${{ steps.deploy_env.outputs.service_name }}"
             ENV_NAME="${{ steps.deploy_env.outputs.environment }}"
             
-            echo "=== Creating required deploy directories (same pattern as backend) ==="
-            sudo mkdir -p "/opt/${APP_NAME}/frontend/staging" "/opt/${APP_NAME}/frontend/production"
-            sudo chown -R www-data:www-data "/opt/${APP_NAME}/frontend"
-            echo "=== Deploying to $ENV_NAME environment ==="
+            echo "=== Deploying frontend to $ENV_NAME environment ==="
             echo "Deploy directory: $DEPLOY_DIR"
             echo "Service name: $SERVICE_NAME"
             
-            echo "=== Stopping frontend service (prevents restart loop during deploy) ==="
+            echo "=== Stopping frontend service ==="
             sudo systemctl stop "$SERVICE_NAME" || true
             
+            sudo mkdir -p "$DEPLOY_DIR"
             cd /tmp/pgm-deploy && tar -xzf frontend-deploy.tar.gz
-            if [ ! -f /tmp/pgm-deploy/frontend/serve.mjs ]; then
-              echo "Error: serve.mjs not found in tarball. Contents of frontend:"
-              ls -la /tmp/pgm-deploy/frontend/ || true
-              exit 1
-            fi
             sudo rm -rf "$DEPLOY_DIR/build"
             sudo cp -r /tmp/pgm-deploy/frontend/build "$DEPLOY_DIR/"
             sudo install -m 644 /tmp/pgm-deploy/frontend/package.json "$DEPLOY_DIR/"
             sudo install -m 755 /tmp/pgm-deploy/frontend/serve.mjs "$DEPLOY_DIR/"
-            if [ ! -f "$DEPLOY_DIR/serve.mjs" ]; then
-              echo "Error: serve.mjs was not installed to $DEPLOY_DIR"
-              exit 1
-            fi
             sudo chown -R www-data:www-data "$DEPLOY_DIR"
             sudo cp /tmp/pgm-deploy/frontend.env "$DEPLOY_DIR/.env"
             sudo chown www-data:www-data "$DEPLOY_DIR/.env"
@@ -728,6 +731,8 @@ jobs:
             sudo systemctl enable "$SERVICE_NAME.service"
             sudo systemctl restart "$SERVICE_NAME.service"
             sudo systemctl status "$SERVICE_NAME.service" --no-pager || true
+            echo "=== Cleaning deploy staging on VM ==="
+            rm -rf /tmp/pgm-deploy
 
       - name: Deployment Summary
         if: always()
@@ -746,7 +751,7 @@ jobs:
           echo "**Port:** $PORT" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Steps" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Download frontend artifact" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Build and package frontend" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ Copy to VM" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ Install and restart \`${{ steps.deploy_env.outputs.service_name }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
