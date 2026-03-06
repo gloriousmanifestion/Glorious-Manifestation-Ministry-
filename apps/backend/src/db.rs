@@ -4,6 +4,13 @@ use std::env;
 use std::path::Path;
 use std::str::FromStr;
 
+/// True when DATABASE_URL is Postgres; use $1, $2, ... in raw SQL. Otherwise SQLite: use ?.
+pub fn is_postgres() -> bool {
+    env::var("DATABASE_URL")
+        .map(|u| u.starts_with("postgres://") || u.starts_with("postgresql://"))
+        .unwrap_or(false)
+}
+
 /// Ensures the SQLite database file and its parent directory exist before connecting.
 fn ensure_sqlite_database_exists(db_url: &str) -> Result<(), std::io::Error> {
     let path_str = db_url

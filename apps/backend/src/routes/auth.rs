@@ -10,6 +10,7 @@ use sqlx::AnyPool;
 use uuid::Uuid;
 
 use crate::auth::{create_token, AuthUser};
+use crate::db;
 use crate::models::{User, UserResponse};
 
 use argon2::{
@@ -108,13 +109,16 @@ async fn register(
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().to_rfc3339();
 
-    sqlx::query(
-        r#"
-        INSERT INTO users (id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)
-        "#,
-    )
-    .bind(&id)
+    let insert_sql = if db::is_postgres() {
+        r#"INSERT INTO users (id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 0, 0, $10)"#
+    } else {
+        r#"INSERT INTO users (id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)"#
+    };
+
+    sqlx::query(insert_sql)
+        .bind(&id)
     .bind(&req.email)
     .bind(&password_hash)
     .bind(&req.name)
@@ -174,19 +178,22 @@ async fn login(
     State(pool): State<AnyPool>,
     axum::Json(req): axum::Json<LoginRequest>,
 ) -> Result<Json<AuthResponse>, (StatusCode, Json<serde_json::Value>)> {
-    let user: Option<User> = sqlx::query_as(
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, created_at FROM users WHERE email = ?",
-    )
-    .bind(&req.email)
-    .fetch_optional(&pool)
-    .await
-    .map_err(|e| {
-        tracing::error!("Login query error: {:?}", e);
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(serde_json::json!({"error": "login_failed", "message": "Login failed"})),
-        )
-    })?;
+    let login_sql = if db::is_postgres() {
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, created_at FROM users WHERE email = $1"
+    } else {
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, created_at FROM users WHERE email = ?"
+    };
+    let user: Option<User> = sqlx::query_as(login_sql)
+        .bind(&req.email)
+        .fetch_optional(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Login query error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "login_failed", "message": "Login failed"})),
+            )
+        })?;
 
     let user = user.ok_or((
         StatusCode::UNAUTHORIZED,
@@ -219,19 +226,22 @@ async fn me(
     State(pool): State<AnyPool>,
     AuthUser(user_id): AuthUser,
 ) -> Result<Json<UserResponse>, (StatusCode, Json<serde_json::Value>)> {
-    let user: Option<User> = sqlx::query_as(
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, created_at FROM users WHERE id = ?",
-    )
-    .bind(&user_id)
-    .fetch_optional(&pool)
-    .await
-    .map_err(|e| {
-        tracing::error!("Me query error: {:?}", e);
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(serde_json::json!({"error": "fetch_failed", "message": "Could not fetch user"})),
-        )
-    })?;
+    let me_sql = if db::is_postgres() {
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, created_at FROM users WHERE id = $1"
+    } else {
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, created_at FROM users WHERE id = ?"
+    };
+    let user: Option<User> = sqlx::query_as(me_sql)
+        .bind(&user_id)
+        .fetch_optional(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Me query error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "fetch_failed", "message": "Could not fetch user"})),
+            )
+        })?;
 
     let user = user.ok_or((
         StatusCode::NOT_FOUND,
@@ -246,7 +256,12 @@ async fn update_me(
     AuthUser(user_id): AuthUser,
     axum::Json(req): axum::Json<SelectCourseRequest>,
 ) -> Result<Json<UserResponse>, (StatusCode, Json<serde_json::Value>)> {
-    sqlx::query("UPDATE users SET selected_course_id = ? WHERE id = ?")
+    let update_course_sql = if db::is_postgres() {
+        "UPDATE users SET selected_course_id = $1 WHERE id = $2"
+    } else {
+        "UPDATE users SET selected_course_id = ? WHERE id = ?"
+    };
+    sqlx::query(update_course_sql)
         .bind(&req.selected_course_id)
         .bind(&user_id)
         .execute(&pool)
@@ -259,18 +274,21 @@ async fn update_me(
             )
         })?;
 
-    let user: Option<User> = sqlx::query_as(
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, created_at FROM users WHERE id = ?",
-    )
-    .bind(&user_id)
-    .fetch_optional(&pool)
-    .await
-    .map_err(|_e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(serde_json::json!({"error": "fetch_failed", "message": "Could not fetch user"})),
-        )
-    })?;
+    let me_sql2 = if db::is_postgres() {
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, created_at FROM users WHERE id = $1"
+    } else {
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, created_at FROM users WHERE id = ?"
+    };
+    let user: Option<User> = sqlx::query_as(me_sql2)
+        .bind(&user_id)
+        .fetch_optional(&pool)
+        .await
+        .map_err(|_e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "fetch_failed", "message": "Could not fetch user"})),
+            )
+        })?;
 
     Ok(Json(user.unwrap().to_response()))
 }
@@ -279,7 +297,12 @@ async fn verify(
     State(pool): State<AnyPool>,
     AuthUser(user_id): AuthUser,
 ) -> Result<Json<UserResponse>, (StatusCode, Json<serde_json::Value>)> {
-    sqlx::query("UPDATE users SET verified = 1 WHERE id = ?")
+    let verify_sql = if db::is_postgres() {
+        "UPDATE users SET verified = 1 WHERE id = $1"
+    } else {
+        "UPDATE users SET verified = 1 WHERE id = ?"
+    };
+    sqlx::query(verify_sql)
         .bind(&user_id)
         .execute(&pool)
         .await
@@ -291,18 +314,21 @@ async fn verify(
             )
         })?;
 
-    let user: Option<User> = sqlx::query_as(
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, created_at FROM users WHERE id = ?",
-    )
-    .bind(&user_id)
-    .fetch_optional(&pool)
-    .await
-    .map_err(|_e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(serde_json::json!({"error": "fetch_failed", "message": "Could not fetch user"})),
-        )
-    })?;
+    let verify_select_sql = if db::is_postgres() {
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, created_at FROM users WHERE id = $1"
+    } else {
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, created_at FROM users WHERE id = ?"
+    };
+    let user: Option<User> = sqlx::query_as(verify_select_sql)
+        .bind(&user_id)
+        .fetch_optional(&pool)
+        .await
+        .map_err(|_e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "fetch_failed", "message": "Could not fetch user"})),
+            )
+        })?;
 
     Ok(Json(user.unwrap().to_response()))
 }
@@ -311,7 +337,12 @@ async fn complete_payment(
     State(pool): State<AnyPool>,
     AuthUser(user_id): AuthUser,
 ) -> Result<Json<UserResponse>, (StatusCode, Json<serde_json::Value>)> {
-    sqlx::query("UPDATE users SET payment_complete = 1 WHERE id = ?")
+    let payment_sql = if db::is_postgres() {
+        "UPDATE users SET payment_complete = 1 WHERE id = $1"
+    } else {
+        "UPDATE users SET payment_complete = 1 WHERE id = ?"
+    };
+    sqlx::query(payment_sql)
         .bind(&user_id)
         .execute(&pool)
         .await
@@ -323,18 +354,21 @@ async fn complete_payment(
             )
         })?;
 
-    let user: Option<User> = sqlx::query_as(
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, created_at FROM users WHERE id = ?",
-    )
-    .bind(&user_id)
-    .fetch_optional(&pool)
-    .await
-    .map_err(|_e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(serde_json::json!({"error": "fetch_failed", "message": "Could not fetch user"})),
-        )
-    })?;
+    let payment_select_sql = if db::is_postgres() {
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, created_at FROM users WHERE id = $1"
+    } else {
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, created_at FROM users WHERE id = ?"
+    };
+    let user: Option<User> = sqlx::query_as(payment_select_sql)
+        .bind(&user_id)
+        .fetch_optional(&pool)
+        .await
+        .map_err(|_e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "fetch_failed", "message": "Could not fetch user"})),
+            )
+        })?;
 
     Ok(Json(user.unwrap().to_response()))
 }

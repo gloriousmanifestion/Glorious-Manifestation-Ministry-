@@ -3,6 +3,8 @@ use serde::Deserialize;
 use sqlx::AnyPool;
 use uuid::Uuid;
 
+use crate::db;
+
 #[derive(Debug, Deserialize)]
 pub struct ContactRequest {
     pub name: String,
@@ -52,19 +54,22 @@ async fn submit_contact(
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().to_rfc3339();
 
-    sqlx::query(
-        r#"
-        INSERT INTO contact_submissions (id, name, email, subject, message, created_at)
-        VALUES (?, ?, ?, ?, ?, ?)
-        "#,
-    )
-    .bind(&id)
-    .bind(req.name.trim())
-    .bind(req.email.trim())
-    .bind(req.subject.as_deref())
-    .bind(req.message.trim())
-    .bind(&now)
-    .execute(&pool)
+    let query_sql = if db::is_postgres() {
+        r#"INSERT INTO contact_submissions (id, name, email, subject, message, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6)"#
+    } else {
+        r#"INSERT INTO contact_submissions (id, name, email, subject, message, created_at)
+           VALUES (?, ?, ?, ?, ?, ?)"#
+    };
+
+    sqlx::query(query_sql)
+        .bind(&id)
+        .bind(req.name.trim())
+        .bind(req.email.trim())
+        .bind(req.subject.as_deref())
+        .bind(req.message.trim())
+        .bind(&now)
+        .execute(&pool)
     .await
     .map_err(|e| {
         tracing::error!("Contact submit error: {:?}", e);
