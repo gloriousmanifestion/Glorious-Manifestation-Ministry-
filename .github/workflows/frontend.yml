@@ -652,7 +652,7 @@ jobs:
             echo "api_port=5800" >> $GITHUB_OUTPUT
             echo "service_name=pgm-frontend-production" >> $GITHUB_OUTPUT
             echo "service_file=pgm-frontend-production.service" >> $GITHUB_OUTPUT
-          else
+          else 
             echo "environment=staging" >> $GITHUB_OUTPUT
             echo "deploy_dir=/opt/${APP_NAME}/frontend/staging" >> $GITHUB_OUTPUT
             echo "port=5801" >> $GITHUB_OUTPUT
