@@ -684,7 +684,7 @@ jobs:
             echo "environment=staging" >> $GITHUB_OUTPUT
             echo "service_file=pgm-backend-staging.service" >> $GITHUB_OUTPUT
             echo "service_name=pgm-backend-staging" >> $GITHUB_OUTPUT
-            echo "port=5800" >> $GITHUB_OUTPUT
+            echo "port=5668" >> $GITHUB_OUTPUT
           fi
           echo "Deploying to: ${{ steps.env.outputs.environment }}"
           echo "Service file: ${{ steps.env.outputs.service_file }}"
@@ -857,7 +857,7 @@ jobs:
             echo "service_name=pgm-backend-staging" >> $GITHUB_OUTPUT
             echo "deploy_dir=/opt/${APP_NAME}/backend" >> $GITHUB_OUTPUT
             echo "vault_dir=/var/lib/${APP_NAME}/vault" >> $GITHUB_OUTPUT
-            echo "port=5800" >> $GITHUB_OUTPUT
+            echo "port=5668" >> $GITHUB_OUTPUT
           fi
 
       - name: Create backend .env for VM
@@ -880,7 +880,7 @@ jobs:
             fi
           fi
           printf 'DATABASE_URL=%s\n' "$DATABASE_URL" > backend.env
-          printf 'HOST=127.0.0.1\nPORT=5800\n' >> backend.env
+          printf 'HOST=127.0.0.1\nPORT=%s\n' "${{ steps.deploy_env.outputs.port }}" >> backend.env
           printf 'VAULT_PATH=${{ steps.deploy_env.outputs.vault_dir }}\n' >> backend.env
           if [[ -n "$VAULT_ENCRYPTION_KEY" ]]; then
             printf 'VAULT_ENCRYPTION_KEY=%s\n' "$VAULT_ENCRYPTION_KEY" >> backend.env

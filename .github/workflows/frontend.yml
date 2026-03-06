@@ -646,7 +646,7 @@ jobs:
             echo "environment=staging" >> $GITHUB_OUTPUT
             echo "deploy_dir=/opt/${APP_NAME}/frontend/staging" >> $GITHUB_OUTPUT
             echo "port=5667" >> $GITHUB_OUTPUT
-            echo "api_port=5800" >> $GITHUB_OUTPUT
+            echo "api_port=5668" >> $GITHUB_OUTPUT
             echo "service_name=pgm-frontend-staging" >> $GITHUB_OUTPUT
             echo "service_file=pgm-frontend-staging.service" >> $GITHUB_OUTPUT
           fi
@@ -672,9 +672,11 @@ jobs:
         run: |
           API_URL="${{ secrets.PUBLIC_API_URL }}"
           if [ -z "$API_URL" ]; then
-            API_URL="http://127.0.0.1:5800"
+            API_PORT="${{ steps.deploy_env.outputs.api_port }}"
+            API_URL="http://127.0.0.1:${API_PORT}"
           fi
           printf 'PUBLIC_API_URL=%s\n' "$API_URL" > frontend.env
+          printf 'BACKEND_URL=%s\n' "$API_URL" >> frontend.env
 
       - name: Copy frontend to VM
         uses: appleboy/scp-action@v1

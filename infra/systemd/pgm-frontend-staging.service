@@ -18,6 +18,7 @@ ExecStartPre=/bin/mkdir -p /opt/pgm/frontend/staging
 ExecStart=/usr/bin/node serve.mjs
 Restart=on-failure
 RestartSec=5
+EnvironmentFile=-/opt/pgmm/frontend/staging/.env
 EnvironmentFile=-/etc/default/pgm-frontend-staging
 Environment=PORT=5667
 Environment=HOST=0.0.0.0

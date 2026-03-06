@@ -17,6 +17,7 @@ ExecStartPre=/bin/mkdir -p /opt/pgm/frontend/production
 ExecStart=/usr/bin/node serve.mjs
 Restart=on-failure
 RestartSec=5
+EnvironmentFile=-/opt/pgmm/frontend/production/.env
 EnvironmentFile=-/etc/default/pgm-frontend-production
 Environment=PORT=6400
 Environment=HOST=0.0.0.0
