@@ -239,7 +239,9 @@ async fn me(
             tracing::error!("Me query error: {:?}", e);
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({"error": "fetch_failed", "message": "Could not fetch user"})),
+                Json(
+                    serde_json::json!({"error": "fetch_failed", "message": "Could not fetch user"}),
+                ),
             )
         })?;
 
@@ -286,7 +288,9 @@ async fn update_me(
         .map_err(|_e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({"error": "fetch_failed", "message": "Could not fetch user"})),
+                Json(
+                    serde_json::json!({"error": "fetch_failed", "message": "Could not fetch user"}),
+                ),
             )
         })?;
 
@@ -326,7 +330,9 @@ async fn verify(
         .map_err(|_e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({"error": "fetch_failed", "message": "Could not fetch user"})),
+                Json(
+                    serde_json::json!({"error": "fetch_failed", "message": "Could not fetch user"}),
+                ),
             )
         })?;
 
@@ -366,7 +372,9 @@ async fn complete_payment(
         .map_err(|_e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({"error": "fetch_failed", "message": "Could not fetch user"})),
+                Json(
+                    serde_json::json!({"error": "fetch_failed", "message": "Could not fetch user"}),
+                ),
             )
         })?;
 

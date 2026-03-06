@@ -70,17 +70,17 @@ async fn submit_contact(
         .bind(req.message.trim())
         .bind(&now)
         .execute(&pool)
-    .await
-    .map_err(|e| {
-        tracing::error!("Contact submit error: {:?}", e);
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(serde_json::json!({
-                "error": "submit_failed",
-                "message": "Could not submit your message"
-            })),
-        )
-    })?;
+        .await
+        .map_err(|e| {
+            tracing::error!("Contact submit error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "submit_failed",
+                    "message": "Could not submit your message"
+                })),
+            )
+        })?;
 
     Ok(Json(serde_json::json!({
         "success": true,
