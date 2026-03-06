@@ -4,6 +4,8 @@
 
 export const SITE = {
 	name: 'Prophetic Glorious Manifestation',
+	/** Short name for nav/branding (e.g. "PGM | Pastoral School") */
+	shortName: 'PGM',
 	/** Full legal name — used only in footer copyright */
 	legalName: 'Prophetic Glorious Manifestation Ministries',
 	schoolName: 'Pastoral School',

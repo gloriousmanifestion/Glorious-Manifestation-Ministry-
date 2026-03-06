@@ -50,7 +50,7 @@
 				aria-hidden="true"
 			/>
 			<span class="sm:hidden">{SITE.schoolName}</span>
-			<span class="hidden sm:inline">{SITE.name} | {SITE.schoolName}</span>
+			<span class="hidden sm:inline">{SITE.shortName} | {SITE.schoolName}</span>
 		</a>
 
 		<!-- Desktop nav -->
