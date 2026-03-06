@@ -10,6 +10,8 @@
 Description=Prophetic Glorious Manifestation Frontend (staging)
 After=network-online.target
 Wants=network-online.target
+# Do not start (and avoid restart loop) until deploy has created the directory
+ConditionPathExists=/opt/pgm/frontend/staging
 
 [Service]
 Type=simple
