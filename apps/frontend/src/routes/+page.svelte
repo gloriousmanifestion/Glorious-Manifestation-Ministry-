@@ -4,51 +4,13 @@
 	import AnimateOnView from '$lib/components/AnimateOnView.svelte';
 	import LeaderSection from '$lib/components/LeaderSection.svelte';
 	import { SITE } from '$lib/config';
+	import { COURSE_CATALOG } from '$lib/courses';
 
 	const values = [
 		{ title: 'Biblical Foundation', description: 'All teaching rooted in Scripture and sound doctrine.' },
 		{ title: 'Spiritual Growth', description: 'Nurturing personal relationship with God and spiritual maturity.' },
 		{ title: 'Practical Ministry', description: 'Hands-on training for real-world ministry challenges.' },
 		{ title: 'Community', description: 'Building lasting fellowship among ministers and prophets.' }
-	];
-
-	const programs = [
-		{
-			title: 'Pastoral Leadership',
-			description: 'Develop biblical leadership skills for effective church ministry and shepherding.',
-			icon: '📖'
-		},
-		{
-			title: 'Prophetic Ministry',
-			description: 'Understanding and operating in the prophetic gift with wisdom and discernment.',
-			icon: '✨'
-		},
-		{
-			title: 'Ministerial Training',
-			description: 'Comprehensive training for ministers in preaching, teaching, and pastoral care.',
-			icon: '⛪'
-		},
-		{
-			title: 'Biblical Studies',
-			description: 'In-depth study of Scripture for sound doctrine and spiritual growth.',
-			icon: '📜'
-		},
-		{
-			title: 'Worship & Praise',
-			description: 'Leading worship and understanding the ministry of praise in the church.',
-			icon: '🎵'
-		},
-		{
-			title: 'Evangelism & Outreach',
-			description: 'Equipping for effective soul-winning and community outreach.',
-			icon: '🌍'
-		}
-	];
-
-	const highlights = [
-		{ label: 'Duration', value: SITE.duration },
-		{ label: 'Schedule', value: SITE.schedule },
-		{ label: 'Location', value: SITE.location }
 	];
 </script>
 
@@ -155,24 +117,6 @@
 			</div>
 		</section>
 
-		<!-- Program highlights -->
-		<section class="border-t border-pink-200/50 bg-white/60 py-12 sm:py-16 px-4 sm:px-6">
-			<div class="mx-auto max-w-4xl">
-				<div class="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-3">
-					{#each highlights as item, i}
-						<AnimateOnView animation="fade-up" stagger={i} duration={500}>
-							<div
-								class="hover-lift rounded-2xl border border-pink-200/60 bg-white p-6 text-center shadow-sm hover:border-pink-300 hover:shadow-lg"
-							>
-								<p class="text-sm font-medium uppercase tracking-wider text-pink-600">{item.label}</p>
-								<p class="mt-2 text-lg font-semibold text-slate-900">{item.value}</p>
-							</div>
-						</AnimateOnView>
-					{/each}
-				</div>
-			</div>
-		</section>
-
 		<!-- Programs -->
 		<section id="programs" class="border-t border-pink-200/50 bg-gradient-to-b from-pink-50/50 to-purple-50/30 py-16 sm:py-24 px-4 sm:px-6">
 			<div class="mx-auto max-w-6xl">
@@ -188,20 +132,29 @@
 					</p>
 				</AnimateOnView>
 				<ul class="mt-10 sm:mt-16 grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-					{#each programs as program, i}
+					{#each COURSE_CATALOG as course, i}
 						<AnimateOnView animation="fade-up" stagger={i} duration={500}>
-							<li
-								class="hover-lift group rounded-2xl border border-pink-200/50 bg-white p-6 shadow-sm transition hover:border-pink-300 hover:shadow-xl hover:shadow-pink-100/50"
-							>
-								<div class="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-pink-100 to-purple-100 text-2xl transition-transform duration-300 group-hover:scale-110">
-									{program.icon}
-								</div>
-								<h3 class="text-lg font-semibold text-slate-900 transition-colors group-hover:text-pink-600">
-									{program.title}
-								</h3>
-								<p class="mt-3 text-sm leading-relaxed text-slate-600">
-									{program.description}
-								</p>
+							<li>
+								<a
+									href="/courses/{course.id}"
+									class="hover-lift group block rounded-2xl border border-pink-200/50 bg-white p-6 shadow-sm transition hover:border-pink-300 hover:shadow-xl hover:shadow-pink-100/50"
+								>
+									<div class="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-pink-100 to-purple-100 text-2xl transition-transform duration-300 group-hover:scale-110">
+										{course.icon}
+									</div>
+									<h3 class="text-lg font-semibold text-slate-900 transition-colors group-hover:text-pink-600">
+										{course.name}
+									</h3>
+									<p class="mt-3 text-sm leading-relaxed text-slate-600">
+										{course.shortDescription}
+									</p>
+									<span class="mt-3 inline-flex items-center gap-1 text-sm font-medium text-pink-600 group-hover:gap-2 transition-all">
+										View details and schedule
+										<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+										</svg>
+									</span>
+								</a>
 							</li>
 						</AnimateOnView>
 					{/each}

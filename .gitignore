@@ -5,6 +5,7 @@ _build/
 deps/
 envs/prod.env
 envs/staging.env
+/.svelte-kit/
 envs/env.env
 # Build outputs
 dist/

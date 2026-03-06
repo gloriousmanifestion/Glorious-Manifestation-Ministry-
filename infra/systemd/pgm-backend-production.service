@@ -1,0 +1,20 @@
+# PGM backend API (production). Port 5800.
+# Copy to /etc/systemd/system/pgm-backend-production.service on the VM.
+# Path: /opt/pgm/backend/backend
+
+[Unit]
+Description=PGM Backend API (production)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/opt/pgm/backend/backend
+Restart=on-failure
+RestartSec=5
+WorkingDirectory=/opt/pgm/backend
+EnvironmentFile=-/etc/default/pgm-backend-production
+Environment=PORT=5800
+
+[Install]
+WantedBy=multi-user.target

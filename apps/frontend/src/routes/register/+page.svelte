@@ -1,9 +1,11 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import Nav from '$lib/components/Nav.svelte';
 	import Footer from '$lib/components/Footer.svelte';
 	import { auth } from '$lib/auth';
 	import { SITE } from '$lib/config';
+	import { getCourseDetailById } from '$lib/courses';
 
 	const steps = [
 		{ id: 1, title: 'Personal info', desc: 'Your contact details' },
@@ -57,6 +59,9 @@
 		if (currentStep > 1) currentStep--;
 	}
 
+	const courseIdFromUrl = $derived($page.url.searchParams.get('course'));
+	const preselectedCourse = $derived(courseIdFromUrl ? getCourseDetailById(courseIdFromUrl) : null);
+
 	async function submit() {
 		if (submitting) return;
 		submitting = true;
@@ -70,7 +75,7 @@
 				ministryRole: formData.ministryRole,
 				churchName: formData.churchName,
 				calling: formData.calling,
-				selectedCourseId: null
+				selectedCourseId: preselectedCourse ? preselectedCourse.id : null
 			});
 			goto('/dashboard');
 		} catch (e) {
@@ -99,6 +104,12 @@
 				<p class="mt-2 text-slate-600">
 					Join our Pastoral School. Complete the form below to get started.
 				</p>
+				{#if preselectedCourse}
+					<div class="mt-4 inline-flex items-center gap-2 rounded-xl border border-pink-200 bg-pink-50/80 px-4 py-3 text-sm">
+						<span class="font-medium text-pink-700">Registering for:</span>
+						<span class="font-semibold text-slate-900">{preselectedCourse.name}</span>
+					</div>
+				{/if}
 			</div>
 
 			<div class="flex flex-col overflow-hidden rounded-2xl border border-pink-200/50 bg-white shadow-xl lg:flex-row">
@@ -287,7 +298,11 @@
 								</dl>
 							</div>
 							<p class="text-sm text-slate-600">
-								By submitting, you'll be taken to your dashboard. There you'll verify your account, choose a course, and complete payment.
+								{#if preselectedCourse}
+									By submitting, you'll be taken to your dashboard to review your course and complete payment—no need to select a course again.
+								{:else}
+									By submitting, you'll be taken to your dashboard. There you'll verify your account, choose a course, and complete payment.
+								{/if}
 							</p>
 							{#if submitError}
 								<p class="text-sm text-red-600">{submitError}</p>

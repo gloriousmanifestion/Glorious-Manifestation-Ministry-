@@ -4,6 +4,7 @@
 	import AnimateOnView from '$lib/components/AnimateOnView.svelte';
 	import HeroCarousel from '$lib/components/HeroCarousel.svelte';
 	import { SITE } from '$lib/config';
+	import { COURSE_CATALOG } from '$lib/courses';
 
 	const heroSlides = [
 		{
@@ -67,39 +68,6 @@
 		{
 			q: 'Where are classes held?',
 			a: 'Classes are held at our facility in ' + SITE.location + '. Our address is ' + SITE.address + '.'
-		}
-	];
-
-	const programs = [
-		{
-			title: 'Pastoral Leadership',
-			description: 'Develop biblical leadership skills for effective church ministry. Learn to shepherd, counsel, and lead with wisdom and integrity.',
-			topics: ['Church administration', 'Pastoral care', 'Leadership principles', 'Conflict resolution']
-		},
-		{
-			title: 'Prophetic Ministry',
-			description: 'Understanding and operating in the prophetic gift. Learn to hear from God, deliver prophetic words with accuracy, and minister in the prophetic.',
-			topics: ['Hearing God', 'Prophecy and discernment', 'Dreams and visions', 'Prophetic protocol']
-		},
-		{
-			title: 'Ministerial Training',
-			description: 'Comprehensive training for ministers in preaching, teaching, and pastoral care. Build confidence in public ministry.',
-			topics: ['Homiletics', 'Teaching methods', 'Pastoral counseling', 'Ministry ethics']
-		},
-		{
-			title: 'Biblical Studies',
-			description: 'In-depth study of Scripture for sound doctrine and spiritual growth. Hermeneutics, theology, and biblical interpretation.',
-			topics: ['Hermeneutics', 'Systematic theology', 'Old & New Testament survey', 'Church history']
-		},
-		{
-			title: 'Worship & Praise',
-			description: 'Leading worship and understanding the ministry of praise in the church. Music, flow, and the role of worship in spiritual warfare.',
-			topics: ['Worship leading', 'Praise and worship', 'Music ministry', 'Flow in the Spirit']
-		},
-		{
-			title: 'Evangelism & Outreach',
-			description: 'Equipping for effective soul-winning and community outreach. Share the Gospel with confidence and compassion.',
-			topics: ['Personal evangelism', 'Street ministry', 'Community outreach', 'Discipleship']
 		}
 	];
 </script>
@@ -189,30 +157,36 @@
 					<h2 class="text-center text-xl font-bold tracking-tight text-slate-900 sm:text-2xl mb-8 sm:mb-12">All courses</h2>
 				</AnimateOnView>
 				<div class="space-y-8 sm:space-y-12">
-				{#each programs as program, i}
+				{#each COURSE_CATALOG as course, i}
 					<AnimateOnView animation="slide-left" stagger={i} duration={500}>
 						<article
 							class="hover-lift rounded-2xl border border-pink-200/50 bg-white p-4 sm:p-8 shadow-sm hover:border-pink-300 hover:shadow-xl"
 						>
-						<div class="flex flex-col sm:flex-row items-start gap-4">
-							<span
-								class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-pink-100 to-purple-100 text-xl font-bold text-pink-600"
-							>
-								{i + 1}
-							</span>
-							<div>
-								<h2 class="text-xl font-bold text-slate-900">{program.title}</h2>
-								<p class="mt-3 text-slate-600">{program.description}</p>
-								<ul class="mt-4 flex flex-wrap gap-2">
-									{#each program.topics as topic}
-										<li class="rounded-full bg-pink-50 px-3 py-1 text-sm text-pink-700">
-											{topic}
-										</li>
-									{/each}
-								</ul>
-							</div>
-						</div>
-					</article>
+							<a href="/courses/{course.id}" class="flex flex-col sm:flex-row items-start gap-4 group">
+								<span
+									class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-pink-100 to-purple-100 text-2xl"
+								>
+									{course.icon}
+								</span>
+								<div class="flex-1">
+									<h2 class="text-xl font-bold text-slate-900 group-hover:text-pink-600 transition-colors">{course.name}</h2>
+									<p class="mt-3 text-slate-600">{course.description}</p>
+									<ul class="mt-4 flex flex-wrap gap-2">
+										{#each course.topics as topic}
+											<li class="rounded-full bg-pink-50 px-3 py-1 text-sm text-pink-700">
+												{topic}
+											</li>
+										{/each}
+									</ul>
+									<span class="mt-4 inline-flex items-center gap-1 text-sm font-medium text-pink-600">
+										View full details and schedule
+										<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+										</svg>
+									</span>
+								</div>
+							</a>
+						</article>
 					</AnimateOnView>
 				{/each}
 				</div>

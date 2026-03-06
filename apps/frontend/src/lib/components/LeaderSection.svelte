@@ -26,8 +26,7 @@
 
 				<!-- Content -->
 				<div class="order-1 lg:order-2 lg:flex-1">
-					<p class="text-[11px] font-semibold uppercase tracking-[0.3em] text-amber-800/70">Our Leader</p>
-					<h2 class="mt-5 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+					<h2 class="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
 						{leader.name}
 					</h2>
 					<p class="mt-2 text-base font-medium text-slate-600">{leader.title}</p>

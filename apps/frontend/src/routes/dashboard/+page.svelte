@@ -6,6 +6,7 @@
 	import { auth, userStore, authReady, fetchCourses } from '$lib/auth';
 	import type { Course } from '$lib/auth';
 	import { SITE } from '$lib/config';
+	import { getCourseDetailById } from '$lib/courses';
 
 	let mounted = $state(false);
 	let courses = $state<Course[]>([]);
@@ -211,14 +212,25 @@
 					<div class="rounded-2xl border border-pink-200/50 bg-white p-4 sm:p-6 shadow-sm">
 						<h2 class="text-lg font-semibold text-slate-900">Enrollment</h2>
 						{#if selectedCourse}
-							<div class="mt-4 flex items-center gap-4 rounded-xl border border-pink-200/50 bg-pink-50/30 p-4">
-								<div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-pink-100 text-pink-600">
-									📖
+							<div class="mt-4 rounded-xl border border-pink-200/50 bg-pink-50/30 p-4">
+								<div class="flex items-center gap-4">
+									<div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-pink-100 text-pink-600 text-xl">
+										{getCourseDetailById(selectedCourse.id)?.icon ?? '📖'}
+									</div>
+									<div class="flex-1">
+										<p class="font-medium text-slate-900">{selectedCourse.name}</p>
+										<p class="text-sm text-slate-500">{selectedCourse.duration} • {SITE.schedule}</p>
+									</div>
 								</div>
-								<div>
-									<p class="font-medium text-slate-900">{selectedCourse.name}</p>
-									<p class="text-sm text-slate-500">{selectedCourse.duration} • {SITE.schedule}</p>
-								</div>
+								<a
+									href="/courses/{selectedCourse.id}"
+									class="mt-3 inline-flex items-center gap-1 text-sm font-medium text-pink-600 hover:text-pink-700"
+								>
+									Review full course details & schedule
+									<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+									</svg>
+								</a>
 							</div>
 							{#if !user.paymentComplete}
 								<a

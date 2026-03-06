@@ -1,0 +1,20 @@
+# PGM frontend (production). Port 5801.
+# Copy to /etc/systemd/system/pgm-frontend-production.service on the VM.
+# Serves from /opt/pgm/frontend/production (SvelteKit adapter-node build).
+
+[Unit]
+Description=PGM Frontend (production)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/pgm/frontend/production
+ExecStart=/usr/bin/node serve.mjs
+Restart=on-failure
+RestartSec=5
+EnvironmentFile=-/etc/default/pgm-frontend-production
+Environment=PORT=5801
+
+[Install]
+WantedBy=multi-user.target

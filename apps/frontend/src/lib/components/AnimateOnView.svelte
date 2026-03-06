@@ -35,7 +35,7 @@
 	onMount(() => {
 		const observer = new IntersectionObserver(
 			([entry]) => {
-				if (entry.isIntersecting) visible = true;
+				visible = entry.isIntersecting;
 			},
 			{ rootMargin, threshold }
 		);

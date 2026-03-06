@@ -7,8 +7,8 @@ on:
       - 'apps/backend/**'
       - '.github/workflows/backend.yml'
       - 'infra/scripts/ensure-db.sh'
-      - 'infra/systemd/__TEMPLATE_BACKEND_STAGING_SERVICE_FILE__'
-      - 'infra/systemd/__TEMPLATE_BACKEND_PRODUCTION_SERVICE_FILE__'
+      - 'infra/systemd/pgm-backend-staging.service'
+      - 'infra/systemd/pgm-backend-production.service'
   workflow_dispatch:
 
 env:
@@ -303,7 +303,7 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: __TEMPLATE_DATABASE_NAME__
+          POSTGRES_DB: pgm_db
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -312,7 +312,7 @@ jobs:
         ports:
           - 5432:5432
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/__TEMPLATE_DATABASE_TEST_NAME__
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/pgm_db_test
     steps:
       - uses: actions/checkout@v4
         with:
@@ -426,11 +426,11 @@ jobs:
           PGUSER: postgres
           PGPASSWORD: postgres
         run: |
-          echo "Creating test database '__TEMPLATE_DATABASE_TEST_NAME__'..."
+          echo "Creating test database 'pgm_db_test'..."
           if command -v psql > /dev/null 2>&1; then
             # Connect to 'postgres' database (always exists) and create test database if it doesn't exist
-            psql -h localhost -p 5432 -U postgres -d postgres -tc "SELECT 1 FROM pg_database WHERE datname = '__TEMPLATE_DATABASE_TEST_NAME__'" | grep -q 1 || psql -h localhost -p 5432 -U postgres -d postgres -c "CREATE DATABASE __TEMPLATE_DATABASE_TEST_NAME__;"
-            echo "Test database '__TEMPLATE_DATABASE_TEST_NAME__' is ready"
+            psql -h localhost -p 5432 -U postgres -d postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'pgm_db_test'" | grep -q 1 || psql -h localhost -p 5432 -U postgres -d postgres -c "CREATE DATABASE pgm_db_test;"
+            echo "Test database 'pgm_db_test' is ready"
           else
             echo "WARNING: psql not available. Attempting to create database using migrations..."
             echo "If tests fail with 'database does not exist', install PostgreSQL client tools"
@@ -439,7 +439,7 @@ jobs:
       - name: Run tests
         working-directory: apps/backend
         env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/__TEMPLATE_DATABASE_TEST_NAME__
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/pgm_db_test
         run: cargo test -- --include-ignored --test-threads=1
 
       - name: Write job summary
@@ -453,7 +453,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Test Environment" >> $GITHUB_STEP_SUMMARY
           echo "- **Database:** PostgreSQL 16 (service container)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Database URL:** \`postgresql://postgres:***@localhost:5432/__TEMPLATE_DATABASE_TEST_NAME__\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Database URL:** \`postgresql://postgres:***@localhost:5432/pgm_db_test\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Completed Steps" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ Checkout repository" >> $GITHUB_STEP_SUMMARY
@@ -674,17 +674,17 @@ jobs:
         id: env
         run: |
           BRANCH="${{ github.event.pull_request.base.ref }}"
-          APP_NAME="${{ secrets.VM_APP_NAME || '__TEMPLATE_DEPLOY_APP_NAME__' }}"
+          APP_NAME="${{ secrets.VM_APP_NAME || 'pgm' }}"
           if [ "$BRANCH" = "prod" ]; then
             echo "environment=production" >> $GITHUB_OUTPUT
-            echo "service_file=__TEMPLATE_BACKEND_PRODUCTION_SERVICE_FILE__" >> $GITHUB_OUTPUT
-            echo "service_name=__TEMPLATE_SYSTEMD_BACKEND_PRODUCTION__" >> $GITHUB_OUTPUT
-            echo "port=__TEMPLATE_BACKEND_PRODUCTION_PORT__" >> $GITHUB_OUTPUT
+            echo "service_file=pgm-backend-production.service" >> $GITHUB_OUTPUT
+            echo "service_name=pgm-backend-production" >> $GITHUB_OUTPUT
+            echo "port=5800" >> $GITHUB_OUTPUT
           else
             echo "environment=staging" >> $GITHUB_OUTPUT
-            echo "service_file=__TEMPLATE_BACKEND_STAGING_SERVICE_FILE__" >> $GITHUB_OUTPUT
-            echo "service_name=__TEMPLATE_SYSTEMD_BACKEND_STAGING__" >> $GITHUB_OUTPUT
-            echo "port=__TEMPLATE_BACKEND_STAGING_PORT__" >> $GITHUB_OUTPUT
+            echo "service_file=pgm-backend-staging.service" >> $GITHUB_OUTPUT
+            echo "service_name=pgm-backend-staging" >> $GITHUB_OUTPUT
+            echo "port=5800" >> $GITHUB_OUTPUT
           fi
           echo "Deploying to: ${{ steps.env.outputs.environment }}"
           echo "Service file: ${{ steps.env.outputs.service_file }}"
@@ -933,21 +933,21 @@ jobs:
         id: deploy_env
         run: |
           BRANCH="${{ github.event.pull_request.base.ref }}"
-          APP_NAME="${{ secrets.VM_APP_NAME || '__TEMPLATE_DEPLOY_APP_NAME__' }}"
+          APP_NAME="${{ secrets.VM_APP_NAME || 'pgm' }}"
           if [ "$BRANCH" = "prod" ]; then
             echo "environment=production" >> $GITHUB_OUTPUT
-            echo "service_file=__TEMPLATE_BACKEND_PRODUCTION_SERVICE_FILE__" >> $GITHUB_OUTPUT
-            echo "service_name=__TEMPLATE_SYSTEMD_BACKEND_PRODUCTION__" >> $GITHUB_OUTPUT
+            echo "service_file=pgm-backend-production.service" >> $GITHUB_OUTPUT
+            echo "service_name=pgm-backend-production" >> $GITHUB_OUTPUT
             echo "deploy_dir=/opt/${APP_NAME}/backend" >> $GITHUB_OUTPUT
             echo "vault_dir=/var/lib/${APP_NAME}/vault" >> $GITHUB_OUTPUT
-            echo "port=__TEMPLATE_BACKEND_PRODUCTION_PORT__" >> $GITHUB_OUTPUT
+            echo "port=5800" >> $GITHUB_OUTPUT
           else
             echo "environment=staging" >> $GITHUB_OUTPUT
-            echo "service_file=__TEMPLATE_BACKEND_STAGING_SERVICE_FILE__" >> $GITHUB_OUTPUT
-            echo "service_name=__TEMPLATE_SYSTEMD_BACKEND_STAGING__" >> $GITHUB_OUTPUT
+            echo "service_file=pgm-backend-staging.service" >> $GITHUB_OUTPUT
+            echo "service_name=pgm-backend-staging" >> $GITHUB_OUTPUT
             echo "deploy_dir=/opt/${APP_NAME}/backend" >> $GITHUB_OUTPUT
             echo "vault_dir=/var/lib/${APP_NAME}/vault" >> $GITHUB_OUTPUT
-            echo "port=__TEMPLATE_BACKEND_STAGING_PORT__" >> $GITHUB_OUTPUT
+            echo "port=5800" >> $GITHUB_OUTPUT
           fi
 
       - name: Create backend .env for VM
@@ -970,7 +970,7 @@ jobs:
             fi
           fi
           printf 'DATABASE_URL=%s\n' "$DATABASE_URL" > backend.env
-          printf 'HOST=127.0.0.1\nPORT=${{ steps.deploy_env.outputs.port }}\n' >> backend.env
+          printf 'HOST=127.0.0.1\nPORT=5800\n' >> backend.env
           printf 'VAULT_PATH=${{ steps.deploy_env.outputs.vault_dir }}\n' >> backend.env
           if [[ -n "$VAULT_ENCRYPTION_KEY" ]]; then
             printf 'VAULT_ENCRYPTION_KEY=%s\n' "$VAULT_ENCRYPTION_KEY" >> backend.env
@@ -984,7 +984,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT || 22 }}
           source: "backend-deploy.tar.gz,backend.env"
-          target: "/tmp/__TEMPLATE_DEPLOY_APP_NAME__-deploy/"
+          target: "/tmp/pgm-deploy/"
 
       - name: Install and restart backend systemd service
         uses: appleboy/ssh-action@v1.0.0
@@ -1019,18 +1019,18 @@ jobs:
               sudo chown www-data:www-data "$VAULT_DIR"
               echo "Created vault directory: $VAULT_DIR"
             fi
-            cd /tmp/__TEMPLATE_DEPLOY_APP_NAME__-deploy && tar -xzf backend-deploy.tar.gz
-            sudo install -m 755 /tmp/__TEMPLATE_DEPLOY_APP_NAME__-deploy/backend/backend "$DEPLOY_DIR/backend"
+            cd /tmp/pgm-deploy && tar -xzf backend-deploy.tar.gz
+            sudo install -m 755 /tmp/pgm-deploy/backend/backend "$DEPLOY_DIR/backend"
             sudo rm -rf "$DEPLOY_DIR/migrations"
-            sudo cp -r /tmp/__TEMPLATE_DEPLOY_APP_NAME__-deploy/backend/migrations "$DEPLOY_DIR/"
+            sudo cp -r /tmp/pgm-deploy/backend/migrations "$DEPLOY_DIR/"
             sudo chown -R www-data:www-data "$DEPLOY_DIR/migrations"
-            sudo cp /tmp/__TEMPLATE_DEPLOY_APP_NAME__-deploy/backend.env "$DEPLOY_DIR/.env"
+            sudo cp /tmp/pgm-deploy/backend.env "$DEPLOY_DIR/.env"
             sudo chown www-data:www-data "$DEPLOY_DIR/.env"
             sudo chmod 600 "$DEPLOY_DIR/.env"
-            sudo install -m 755 /tmp/__TEMPLATE_DEPLOY_APP_NAME__-deploy/backend/ensure-db.sh "$DEPLOY_DIR/ensure-db.sh"
-            [ -f /tmp/__TEMPLATE_DEPLOY_APP_NAME__-deploy/backend/sync-all-migration-checksums.sh ] && sudo install -m 755 /tmp/__TEMPLATE_DEPLOY_APP_NAME__-deploy/backend/sync-all-migration-checksums.sh "$DEPLOY_DIR/sync-all-migration-checksums.sh" || true
-            [ -f /tmp/__TEMPLATE_DEPLOY_APP_NAME__-deploy/backend/wipe-schema-on-vm.sh ] && sudo install -m 755 /tmp/__TEMPLATE_DEPLOY_APP_NAME__-deploy/backend/wipe-schema-on-vm.sh "$DEPLOY_DIR/wipe-schema-on-vm.sh" || true
-            [ -f /tmp/__TEMPLATE_DEPLOY_APP_NAME__-deploy/backend/emergency-wipe-and-fix.sh ] && sudo install -m 755 /tmp/__TEMPLATE_DEPLOY_APP_NAME__-deploy/backend/emergency-wipe-and-fix.sh "$DEPLOY_DIR/emergency-wipe-and-fix.sh" || true
+            sudo install -m 755 /tmp/pgm-deploy/backend/ensure-db.sh "$DEPLOY_DIR/ensure-db.sh"
+            [ -f /tmp/pgm-deploy/backend/sync-all-migration-checksums.sh ] && sudo install -m 755 /tmp/pgm-deploy/backend/sync-all-migration-checksums.sh "$DEPLOY_DIR/sync-all-migration-checksums.sh" || true
+            [ -f /tmp/pgm-deploy/backend/wipe-schema-on-vm.sh ] && sudo install -m 755 /tmp/pgm-deploy/backend/wipe-schema-on-vm.sh "$DEPLOY_DIR/wipe-schema-on-vm.sh" || true
+            [ -f /tmp/pgm-deploy/backend/emergency-wipe-and-fix.sh ] && sudo install -m 755 /tmp/pgm-deploy/backend/emergency-wipe-and-fix.sh "$DEPLOY_DIR/emergency-wipe-and-fix.sh" || true
             echo "=== Wipe schema if WIPE_DB (migrations were consolidated - must start fresh) ==="
             if [[ "${{ vars.WIPE_DB }}" == "true" ]]; then
               sudo "$DEPLOY_DIR/wipe-schema-on-vm.sh" "$DEPLOY_DIR/.env" || { echo "Wipe failed - try manually: sudo $DEPLOY_DIR/wipe-schema-on-vm.sh"; exit 1; }
@@ -1041,7 +1041,7 @@ jobs:
               echo "=== Sync migration checksums (only helps when migration FILES match DB - not after consolidation) ==="
               [ -f "$DEPLOY_DIR/sync-all-migration-checksums.sh" ] && sudo "$DEPLOY_DIR/sync-all-migration-checksums.sh" "$DEPLOY_DIR/.env" "$DEPLOY_DIR/migrations" || true
             fi
-            sudo install -m 644 /tmp/__TEMPLATE_DEPLOY_APP_NAME__-deploy/backend/"$SERVICE_FILE" "/etc/systemd/system/$SERVICE_NAME.service"
+            sudo install -m 644 /tmp/pgm-deploy/backend/"$SERVICE_FILE" "/etc/systemd/system/$SERVICE_NAME.service"
             sudo systemctl daemon-reload
             sudo systemctl enable "$SERVICE_NAME.service"
             sudo systemctl restart "$SERVICE_NAME.service"

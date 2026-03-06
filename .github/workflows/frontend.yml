@@ -6,8 +6,8 @@ on:
     paths:
       - 'apps/frontend/**'
       - '.github/workflows/frontend.yml'
-      - 'infra/systemd/__TEMPLATE_FRONTEND_STAGING_SERVICE_FILE__'
-      - 'infra/systemd/__TEMPLATE_FRONTEND_PRODUCTION_SERVICE_FILE__'
+      - 'infra/systemd/pgm-frontend-staging.service'
+      - 'infra/systemd/pgm-frontend-production.service'
   workflow_dispatch:
     inputs:
       public_api_url:
@@ -481,19 +481,19 @@ jobs:
         id: env
         run: |
           BRANCH="${{ github.event.pull_request.base.ref }}"
-          APP_NAME="__TEMPLATE_DEPLOY_APP_NAME__"
+          APP_NAME="pgm"
           if [ "$BRANCH" = "prod" ]; then
             echo "environment=production" >> $GITHUB_OUTPUT
-            echo "service_file=__TEMPLATE_FRONTEND_PRODUCTION_SERVICE_FILE__" >> $GITHUB_OUTPUT
+            echo "service_file=pgm-frontend-production.service" >> $GITHUB_OUTPUT
             echo "deploy_dir=/opt/${APP_NAME}/frontend/production" >> $GITHUB_OUTPUT
-            echo "port=__TEMPLATE_FRONTEND_PRODUCTION_PORT__" >> $GITHUB_OUTPUT
-            echo "api_port=__TEMPLATE_BACKEND_PRODUCTION_PORT__" >> $GITHUB_OUTPUT
+            echo "port=5801" >> $GITHUB_OUTPUT
+            echo "api_port=5800" >> $GITHUB_OUTPUT
           else
             echo "environment=staging" >> $GITHUB_OUTPUT
-            echo "service_file=__TEMPLATE_FRONTEND_STAGING_SERVICE_FILE__" >> $GITHUB_OUTPUT
+            echo "service_file=pgm-frontend-staging.service" >> $GITHUB_OUTPUT
             echo "deploy_dir=/opt/${APP_NAME}/frontend/staging" >> $GITHUB_OUTPUT
-            echo "port=__TEMPLATE_FRONTEND_STAGING_PORT__" >> $GITHUB_OUTPUT
-            echo "api_port=__TEMPLATE_BACKEND_STAGING_PORT__" >> $GITHUB_OUTPUT
+            echo "port=5801" >> $GITHUB_OUTPUT
+            echo "api_port=5800" >> $GITHUB_OUTPUT
           fi
           echo "Deploying to: ${{ steps.env.outputs.environment }}"
           echo "Service file: ${{ steps.env.outputs.service_file }}"
@@ -635,26 +635,26 @@ jobs:
         id: deploy_env
         run: |
           BRANCH="${{ github.event.pull_request.base.ref }}"
-          APP_NAME="${{ secrets.VM_APP_NAME || '__TEMPLATE_DEPLOY_APP_NAME__' }}"
+          APP_NAME="${{ secrets.VM_APP_NAME || 'pgm' }}"
           if [ "$BRANCH" = "prod" ]; then
             echo "environment=production" >> $GITHUB_OUTPUT
             echo "deploy_dir=/opt/${APP_NAME}/frontend/production" >> $GITHUB_OUTPUT
-            echo "port=__TEMPLATE_FRONTEND_PRODUCTION_PORT__" >> $GITHUB_OUTPUT
-            echo "api_port=__TEMPLATE_BACKEND_PRODUCTION_PORT__" >> $GITHUB_OUTPUT
-            echo "service_name=__TEMPLATE_SYSTEMD_FRONTEND_PRODUCTION__" >> $GITHUB_OUTPUT
+            echo "port=5801" >> $GITHUB_OUTPUT
+            echo "api_port=5800" >> $GITHUB_OUTPUT
+            echo "service_name=pgm-frontend-production" >> $GITHUB_OUTPUT
           else
             echo "environment=staging" >> $GITHUB_OUTPUT
             echo "deploy_dir=/opt/${APP_NAME}/frontend/staging" >> $GITHUB_OUTPUT
-            echo "port=__TEMPLATE_FRONTEND_STAGING_PORT__" >> $GITHUB_OUTPUT
-            echo "api_port=__TEMPLATE_BACKEND_STAGING_PORT__" >> $GITHUB_OUTPUT
-            echo "service_name=__TEMPLATE_SYSTEMD_FRONTEND_STAGING__" >> $GITHUB_OUTPUT
+            echo "port=5801" >> $GITHUB_OUTPUT
+            echo "api_port=5800" >> $GITHUB_OUTPUT
+            echo "service_name=pgm-frontend-staging" >> $GITHUB_OUTPUT
           fi
 
       - name: Create frontend .env for VM
         run: |
           API_URL="${{ secrets.PUBLIC_API_URL }}"
           if [ -z "$API_URL" ]; then
-            API_URL="http://127.0.0.1:${{ steps.deploy_env.outputs.api_port }}"
+            API_URL="http://127.0.0.1:5800"
           fi
           printf 'PUBLIC_API_URL=%s\n' "$API_URL" > frontend.env
 
@@ -666,7 +666,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.VM_SSH_PORT || 22 }}
           source: "frontend-deploy.tar.gz,frontend.env"
-          target: "/tmp/__TEMPLATE_DEPLOY_APP_NAME__-deploy/"
+          target: "/tmp/pgm-deploy/"
 
       - name: Install and restart frontend systemd service
         uses: appleboy/ssh-action@v1.0.0
@@ -698,7 +698,7 @@ jobs:
             sudo cp /tmp/__TEMPLATE_DEPLOY_APP_NAME__-deploy/frontend.env "$DEPLOY_DIR/.env"
             sudo chown www-data:www-data "$DEPLOY_DIR/.env"
             sudo chmod 600 "$DEPLOY_DIR/.env"
-            sudo install -m 644 /tmp/__TEMPLATE_DEPLOY_APP_NAME__-deploy/frontend/frontend.service "/etc/systemd/system/$SERVICE_NAME.service"
+            sudo install -m 644 /tmp/pgm-deploy/frontend/frontend.service "/etc/systemd/system/$SERVICE_NAME.service"
             sudo systemctl daemon-reload
             sudo systemctl enable "$SERVICE_NAME.service"
             sudo systemctl restart "$SERVICE_NAME.service"
