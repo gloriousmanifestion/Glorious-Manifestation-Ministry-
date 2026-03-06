@@ -11,8 +11,9 @@ if [[ -z "$ENV_FILE" || ! -f "$ENV_FILE" ]]; then
   exit 1
 fi
 
-# Export DATABASE_URL from .env (simple key=value; no spaces around =)
-export $(grep -v '^#' "$ENV_FILE" | grep -E '^DATABASE_URL=' | xargs)
+# Read DATABASE_URL from .env (value may contain =)
+DATABASE_URL=$(grep -v '^#' "$ENV_FILE" | grep -E '^DATABASE_URL=' | sed 's/^DATABASE_URL=//' | tr -d '\r' | head -1)
+export DATABASE_URL
 
 if [[ -z "${DATABASE_URL:-}" ]]; then
   echo "DATABASE_URL not set in $ENV_FILE" >&2
