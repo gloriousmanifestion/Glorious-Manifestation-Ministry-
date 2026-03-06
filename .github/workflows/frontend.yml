@@ -671,6 +671,20 @@ jobs:
           fi
           printf 'PUBLIC_API_URL=%s\n' "$API_URL" > frontend.env
 
+      - name: Ensure deploy directories exist on VM
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.VM_IP }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.VM_SSH_PORT || 22 }}
+          script: |
+            set -e
+            APP_NAME="${{ steps.deploy_env.outputs.app_name }}"
+            sudo mkdir -p /tmp/pgm-deploy "/opt/${APP_NAME}/frontend/staging" "/opt/${APP_NAME}/frontend/production"
+            sudo chown -R www-data:www-data "/opt/${APP_NAME}/frontend" 2>/dev/null || true
+            echo "Created /tmp/pgm-deploy and /opt/${APP_NAME}/frontend/staging and production"
+
       - name: Copy frontend to VM
         uses: appleboy/scp-action@v1
         with:
@@ -695,7 +709,7 @@ jobs:
             SERVICE_NAME="${{ steps.deploy_env.outputs.service_name }}"
             ENV_NAME="${{ steps.deploy_env.outputs.environment }}"
             
-            echo "=== Creating required deploy directories (staging + production) ==="
+            echo "=== Ensuring deploy directories exist ==="
             sudo mkdir -p "/opt/${APP_NAME}/frontend/staging" "/opt/${APP_NAME}/frontend/production"
             sudo chown -R www-data:www-data "/opt/${APP_NAME}/frontend"
             echo "=== Deploying to $ENV_NAME environment ==="
@@ -706,10 +720,19 @@ jobs:
             sudo systemctl stop "$SERVICE_NAME" || true
             
             cd /tmp/pgm-deploy && tar -xzf frontend-deploy.tar.gz
+            if [ ! -f /tmp/pgm-deploy/frontend/serve.mjs ]; then
+              echo "Error: serve.mjs not found in tarball. Contents of frontend:"
+              ls -la /tmp/pgm-deploy/frontend/ || true
+              exit 1
+            fi
             sudo rm -rf "$DEPLOY_DIR/build"
             sudo cp -r /tmp/pgm-deploy/frontend/build "$DEPLOY_DIR/"
             sudo install -m 644 /tmp/pgm-deploy/frontend/package.json "$DEPLOY_DIR/"
             sudo install -m 755 /tmp/pgm-deploy/frontend/serve.mjs "$DEPLOY_DIR/"
+            if [ ! -f "$DEPLOY_DIR/serve.mjs" ]; then
+              echo "Error: serve.mjs was not installed to $DEPLOY_DIR"
+              exit 1
+            fi
             sudo chown -R www-data:www-data "$DEPLOY_DIR"
             sudo cp /tmp/pgm-deploy/frontend.env "$DEPLOY_DIR/.env"
             sudo chown www-data:www-data "$DEPLOY_DIR/.env"

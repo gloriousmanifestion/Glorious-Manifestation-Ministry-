@@ -16,6 +16,7 @@ ConditionPathExists=/opt/pgm/frontend/staging/serve.mjs
 [Service]
 Type=simple
 WorkingDirectory=/opt/pgm/frontend/staging
+ExecStartPre=/bin/mkdir -p /opt/pgm/frontend/staging
 ExecStart=/usr/bin/node serve.mjs
 Restart=on-failure
 RestartSec=5
