@@ -650,6 +650,21 @@ jobs:
             echo "service_name=pgm-frontend-staging" >> $GITHUB_OUTPUT
           fi
 
+      - name: Ensure deploy directory exists on VM
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.VM_IP }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.VM_SSH_PORT || 22 }}
+          script: |
+            set -e
+            DEPLOY_DIR="${{ steps.deploy_env.outputs.deploy_dir }}"
+            echo "Creating deploy directory: $DEPLOY_DIR"
+            sudo mkdir -p "$DEPLOY_DIR"
+            sudo chown -R www-data:www-data "$DEPLOY_DIR"
+            echo "Done."
+
       - name: Create frontend .env for VM
         run: |
           API_URL="${{ secrets.PUBLIC_API_URL }}"

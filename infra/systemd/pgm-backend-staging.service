@@ -10,8 +10,8 @@
 Description=Prophetic Glorious Manifestation Backend API (staging)
 After=network-online.target
 Wants=network-online.target
-# Do not start (and avoid restart loop) until deploy has created the directory
-ConditionPathExists=/opt/pgm/backend
+# Do not start until deploy has placed the backend binary (avoids CHDIR loop and empty-dir start)
+ConditionPathExists=/opt/pgm/backend/backend
 
 [Service]
 Type=simple
