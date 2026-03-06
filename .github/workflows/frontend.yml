@@ -645,7 +645,7 @@ jobs:
           else
             echo "environment=staging" >> $GITHUB_OUTPUT
             echo "deploy_dir=/opt/${APP_NAME}/frontend/staging" >> $GITHUB_OUTPUT
-            echo "port=6200" >> $GITHUB_OUTPUT
+            echo "port=5667" >> $GITHUB_OUTPUT
             echo "api_port=5800" >> $GITHUB_OUTPUT
             echo "service_name=pgm-frontend-staging" >> $GITHUB_OUTPUT
             echo "service_file=pgm-frontend-staging.service" >> $GITHUB_OUTPUT
