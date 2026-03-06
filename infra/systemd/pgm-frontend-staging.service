@@ -1,9 +1,13 @@
-# PGM frontend (staging). Port 5801.
+# Example systemd unit for frontend (staging).
+# IMPORTANT: Create a service file named: pgm-frontend-staging.service
+# (e.g., solo-template-frontend-staging.service) in infra/systemd/ before deploying.
+# The CI/CD workflow expects this file to exist.
 # Copy to /etc/systemd/system/pgm-frontend-staging.service on the VM.
-# Serves from /opt/pgm/frontend/staging (SvelteKit adapter-node build).
+# Serves from /opt/pgm/frontend/staging (e.g. SvelteKit adapter-node build).
+# Adjust ExecStart if using a static server (nginx/caddy) instead of Node.
 
 [Unit]
-Description=PGM Frontend (staging)
+Description=Prophetic Glorious Manifestation Frontend (staging)
 After=network-online.target
 Wants=network-online.target
 
@@ -14,7 +18,7 @@ ExecStart=/usr/bin/node serve.mjs
 Restart=on-failure
 RestartSec=5
 EnvironmentFile=-/etc/default/pgm-frontend-staging
-Environment=PORT=5801
+Environment=PORT=6200
 
 [Install]
 WantedBy=multi-user.target
