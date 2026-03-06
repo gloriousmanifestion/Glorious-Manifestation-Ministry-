@@ -600,12 +600,12 @@ jobs:
     name: Deploy (systemd)
     runs-on: self-hosted
     needs: [get-version, build]
-    environment: ${{ github.event.pull_request.base.ref == 'prod' && 'pgmm-production' || 'pgmm-staging' }}
+    environment: ${{ (github.event.pull_request.base.ref == 'prod' || github.event.pull_request.base.ref == 'production') && 'pgmm-production' || 'pgmm-staging' }}
     if: |
       github.event_name == 'pull_request' &&
       github.event.action == 'closed' &&
       github.event.pull_request.merged == true &&
-      (github.event.pull_request.base.ref == 'main' || github.event.pull_request.base.ref == 'prod')
+      (github.event.pull_request.base.ref == 'main' || github.event.pull_request.base.ref == 'prod' || github.event.pull_request.base.ref == 'production')
     permissions:
       contents: read
     steps:
@@ -619,9 +619,6 @@ jobs:
           git checkout ${{ github.event.pull_request.base.ref }}
           git pull origin ${{ github.event.pull_request.base.ref }} --rebase || git pull origin ${{ github.event.pull_request.base.ref }} --no-rebase
 
-      - name: Clean setup-pnpm (avoid worker.js MODULE_NOT_FOUND on self-hosted)
-        run: rm -rf "$HOME/setup-pnpm"
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -629,12 +626,6 @@ jobs:
 
       - name: Enable pnpm via Corepack
         run: corepack enable && corepack prepare pnpm@10 --activate
-
-      - name: Ensure pnpm store path exists
-        run: mkdir -p $(pnpm store path)
-
-      - name: Add pnpm to PATH
-        run: echo "PATH=$PNPM_HOME:$PATH" >> $GITHUB_ENV
 
       - name: Install dependencies
         run: pnpm install
@@ -644,18 +635,17 @@ jobs:
         run: |
           BRANCH="${{ github.event.pull_request.base.ref }}"
           APP_NAME="${{ secrets.VM_APP_NAME || 'pgm' }}"
-          echo "app_name=$APP_NAME" >> $GITHUB_OUTPUT
-          if [ "$BRANCH" = "prod" ]; then
+          if [ "$BRANCH" = "prod" ] || [ "$BRANCH" = "production" ]; then
             echo "environment=production" >> $GITHUB_OUTPUT
             echo "deploy_dir=/opt/${APP_NAME}/frontend/production" >> $GITHUB_OUTPUT
-            echo "port=5801" >> $GITHUB_OUTPUT
+            echo "port=6200" >> $GITHUB_OUTPUT
             echo "api_port=5800" >> $GITHUB_OUTPUT
             echo "service_name=pgm-frontend-production" >> $GITHUB_OUTPUT
             echo "service_file=pgm-frontend-production.service" >> $GITHUB_OUTPUT
-          else 
+          else
             echo "environment=staging" >> $GITHUB_OUTPUT
             echo "deploy_dir=/opt/${APP_NAME}/frontend/staging" >> $GITHUB_OUTPUT
-            echo "port=5801" >> $GITHUB_OUTPUT
+            echo "port=6200" >> $GITHUB_OUTPUT
             echo "api_port=5800" >> $GITHUB_OUTPUT
             echo "service_name=pgm-frontend-staging" >> $GITHUB_OUTPUT
             echo "service_file=pgm-frontend-staging.service" >> $GITHUB_OUTPUT
@@ -772,15 +762,9 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-deploy-v${{ needs.get-version.outputs.version }}
-          merge-multiple: false
-
       - name: Create GitHub Release
         run: |
-          echo "Release placeholder – attach frontend-deploy.tar.gz or use softprops/action-gh-release if needed"
+          echo "Release placeholder – attach frontend-deploy.tar.gz via softprops/action-gh-release when needed."
 
       - name: Write job summary
         if: always()
