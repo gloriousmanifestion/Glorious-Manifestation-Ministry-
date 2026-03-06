@@ -3,6 +3,10 @@ name: Frontend CI/CD
 on:
   pull_request:
     types: [opened, synchronize, closed]
+    branches:
+      - main
+      - uat
+      - prod
     paths:
       - 'apps/frontend/**'
       - '.github/workflows/frontend.yml'
@@ -23,8 +27,9 @@ jobs:
     name: Format
     runs-on: self-hosted
     if: |
-      github.event.pull_request.merged == false &&
-      (github.event.pull_request.base.ref == 'main' || github.event.pull_request.base.ref == 'uat' || github.event.pull_request.base.ref == 'prod')
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged == false &&
+       (github.event.pull_request.base.ref == 'main' || github.event.pull_request.base.ref == 'uat' || github.event.pull_request.base.ref == 'prod'))
     steps:
       - uses: actions/checkout@v4
         with:
@@ -81,8 +86,9 @@ jobs:
     runs-on: self-hosted
     needs: format
     if: |
-      github.event.pull_request.merged == false &&
-      (github.event.pull_request.base.ref == 'main' || github.event.pull_request.base.ref == 'uat' || github.event.pull_request.base.ref == 'prod')
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged == false &&
+       (github.event.pull_request.base.ref == 'main' || github.event.pull_request.base.ref == 'uat' || github.event.pull_request.base.ref == 'prod'))
     steps:
       - uses: actions/checkout@v4
         with:
@@ -140,8 +146,9 @@ jobs:
     runs-on: self-hosted
     needs: [lint]
     if: |
-      github.event.pull_request.merged == false &&
-      (github.event.pull_request.base.ref == 'main' || github.event.pull_request.base.ref == 'uat' || github.event.pull_request.base.ref == 'prod')
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged == false &&
+       (github.event.pull_request.base.ref == 'main' || github.event.pull_request.base.ref == 'uat' || github.event.pull_request.base.ref == 'prod'))
     steps:
       - uses: actions/checkout@v4
         with:
@@ -192,7 +199,9 @@ jobs:
     name: Test
     runs-on: self-hosted
     needs: [check]
-    if: github.event.pull_request.merged == false
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.event.pull_request.merged == false
     steps:
       - uses: actions/checkout@v4
         with:
@@ -227,7 +236,10 @@ jobs:
 
       - name: Set test port
         id: test-port
-        run: echo "port=$(( 30000 + (${{ github.run_id }} % 10000) ))" >> $GITHUB_OUTPUT
+        run: |
+          PORT=$(node -e "const net=require('net'); const s=net.createServer(); s.listen(0,'127.0.0.1',()=>{console.log(s.address().port); s.close();});")
+          echo "port=$PORT" >> $GITHUB_OUTPUT
+          echo "Using port $PORT for Playwright webServer"
 
       - name: Run tests
         env:
@@ -781,6 +793,38 @@ jobs:
           echo "- **Tag:** frontend-v${{ needs.get-version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Completed at:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+
+  clean-artifacts:
+    name: Clean Workflow Artifacts
+    runs-on: self-hosted
+    if: |
+      github.event_name == 'pull_request' &&
+      github.event.action == 'closed' &&
+      github.event.pull_request.merged == true &&
+      (github.event.pull_request.base.ref == 'main' || github.event.pull_request.base.ref == 'prod')
+    needs: [release]
+    permissions:
+      actions: write
+    steps:
+      - name: Delete run artifacts to free GitHub storage
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { data: artifacts } = await github.rest.actions.listWorkflowRunArtifacts({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: context.runId
+            });
+            for (const art of artifacts.artifacts || []) {
+              await github.rest.actions.deleteArtifact({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                artifact_id: art.id
+              });
+              console.log(`Deleted artifact: ${art.name} (id: ${art.id})`);
+            }
+            console.log(`Cleaned ${(artifacts.artifacts || []).length} artifact(s)`);
 
   monitor-failures:
     name: Monitor Failed Jobs
