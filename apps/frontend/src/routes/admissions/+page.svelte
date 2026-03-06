@@ -40,6 +40,14 @@
 			<p class="hero-enter-delay-3 mx-auto mt-6 max-w-2xl text-lg text-slate-600">
 				{SITE.schoolName} is now open for pastors, ministers and prophets. Program runs {SITE.duration}, {SITE.schedule}.
 			</p>
+			<div class="hero-enter-delay-4 mt-8">
+				<a
+					href="/register"
+					class="btn-scale inline-flex items-center justify-center rounded-full bg-gradient-to-r from-pink-500 to-purple-600 px-8 py-3.5 sm:px-10 text-sm font-semibold text-white shadow-lg transition hover:shadow-xl hover:from-pink-600 hover:to-purple-700 touch-manipulation active:scale-[0.98]"
+				>
+					Register now
+				</a>
+			</div>
 		</section>
 
 		<section class="border-t border-pink-200/50 bg-white/60 py-12 sm:py-16 px-4 sm:px-6">
