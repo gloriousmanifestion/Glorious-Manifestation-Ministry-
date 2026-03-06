@@ -21,6 +21,7 @@ Restart=on-failure
 RestartSec=5
 EnvironmentFile=-/etc/default/pgm-frontend-staging
 Environment=PORT=6200
+Environment=HOST=0.0.0.0
 
 [Install]
 WantedBy=multi-user.target

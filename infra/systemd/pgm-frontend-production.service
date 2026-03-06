@@ -20,6 +20,7 @@ Restart=on-failure
 RestartSec=5
 EnvironmentFile=-/etc/default/pgm-frontend-production
 Environment=PORT=6400
+Environment=HOST=0.0.0.0
 
 [Install]
 WantedBy=multi-user.target

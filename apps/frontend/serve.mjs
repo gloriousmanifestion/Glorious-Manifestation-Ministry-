@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * Production entry point for website on VM (systemd) and Playwright tests.
- * - adapter-node: starts build/index.js
- * - adapter-static: serves build/ as static files (Node built-ins only, no deps)
- * Usage: node serve.mjs (run from deploy dir: /opt/oneplus/website/staging|production)
+ * Production entry point for frontend on VM (systemd) and Playwright tests.
+ * - adapter-node (SSR): starts build/index.js (SvelteKit Node server)
+ * - adapter-static (legacy): serves build/ as static files (Node built-ins only)
+ * Usage: node serve.mjs (run from deploy dir, e.g. /opt/pgm/frontend/staging|production)
  */
 
 import { readFileSync, existsSync, createReadStream, statSync } from 'node:fs';
