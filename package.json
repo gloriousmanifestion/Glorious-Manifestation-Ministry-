@@ -1,0 +1,22 @@
+{
+  "name": "solo-template",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A production-ready monorepo template for solo projects",
+  "scripts": {
+    "frontend": "pnpm --filter frontend",
+    "backend": "pnpm --filter backend",
+    "docs": "pnpm --filter docs",
+    "apply-template": "node scripts/apply-template-config.mjs"
+  },
+  "devDependencies": {
+    "yaml": "^2.8.2"
+  },
+  "keywords": ["monorepo","template","sveltekit","rust","docusaurus"],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=10.0.0"
+  }
+}
