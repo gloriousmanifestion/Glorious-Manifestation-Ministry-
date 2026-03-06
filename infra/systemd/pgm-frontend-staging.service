@@ -10,8 +10,6 @@
 Description=Prophetic Glorious Manifestation Frontend (staging)
 After=network-online.target
 Wants=network-online.target
-# Do not start until deploy has placed serve.mjs (avoids CHDIR loop and empty-dir start)
-ConditionPathExists=/opt/pgm/frontend/staging/serve.mjs
 
 [Service]
 Type=simple
