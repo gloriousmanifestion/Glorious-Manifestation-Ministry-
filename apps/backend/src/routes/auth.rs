@@ -2,7 +2,7 @@ use axum::{
     extract::State,
     http::StatusCode,
     response::Json,
-    routing::{get, patch, post},
+    routing::{get, post},
     Router,
 };
 use serde::{Deserialize, Serialize};
@@ -92,7 +92,9 @@ async fn register(
     if req.password.len() < 8 {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({"error": "password_too_short", "message": "Password must be at least 8 characters"})),
+            Json(
+                serde_json::json!({"error": "password_too_short", "message": "Password must be at least 8 characters"}),
+            ),
         ));
     }
 
@@ -124,7 +126,7 @@ async fn register(
     .bind(&now)
     .execute(&pool)
     .await
-    .map_err(|e| {
+    .map_err(|_e| {
         if let sqlx::Error::Database(db) = &e {
             if db.message().contains("UNIQUE constraint failed") {
                 return (
@@ -178,7 +180,7 @@ async fn login(
     .bind(&req.email)
     .fetch_optional(&pool)
     .await
-    .map_err(|e| {
+    .map_err(|_e| {
         tracing::error!("Login query error: {:?}", e);
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -194,7 +196,9 @@ async fn login(
     if !verify_password(&req.password, &user.password_hash).unwrap_or(false) {
         return Err((
             StatusCode::UNAUTHORIZED,
-            Json(serde_json::json!({"error": "invalid_credentials", "message": "Invalid email or password"})),
+            Json(
+                serde_json::json!({"error": "invalid_credentials", "message": "Invalid email or password"}),
+            ),
         ));
     }
 
@@ -221,7 +225,7 @@ async fn me(
     .bind(&user_id)
     .fetch_optional(&pool)
     .await
-    .map_err(|e| {
+    .map_err(|_e| {
         tracing::error!("Me query error: {:?}", e);
         (
             StatusCode::INTERNAL_SERVER_ERROR,

@@ -12,7 +12,9 @@ export interface ContactRequest {
 
 const API_BASE = '/api/v1';
 
-export async function submitContact(data: ContactRequest): Promise<{ success: boolean; message: string }> {
+export async function submitContact(
+	data: ContactRequest
+): Promise<{ success: boolean; message: string }> {
 	const res = await fetch(`${API_BASE}/contact`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },

@@ -16,7 +16,9 @@ test.describe('Terms page', () => {
 
 	test('Pastoral School branding links to home', async ({ page }) => {
 		await page.goto('/terms');
-		const logoLink = page.getByRole('link', { name: /Prophetic Glorious Manifestation \| Pastoral School/ }).first();
+		const logoLink = page
+			.getByRole('link', { name: /Prophetic Glorious Manifestation \| Pastoral School/ })
+			.first();
 		await expect(logoLink).toBeVisible();
 		await expect(logoLink).toHaveAttribute('href', '/');
 	});

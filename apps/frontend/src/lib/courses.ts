@@ -23,46 +23,102 @@ export const COURSE_CATALOG: CourseDetail[] = [
 	{
 		id: 'pastoral-leadership',
 		name: 'Pastoral Leadership',
-		shortDescription: 'Develop biblical leadership skills for effective church ministry and shepherding.',
+		shortDescription:
+			'Develop biblical leadership skills for effective church ministry and shepherding.',
 		description:
 			'This course equips you with biblical leadership principles for church ministry. You will learn to shepherd, counsel, and lead with wisdom and integrity. Topics include church administration, pastoral care, leadership principles, and conflict resolution.',
 		icon: '📖',
-		topics: ['Church administration', 'Pastoral care', 'Leadership principles', 'Conflict resolution'],
+		topics: [
+			'Church administration',
+			'Pastoral care',
+			'Leadership principles',
+			'Conflict resolution'
+		],
 		schedule: [
-			{ week: 'Weeks 1–2', title: 'Foundations of pastoral leadership', description: 'Biblical models of leadership and the role of the pastor.' },
-			{ week: 'Weeks 3–4', title: 'Church administration', description: 'Stewarding resources, planning, and church governance.' },
-			{ week: 'Weeks 5–6', title: 'Pastoral care & counseling', description: 'Shepherding members through life challenges and spiritual growth.' },
-			{ week: 'Weeks 7–8', title: 'Conflict resolution', description: 'Biblical peacemaking and handling difficult situations.' }
+			{
+				week: 'Weeks 1–2',
+				title: 'Foundations of pastoral leadership',
+				description: 'Biblical models of leadership and the role of the pastor.'
+			},
+			{
+				week: 'Weeks 3–4',
+				title: 'Church administration',
+				description: 'Stewarding resources, planning, and church governance.'
+			},
+			{
+				week: 'Weeks 5–6',
+				title: 'Pastoral care & counseling',
+				description: 'Shepherding members through life challenges and spiritual growth.'
+			},
+			{
+				week: 'Weeks 7–8',
+				title: 'Conflict resolution',
+				description: 'Biblical peacemaking and handling difficult situations.'
+			}
 		]
 	},
 	{
 		id: 'prophetic-ministry',
 		name: 'Prophetic Ministry',
-		shortDescription: 'Understanding and operating in the prophetic gift with wisdom and discernment.',
+		shortDescription:
+			'Understanding and operating in the prophetic gift with wisdom and discernment.',
 		description:
 			'Learn to hear from God and operate in the prophetic gift with accuracy and wisdom. This course covers hearing God, prophecy and discernment, dreams and visions, and prophetic protocol in the local church.',
 		icon: '✨',
 		topics: ['Hearing God', 'Prophecy and discernment', 'Dreams and visions', 'Prophetic protocol'],
 		schedule: [
-			{ week: 'Weeks 1–2', title: 'Hearing God', description: 'Ways God speaks and how to cultivate a listening heart.' },
-			{ week: 'Weeks 3–4', title: 'Prophecy and discernment', description: 'Delivering prophetic words with accuracy and testing spirits.' },
-			{ week: 'Weeks 5–6', title: 'Dreams and visions', description: 'Understanding and interpreting dreams and visions.' },
-			{ week: 'Weeks 7–8', title: 'Prophetic protocol', description: 'Order, accountability, and integrity in prophetic ministry.' }
+			{
+				week: 'Weeks 1–2',
+				title: 'Hearing God',
+				description: 'Ways God speaks and how to cultivate a listening heart.'
+			},
+			{
+				week: 'Weeks 3–4',
+				title: 'Prophecy and discernment',
+				description: 'Delivering prophetic words with accuracy and testing spirits.'
+			},
+			{
+				week: 'Weeks 5–6',
+				title: 'Dreams and visions',
+				description: 'Understanding and interpreting dreams and visions.'
+			},
+			{
+				week: 'Weeks 7–8',
+				title: 'Prophetic protocol',
+				description: 'Order, accountability, and integrity in prophetic ministry.'
+			}
 		]
 	},
 	{
 		id: 'ministerial-training',
 		name: 'Ministerial Training',
-		shortDescription: 'Comprehensive training for ministers in preaching, teaching, and pastoral care.',
+		shortDescription:
+			'Comprehensive training for ministers in preaching, teaching, and pastoral care.',
 		description:
 			'Comprehensive training for ministers in preaching, teaching, and pastoral care. Build confidence in public ministry through homiletics, teaching methods, pastoral counseling, and ministry ethics.',
 		icon: '⛪',
 		topics: ['Homiletics', 'Teaching methods', 'Pastoral counseling', 'Ministry ethics'],
 		schedule: [
-			{ week: 'Weeks 1–2', title: 'Homiletics', description: 'Preparing and delivering biblical sermons.' },
-			{ week: 'Weeks 3–4', title: 'Teaching methods', description: 'Effective teaching and small group facilitation.' },
-			{ week: 'Weeks 5–6', title: 'Pastoral counseling', description: 'Basic counseling skills and referral.' },
-			{ week: 'Weeks 7–8', title: 'Ministry ethics', description: 'Integrity, boundaries, and accountability in ministry.' }
+			{
+				week: 'Weeks 1–2',
+				title: 'Homiletics',
+				description: 'Preparing and delivering biblical sermons.'
+			},
+			{
+				week: 'Weeks 3–4',
+				title: 'Teaching methods',
+				description: 'Effective teaching and small group facilitation.'
+			},
+			{
+				week: 'Weeks 5–6',
+				title: 'Pastoral counseling',
+				description: 'Basic counseling skills and referral.'
+			},
+			{
+				week: 'Weeks 7–8',
+				title: 'Ministry ethics',
+				description: 'Integrity, boundaries, and accountability in ministry.'
+			}
 		]
 	},
 	{
@@ -74,10 +130,26 @@ export const COURSE_CATALOG: CourseDetail[] = [
 		icon: '📜',
 		topics: ['Hermeneutics', 'Systematic theology', 'Old & New Testament survey', 'Church history'],
 		schedule: [
-			{ week: 'Weeks 1–2', title: 'Hermeneutics', description: 'How to interpret Scripture rightly.' },
-			{ week: 'Weeks 3–4', title: 'Systematic theology', description: 'Key doctrines of the faith.' },
-			{ week: 'Weeks 5–6', title: 'Old & New Testament survey', description: 'Overview of the Bible and its message.' },
-			{ week: 'Weeks 7–8', title: 'Church history', description: 'Key movements and lessons from church history.' }
+			{
+				week: 'Weeks 1–2',
+				title: 'Hermeneutics',
+				description: 'How to interpret Scripture rightly.'
+			},
+			{
+				week: 'Weeks 3–4',
+				title: 'Systematic theology',
+				description: 'Key doctrines of the faith.'
+			},
+			{
+				week: 'Weeks 5–6',
+				title: 'Old & New Testament survey',
+				description: 'Overview of the Bible and its message.'
+			},
+			{
+				week: 'Weeks 7–8',
+				title: 'Church history',
+				description: 'Key movements and lessons from church history.'
+			}
 		]
 	},
 	{
@@ -89,10 +161,26 @@ export const COURSE_CATALOG: CourseDetail[] = [
 		icon: '🎵',
 		topics: ['Worship leading', 'Praise and worship', 'Music ministry', 'Flow in the Spirit'],
 		schedule: [
-			{ week: 'Weeks 1–2', title: 'Heart of worship', description: 'Biblical foundations of worship and praise.' },
-			{ week: 'Weeks 3–4', title: 'Worship leading', description: 'Leading congregations in worship and flow.' },
-			{ week: 'Weeks 5–6', title: 'Music ministry', description: 'Practical skills and team building.' },
-			{ week: 'Weeks 7–8', title: 'Spirit-led worship', description: 'Sensitivity to the Spirit in corporate worship.' }
+			{
+				week: 'Weeks 1–2',
+				title: 'Heart of worship',
+				description: 'Biblical foundations of worship and praise.'
+			},
+			{
+				week: 'Weeks 3–4',
+				title: 'Worship leading',
+				description: 'Leading congregations in worship and flow.'
+			},
+			{
+				week: 'Weeks 5–6',
+				title: 'Music ministry',
+				description: 'Practical skills and team building.'
+			},
+			{
+				week: 'Weeks 7–8',
+				title: 'Spirit-led worship',
+				description: 'Sensitivity to the Spirit in corporate worship.'
+			}
 		]
 	},
 	{
@@ -104,10 +192,26 @@ export const COURSE_CATALOG: CourseDetail[] = [
 		icon: '🌍',
 		topics: ['Personal evangelism', 'Street ministry', 'Community outreach', 'Discipleship'],
 		schedule: [
-			{ week: 'Weeks 1–2', title: 'Personal evangelism', description: 'Sharing your faith naturally and clearly.' },
-			{ week: 'Weeks 3–4', title: 'Street ministry', description: 'Preaching and witnessing in public spaces.' },
-			{ week: 'Weeks 5–6', title: 'Community outreach', description: 'Serving and reaching your community.' },
-			{ week: 'Weeks 7–8', title: 'Discipleship', description: 'Following up and grounding new believers.' }
+			{
+				week: 'Weeks 1–2',
+				title: 'Personal evangelism',
+				description: 'Sharing your faith naturally and clearly.'
+			},
+			{
+				week: 'Weeks 3–4',
+				title: 'Street ministry',
+				description: 'Preaching and witnessing in public spaces.'
+			},
+			{
+				week: 'Weeks 5–6',
+				title: 'Community outreach',
+				description: 'Serving and reaching your community.'
+			},
+			{
+				week: 'Weeks 7–8',
+				title: 'Discipleship',
+				description: 'Following up and grounding new believers.'
+			}
 		]
 	}
 ];

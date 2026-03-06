@@ -6,7 +6,6 @@
 import { writable, get } from 'svelte/store';
 import * as api from '$lib/auth-api';
 import { toUser } from '$lib/auth-api';
-import type { UserResponse } from '$lib/auth-api';
 
 const TOKEN_KEY = 'pms_token';
 const USER_KEY = 'pms_user';
@@ -105,7 +104,9 @@ function createAuthStore() {
 			const u = get(userStore);
 			return u !== null && !u.paymentComplete;
 		},
-		async register(data: Omit<User, 'id' | 'verified' | 'paymentComplete' | 'createdAt'> & { password: string }) {
+		async register(
+			data: Omit<User, 'id' | 'verified' | 'paymentComplete' | 'createdAt'> & { password: string }
+		) {
 			const res = await api.register({
 				name: data.name,
 				email: data.email,

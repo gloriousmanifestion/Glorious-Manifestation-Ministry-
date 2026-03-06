@@ -19,20 +19,19 @@ pub fn events_routes(pool: SqlitePool) -> Router {
 async fn list_events(
     State(pool): State<SqlitePool>,
 ) -> Result<Json<Vec<EventRow>>, (axum::http::StatusCode, Json<serde_json::Value>)> {
-    let events: Vec<EventRow> = sqlx::query_as(
-        "SELECT id, title, date, description FROM events ORDER BY date ASC",
-    )
-    .fetch_all(&pool)
-    .await
-    .map_err(|e| {
-        tracing::error!("List events error: {:?}", e);
-        (
-            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-            Json(serde_json::json!({
-                "error": "fetch_failed",
-                "message": "Could not fetch events"
-            })),
-        )
-    })?;
+    let events: Vec<EventRow> =
+        sqlx::query_as("SELECT id, title, date, description FROM events ORDER BY date ASC")
+            .fetch_all(&pool)
+            .await
+            .map_err(|e| {
+                tracing::error!("List events error: {:?}", e);
+                (
+                    axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({
+                        "error": "fetch_failed",
+                        "message": "Could not fetch events"
+                    })),
+                )
+            })?;
     Ok(Json(events))
 }
