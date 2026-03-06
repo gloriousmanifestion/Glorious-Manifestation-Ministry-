@@ -228,7 +228,7 @@ jobs:
         run: pnpm install
 
       - name: Install Playwright browsers
-        run: pnpm --filter frontend exec playwright install --with-deps chromium
+        run: pnpm frontend exec playwright install --with-deps chromium
 
       - name: Build frontend (for test server)
         working-directory: apps/frontend
@@ -493,7 +493,7 @@ jobs:
         id: env
         run: |
           BRANCH="${{ github.event.pull_request.base.ref }}"
-          APP_NAME="pgm"
+          APP_NAME="${{ secrets.VM_APP_NAME || 'pgm' }}"
           if [ "$BRANCH" = "prod" ]; then
             echo "environment=production" >> $GITHUB_OUTPUT
             echo "service_file=pgm-frontend-production.service" >> $GITHUB_OUTPUT
@@ -648,6 +648,7 @@ jobs:
         run: |
           BRANCH="${{ github.event.pull_request.base.ref }}"
           APP_NAME="${{ secrets.VM_APP_NAME || 'pgm' }}"
+          echo "app_name=$APP_NAME" >> $GITHUB_OUTPUT
           if [ "$BRANCH" = "prod" ]; then
             echo "environment=production" >> $GITHUB_OUTPUT
             echo "deploy_dir=/opt/${APP_NAME}/frontend/production" >> $GITHUB_OUTPUT
@@ -661,21 +662,6 @@ jobs:
             echo "api_port=5800" >> $GITHUB_OUTPUT
             echo "service_name=pgm-frontend-staging" >> $GITHUB_OUTPUT
           fi
-
-      - name: Ensure deploy directory exists on VM
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ secrets.VM_IP }}
-          username: ${{ secrets.VM_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.VM_SSH_PORT || 22 }}
-          script: |
-            set -e
-            DEPLOY_DIR="${{ steps.deploy_env.outputs.deploy_dir }}"
-            echo "Creating deploy directory: $DEPLOY_DIR"
-            sudo mkdir -p "$DEPLOY_DIR"
-            sudo chown -R www-data:www-data "$DEPLOY_DIR"
-            echo "Done."
 
       - name: Create frontend .env for VM
         run: |
@@ -704,10 +690,14 @@ jobs:
           port: ${{ secrets.VM_SSH_PORT || 22 }}
           script: |
             set -e
+            APP_NAME="${{ steps.deploy_env.outputs.app_name }}"
             DEPLOY_DIR="${{ steps.deploy_env.outputs.deploy_dir }}"
             SERVICE_NAME="${{ steps.deploy_env.outputs.service_name }}"
             ENV_NAME="${{ steps.deploy_env.outputs.environment }}"
             
+            echo "=== Creating required deploy directories (staging + production) ==="
+            sudo mkdir -p "/opt/${APP_NAME}/frontend/staging" "/opt/${APP_NAME}/frontend/production"
+            sudo chown -R www-data:www-data "/opt/${APP_NAME}/frontend"
             echo "=== Deploying to $ENV_NAME environment ==="
             echo "Deploy directory: $DEPLOY_DIR"
             echo "Service name: $SERVICE_NAME"
@@ -715,7 +705,6 @@ jobs:
             echo "=== Stopping frontend service (prevents restart loop during deploy) ==="
             sudo systemctl stop "$SERVICE_NAME" || true
             
-            sudo mkdir -p "$DEPLOY_DIR"
             cd /tmp/pgm-deploy && tar -xzf frontend-deploy.tar.gz
             sudo rm -rf "$DEPLOY_DIR/build"
             sudo cp -r /tmp/pgm-deploy/frontend/build "$DEPLOY_DIR/"

@@ -843,6 +843,7 @@ jobs:
         run: |
           BRANCH="${{ github.event.pull_request.base.ref }}"
           APP_NAME="${{ secrets.VM_APP_NAME || 'pgm' }}"
+          echo "app_name=$APP_NAME" >> $GITHUB_OUTPUT
           if [ "$BRANCH" = "prod" ]; then
             echo "environment=production" >> $GITHUB_OUTPUT
             echo "service_file=pgm-backend-production.service" >> $GITHUB_OUTPUT
@@ -885,24 +886,6 @@ jobs:
             printf 'VAULT_ENCRYPTION_KEY=%s\n' "$VAULT_ENCRYPTION_KEY" >> backend.env
           fi
 
-      - name: Ensure deploy directory exists on VM
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ secrets.SSH_IP }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.SSH_PORT || 22 }}
-          script: |
-            set -e
-            DEPLOY_DIR="${{ steps.deploy_env.outputs.deploy_dir }}"
-            VAULT_DIR="${{ steps.deploy_env.outputs.vault_dir }}"
-            echo "Creating deploy directory: $DEPLOY_DIR"
-            sudo mkdir -p "$DEPLOY_DIR"
-            echo "Creating vault directory: $VAULT_DIR"
-            sudo mkdir -p "$VAULT_DIR"
-            sudo chown www-data:www-data "$VAULT_DIR"
-            echo "Done."
-
       - name: Deploy backend to VM (systemd)
         uses: appleboy/scp-action@v1
         with:
@@ -928,6 +911,9 @@ jobs:
             SERVICE_FILE="${{ steps.deploy_env.outputs.service_file }}"
             ENV_NAME="${{ steps.deploy_env.outputs.environment }}"
             
+            echo "=== Creating required deploy directories ==="
+            sudo mkdir -p "$DEPLOY_DIR" "$VAULT_DIR"
+            sudo chown www-data:www-data "$VAULT_DIR"
             echo "=== Deploying to $ENV_NAME environment ==="
             echo "Deploy directory: $DEPLOY_DIR"
             echo "Vault directory: $VAULT_DIR"
@@ -937,15 +923,6 @@ jobs:
             echo "=== Stopping backend (prevents restart loop during deploy) ==="
             sudo systemctl stop "$SERVICE_NAME" || true
             
-            sudo mkdir -p "$DEPLOY_DIR"
-            echo "=== Ensuring vault directory exists (create if missing, skip if exists) ==="
-            if [[ -d "$VAULT_DIR" ]]; then
-              echo "Vault directory already exists: $VAULT_DIR"
-            else
-              sudo mkdir -p "$VAULT_DIR"
-              sudo chown www-data:www-data "$VAULT_DIR"
-              echo "Created vault directory: $VAULT_DIR"
-            fi
             cd /tmp/pgm-deploy && tar -xzf backend-deploy.tar.gz
             sudo install -m 755 /tmp/pgm-deploy/backend/backend "$DEPLOY_DIR/backend"
             sudo rm -rf "$DEPLOY_DIR/migrations"
