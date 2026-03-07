@@ -116,7 +116,7 @@
 		<!-- Main content -->
 		<main class="flex-1 pl-64">
 			<div class="min-h-screen px-6 py-8">
-				<slot />
+				{@render children?.() ?? []}
 			</div>
 		</main>
 	</div>
