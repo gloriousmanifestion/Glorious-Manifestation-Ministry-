@@ -199,19 +199,21 @@
 
 <!-- Modal -->
 {#if modalOpen}
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
 		class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overflow-y-auto"
 		role="dialog"
 		aria-modal="true"
 		aria-labelledby="plan-modal-title"
+		tabindex="-1"
 		onkeydown={(e) => e.key === 'Escape' && closeModal()}
 		onclick={() => closeModal()}
 	>
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
 			class="my-8 w-full max-w-lg rounded-2xl border border-slate-700 bg-slate-900 shadow-xl"
-			role="document"
 			onclick={(e) => e.stopPropagation()}
-			onkeydown={(e) => e.stopPropagation()}
 		>
 			<div class="border-b border-slate-800 px-6 py-4">
 				<h2 id="plan-modal-title" class="text-lg font-semibold text-white">

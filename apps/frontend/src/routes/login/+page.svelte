@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import Nav from '$lib/components/Nav.svelte';
 	import Footer from '$lib/components/Footer.svelte';
 	import { auth } from '$lib/auth';
@@ -10,6 +11,12 @@
 	let error = $state('');
 	let loading = $state(false);
 
+	const redirectTo = $derived((() => {
+		const r = $page.url.searchParams.get('redirect');
+		if (!r || !r.startsWith('/')) return '/dashboard';
+		return r;
+	})());
+
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
 		if (loading) return;
@@ -17,7 +24,7 @@
 		loading = true;
 		try {
 			await auth.login(email, password);
-			goto('/dashboard');
+			goto(redirectTo);
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Login failed. Please try again.';
 		} finally {
