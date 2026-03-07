@@ -50,26 +50,26 @@
 			</div>
 		</section>
 
-		<section class="border-t border-pink-200/50 bg-white/60 py-12 sm:py-16 px-4 sm:px-6 dark:border-slate-600 dark:bg-[#374266]/80">
+		<section class="border-t border-pink-200/50 bg-white/60 py-12 sm:py-16 px-4 sm:px-6 section-separator dark:bg-[#374266]/80">
 			<div class="mx-auto max-w-3xl">
 				<AnimateOnView animation="fade-up">
 					<h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-2xl">Program details</h2>
 				</AnimateOnView>
 				<div class="mt-6 grid gap-4 grid-cols-1 sm:grid-cols-3">
 					<AnimateOnView animation="fade-up" stagger={0}>
-						<div class="hover-lift rounded-xl border border-pink-200/50 bg-white p-4 dark:border-slate-600 dark:bg-[#2f3a52]">
+						<div class="hover-lift rounded-xl border border-pink-200/50 card-premium bg-white p-4 dark:bg-[#2f3a52]">
 							<p class="text-sm font-medium text-pink-600 dark:text-pink-400">Duration</p>
 							<p class="mt-1 font-semibold text-slate-900 dark:text-white">{SITE.duration}</p>
 						</div>
 					</AnimateOnView>
 					<AnimateOnView animation="fade-up" stagger={1}>
-						<div class="hover-lift rounded-xl border border-pink-200/50 bg-white p-4 dark:border-slate-600 dark:bg-[#2f3a52]">
+						<div class="hover-lift rounded-xl border border-pink-200/50 card-premium bg-white p-4 dark:bg-[#2f3a52]">
 							<p class="text-sm font-medium text-pink-600 dark:text-pink-400">Schedule</p>
 							<p class="mt-1 font-semibold text-slate-900 dark:text-white">{SITE.schedule}</p>
 						</div>
 					</AnimateOnView>
 					<AnimateOnView animation="fade-up" stagger={2}>
-						<div class="hover-lift rounded-xl border border-pink-200/50 bg-white p-4 dark:border-slate-600 dark:bg-[#2f3a52]">
+						<div class="hover-lift rounded-xl border border-pink-200/50 card-premium bg-white p-4 dark:bg-[#2f3a52]">
 							<p class="text-sm font-medium text-pink-600 dark:text-pink-400">Location</p>
 							<p class="mt-1 font-semibold text-slate-900 dark:text-white">{SITE.location}</p>
 						</div>
@@ -78,7 +78,7 @@
 			</div>
 		</section>
 
-		<section class="border-t border-pink-200/50 bg-gradient-to-b from-pink-50/50 to-purple-50/30 py-12 sm:py-16 px-4 sm:px-6 dark:border-slate-600 dark:from-[#374266]/60 dark:to-[#2f3a52]/60">
+		<section class="border-t border-pink-200/50 bg-gradient-to-b from-pink-50/50 to-purple-50/30 py-12 sm:py-16 px-4 sm:px-6 section-separator dark:from-[#374266]/60 dark:to-[#2f3a52]/60">
 			<div class="mx-auto max-w-3xl">
 				<AnimateOnView animation="fade-up">
 					<h2 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Requirements</h2>
@@ -98,7 +98,7 @@
 			</div>
 		</section>
 
-		<section class="border-t border-pink-200/50 bg-white/60 py-12 sm:py-16 px-4 sm:px-6 dark:border-slate-600 dark:bg-[#374266]/80">
+		<section class="border-t border-pink-200/50 bg-white/60 py-12 sm:py-16 px-4 sm:px-6 section-separator dark:bg-[#374266]/80">
 			<div class="mx-auto max-w-3xl">
 				<AnimateOnView animation="fade-up">
 					<h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-2xl">How to apply</h2>
@@ -123,7 +123,7 @@
 			</div>
 		</section>
 
-		<section class="border-t border-pink-200/50 bg-gradient-to-r from-pink-500/10 to-purple-500/10 py-16 sm:py-20 px-4 sm:px-6 dark:border-slate-600 dark:from-pink-500/20 dark:to-purple-500/20">
+		<section class="border-t border-pink-200/50 bg-gradient-to-r from-pink-500/10 to-purple-500/10 py-16 sm:py-20 px-4 sm:px-6 section-separator dark:from-pink-500/20 dark:to-purple-500/20">
 			<AnimateOnView animation="scale">
 				<div class="mx-auto max-w-2xl text-center">
 					<h2 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Ready to apply?</h2>

@@ -49,7 +49,7 @@
 			</section>
 		{:else}
 			<!-- Hero -->
-			<section class="border-b border-pink-200/50 bg-gradient-to-b from-pink-50/50 to-white py-12 sm:py-16 px-4 sm:px-6 dark:border-slate-600 dark:from-[#374266] dark:to-[#2f3a52]">
+			<section class="border-b border-pink-200/50 section-separator bg-gradient-to-b from-pink-50/50 to-white py-12 sm:py-16 px-4 sm:px-6 dark:from-[#374266] dark:to-[#2f3a52]">
 				<div class="mx-auto max-w-4xl">
 					<a
 						href="/#programs"
@@ -100,7 +100,7 @@
 			</section>
 
 			<!-- Schedule: what to expect -->
-			<section class="border-t border-pink-200/50 bg-gradient-to-b from-white to-pink-50/30 py-12 sm:py-16 px-4 sm:px-6 dark:border-slate-600 dark:from-[#374266] dark:to-[#2f3a52]/80">
+			<section class="border-t border-pink-200/50 section-separator bg-gradient-to-b from-white to-pink-50/30 py-12 sm:py-16 px-4 sm:px-6 dark:from-[#374266] dark:to-[#2f3a52]/80">
 				<div class="mx-auto max-w-4xl">
 					<AnimateOnView animation="fade-up">
 						<h2 class="text-xl font-bold text-slate-900 dark:text-white">What to expect</h2>
@@ -109,7 +109,7 @@
 					<ul class="mt-8 space-y-6">
 						{#each data.course.schedule as item, i}
 							<AnimateOnView animation="fade-up" stagger={i}>
-								<li class="rounded-2xl border border-pink-200/50 bg-white p-4 sm:p-6 shadow-sm dark:border-slate-600 dark:bg-[#2f3a52]">
+								<li class="rounded-2xl border border-pink-200/50 card-premium bg-white p-4 sm:p-6 shadow-sm dark:bg-[#2f3a52]">
 									{#if item.week}
 										<p class="text-sm font-semibold uppercase tracking-wider text-pink-600 dark:text-pink-400">{item.week}</p>
 									{/if}
@@ -123,7 +123,7 @@
 			</section>
 
 			<!-- Register CTA -->
-			<section class="border-t border-pink-200/50 py-12 sm:py-16 px-4 sm:px-6 dark:border-slate-600">
+			<section class="border-t border-pink-200/50 section-separator py-12 sm:py-16 px-4 sm:px-6">
 				<div class="mx-auto max-w-2xl text-center">
 					<AnimateOnView animation="scale">
 						<h2 class="text-xl font-bold text-slate-900 dark:text-white">Register for {data.course.name}</h2>
@@ -139,7 +139,7 @@
 							</a>
 							<a
 								href="/#programs"
-								class="inline-flex items-center justify-center rounded-full border-2 border-pink-200 bg-white px-6 py-3 text-sm font-semibold text-pink-600 hover:bg-pink-50 transition dark:border-slate-500 dark:bg-[#2f3a52] dark:text-pink-400 dark:hover:bg-white/10"
+								class="inline-flex items-center justify-center rounded-full border-2 border-pink-200 bg-white px-6 py-3 text-sm font-semibold text-pink-600 hover:bg-pink-50 transition dark:border-white/[0.12] dark:bg-[#2f3a52] dark:text-pink-400 dark:hover:bg-white/10"
 							>
 								View all courses
 							</a>

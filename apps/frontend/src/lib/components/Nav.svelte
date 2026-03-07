@@ -36,7 +36,7 @@
 
 <header
 	class="fixed top-0 left-0 right-0 z-50 pt-[env(safe-area-inset-top)] transition-all duration-300 {scrolled || mobileOpen
-		? 'border-b border-pink-200/50 bg-white/90 backdrop-blur-xl dark:border-slate-600 dark:bg-[#374266]/90'
+		? 'border-b border-pink-200/50 section-separator bg-white/90 backdrop-blur-xl dark:bg-[#374266]/90'
 		: 'border-b border-transparent bg-transparent dark:bg-transparent'}"
 >
 	<nav class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
@@ -116,7 +116,7 @@
 
 	<!-- Mobile menu -->
 	{#if mobileOpen}
-		<div id="mobile-menu" class="border-t border-pink-200/50 bg-white px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:hidden max-h-[calc(100vh-5rem)] overflow-y-auto dark:border-slate-600 dark:bg-[#374266]">
+		<div id="mobile-menu" class="border-t border-pink-200/50 section-separator bg-white px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:hidden max-h-[calc(100vh-5rem)] overflow-y-auto dark:bg-[#374266]">
 			<div class="flex flex-col gap-0.5">
 				{#each navLinks as link}
 					<a
@@ -150,7 +150,7 @@
 					</a>
 				{/if}
 			</div>
-			<div class="mt-3 pt-3 border-t border-slate-200 dark:border-slate-600">
+			<div class="mt-3 pt-3 border-t border-slate-200 section-separator">
 				<ThemeToggle />
 			</div>
 		</div>

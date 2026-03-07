@@ -15,7 +15,7 @@
 	];
 </script>
 
-<footer class="border-t border-slate-200/80 bg-slate-50 dark:border-slate-600 dark:bg-[#2f3a52]">
+<footer class="border-t border-slate-200/80 section-separator bg-slate-50 dark:bg-[#2f3a52]">
 	<div class="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
 		<div class="grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
 			<!-- Brand -->
@@ -87,7 +87,7 @@
 
 		<!-- Bottom bar -->
 		<div
-			class="mt-12 flex flex-col items-center justify-between gap-4 border-t border-slate-200/80 pt-8 sm:flex-row dark:border-slate-600"
+			class="mt-12 flex flex-col items-center justify-between gap-4 border-t border-slate-200/80 section-separator pt-8 sm:flex-row"
 		>
 			<p class="text-sm text-slate-500 dark:text-slate-200">
 				© {new Date().getFullYear()} {SITE.legalName}. All rights reserved.

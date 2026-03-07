@@ -97,7 +97,7 @@
 				<div class="mb-8 space-y-4">
 					{#if showVerifyBanner}
 						<div
-							class="flex flex-col gap-4 rounded-2xl border-2 border-amber-200 bg-amber-50/80 p-4 sm:p-6 shadow-sm dark:border-amber-800 dark:bg-amber-900/20 sm:flex-row sm:items-center sm:justify-between"
+							class="flex flex-col gap-4 rounded-2xl border-2 border-amber-200 card-premium bg-amber-50/80 p-4 sm:p-6 shadow-sm dark:border-amber-800/40 dark:bg-amber-900/20 sm:flex-row sm:items-center sm:justify-between"
 						>
 							<div class="flex items-start gap-4">
 								<div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/50">
@@ -125,7 +125,7 @@
 
 					{#if showPaymentBanner}
 						<div
-							class="flex flex-col gap-4 rounded-2xl border-2 border-pink-200 bg-gradient-to-r from-pink-50/80 to-purple-50/50 p-4 sm:p-6 shadow-sm dark:border-slate-600 dark:from-pink-900/20 dark:to-purple-900/20 sm:flex-row sm:items-center sm:justify-between"
+							class="flex flex-col gap-4 rounded-2xl border-2 border-pink-200 card-premium bg-gradient-to-r from-pink-50/80 to-purple-50/50 p-4 sm:p-6 shadow-sm dark:border-white/[0.1] dark:from-pink-900/20 dark:to-purple-900/20 sm:flex-row sm:items-center sm:justify-between"
 						>
 							<div class="flex items-start gap-4">
 								<div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-pink-100 dark:bg-pink-900/50">
@@ -147,7 +147,7 @@
 							<div class="flex shrink-0 flex-col gap-2 sm:flex-row w-full sm:w-auto">
 								{#if !selectedCourse}
 									<select
-										class="rounded-xl border border-pink-200 bg-white px-4 py-3 text-base sm:text-sm font-medium text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-slate-600 dark:bg-[#374266] dark:text-white touch-manipulation"
+										class="rounded-xl border border-pink-200 bg-white px-4 py-3 text-base sm:text-sm font-medium text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#374266] dark:text-white touch-manipulation"
 										onchange={(e) => handleSelectCourse((e.target as HTMLSelectElement).value)}
 									>
 										<option value="">Choose course</option>
@@ -175,7 +175,7 @@
 				<!-- Dashboard cards -->
 				<div class="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
 					<!-- Profile card -->
-					<div class="rounded-2xl border border-pink-200/50 bg-white p-4 sm:p-6 shadow-sm dark:border-slate-600 dark:bg-[#2f3a52]">
+					<div class="rounded-2xl border border-pink-200/50 card-premium bg-white p-4 sm:p-6 shadow-sm dark:bg-[#2f3a52]">
 						<h2 class="text-lg font-semibold text-slate-900 dark:text-white">Your profile</h2>
 						<dl class="mt-4 space-y-3">
 							<div>
@@ -209,10 +209,10 @@
 					</div>
 
 					<!-- Enrollment card -->
-					<div class="rounded-2xl border border-pink-200/50 bg-white p-4 sm:p-6 shadow-sm dark:border-slate-600 dark:bg-[#2f3a52]">
+					<div class="rounded-2xl border border-pink-200/50 card-premium bg-white p-4 sm:p-6 shadow-sm dark:bg-[#2f3a52]">
 						<h2 class="text-lg font-semibold text-slate-900 dark:text-white">Enrollment</h2>
 						{#if selectedCourse}
-							<div class="mt-4 rounded-xl border border-pink-200/50 bg-pink-50/30 p-4 dark:border-slate-600 dark:bg-pink-900/20">
+							<div class="mt-4 rounded-xl border border-pink-200/50 card-premium bg-pink-50/30 p-4 dark:bg-pink-900/20">
 								<div class="flex items-center gap-4">
 									<div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-pink-100 text-pink-600 text-xl dark:bg-pink-900/50 dark:text-pink-300">
 										{getCourseDetailById(selectedCourse.id)?.icon ?? '📖'}
@@ -248,7 +248,7 @@
 						{:else}
 							<p class="mt-4 text-slate-600 dark:text-slate-200">No course selected yet.</p>
 							<select
-								class="mt-4 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-slate-600 dark:bg-[#374266] dark:text-white"
+								class="mt-4 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#374266] dark:text-white"
 								onchange={(e) => handleSelectCourse((e.target as HTMLSelectElement).value)}
 							>
 								<option value="">Select a course</option>
@@ -261,7 +261,7 @@
 				</div>
 
 				<!-- Program info -->
-				<div class="mt-6 sm:mt-8 rounded-2xl border border-pink-200/50 bg-white p-4 sm:p-6 shadow-sm dark:border-slate-600 dark:bg-[#2f3a52]">
+				<div class="mt-6 sm:mt-8 rounded-2xl border border-pink-200/50 card-premium bg-white p-4 sm:p-6 shadow-sm dark:bg-[#2f3a52]">
 					<h2 class="text-lg font-semibold text-slate-900 dark:text-white">Program details</h2>
 					<div class="mt-4 grid gap-4 grid-cols-1 sm:grid-cols-3">
 						<div>

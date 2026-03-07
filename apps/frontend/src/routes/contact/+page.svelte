@@ -69,7 +69,7 @@
 		<section class="px-4 sm:px-6 pb-20 sm:pb-28">
 			<div class="mx-auto max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
 				<AnimateOnView animation="fade-up">
-					<form onsubmit={handleSubmit} class="space-y-4 rounded-2xl border border-slate-200/80 bg-slate-50/50 p-6 sm:p-8 dark:border-slate-600 dark:bg-[#45527a]/60">
+					<form onsubmit={handleSubmit} class="space-y-4 rounded-2xl border border-slate-200/80 card-premium bg-slate-50/50 p-6 sm:p-8 dark:bg-[#45527a]/60">
 						<h2 class="text-lg font-semibold text-slate-900 dark:text-white">Send us a message</h2>
 						{#if success}
 							<div class="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-700 dark:border-green-800 dark:bg-green-900/30 dark:text-green-300">
@@ -86,7 +86,7 @@
 									type="text"
 									bind:value={name}
 									required
-									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-slate-600 dark:bg-[#374266] dark:text-white dark:placeholder-slate-300"
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#374266] dark:text-white dark:placeholder-slate-300"
 									placeholder="Your name"
 								/>
 							</div>
@@ -97,7 +97,7 @@
 									type="email"
 									bind:value={email}
 									required
-									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-slate-600 dark:bg-[#374266] dark:text-white dark:placeholder-slate-300"
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#374266] dark:text-white dark:placeholder-slate-300"
 									placeholder="your@email.com"
 								/>
 							</div>
@@ -107,7 +107,7 @@
 									id="contact-subject"
 									type="text"
 									bind:value={subject}
-									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-slate-600 dark:bg-[#374266] dark:text-white dark:placeholder-slate-300"
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#374266] dark:text-white dark:placeholder-slate-300"
 									placeholder="e.g. Course enquiry"
 								/>
 							</div>
@@ -118,7 +118,7 @@
 									bind:value={message}
 									required
 									rows="4"
-									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-slate-600 dark:bg-[#374266] dark:text-white dark:placeholder-slate-300"
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#374266] dark:text-white dark:placeholder-slate-300"
 									placeholder="Your message..."
 								></textarea>
 							</div>
@@ -135,7 +135,7 @@
 
 				<AnimateOnView animation="fade-up" stagger={1}>
 					<div class="space-y-8">
-						<div class="border-b border-slate-200/80 pb-8 dark:border-slate-600">
+						<div class="border-b border-slate-200/80 pb-8 section-separator">
 							<p class="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-slate-200">Email</p>
 							<a
 								href="mailto:{SITE.infoEmail}"
@@ -145,7 +145,7 @@
 							</a>
 						</div>
 
-						<div class="border-b border-slate-200/80 pb-8 dark:border-slate-600">
+						<div class="border-b border-slate-200/80 pb-8 section-separator">
 							<p class="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-slate-200">Phone</p>
 							<a
 								href={whatsappUrl}
@@ -157,7 +157,7 @@
 							</a>
 						</div>
 
-						<div class="border-b border-slate-200/80 pb-8 dark:border-slate-600">
+						<div class="border-b border-slate-200/80 pb-8 section-separator">
 							<p class="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-slate-200">Address</p>
 							<p class="mt-1 text-slate-900 leading-relaxed dark:text-white">{SITE.address}</p>
 							<p class="mt-0.5 text-slate-500 dark:text-slate-200">{SITE.location}</p>

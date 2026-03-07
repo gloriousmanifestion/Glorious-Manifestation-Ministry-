@@ -38,6 +38,10 @@
 	--color-slate-500: #cbd5e1;
 	--color-slate-200: #94a3b8;
 	--color-slate-300: #cbd5e1;
+	/* Premium dark UI: very subtle borders (avoid cheap hard lines) */
+	--section-border: rgba(255, 255, 255, 0.06);
+	--card-border: rgba(255, 255, 255, 0.08);
+	--card-edge: rgba(255, 255, 255, 0.04);
 }
 
 html {
@@ -366,6 +370,15 @@ textarea {
 
 .btn-scale:active {
 	transform: scale(0.98);
+}
+
+/* Premium dark mode: soft section dividers and card edges (no harsh lines) */
+.dark .section-separator {
+	border-color: var(--section-border);
+}
+.dark .card-premium {
+	border-color: var(--card-border);
+	box-shadow: inset 0 1px 0 0 var(--card-edge);
 }
 
 /* Respect user motion preferences */

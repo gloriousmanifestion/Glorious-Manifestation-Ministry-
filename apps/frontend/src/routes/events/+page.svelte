@@ -44,7 +44,7 @@
 			</p>
 		</section>
 
-		<section class="border-t border-pink-200/50 bg-white/60 py-12 sm:py-16 px-4 sm:px-6 dark:border-slate-600 dark:bg-[#374266]/80">
+		<section class="border-t border-pink-200/50 section-separator bg-white/60 py-12 sm:py-16 px-4 sm:px-6 dark:bg-[#374266]/80">
 			<div class="mx-auto max-w-3xl">
 				{#if loading}
 					<div class="flex justify-center py-12">
@@ -59,7 +59,7 @@
 						{#each events as event, i}
 							<AnimateOnView animation="fade-up" stagger={i}>
 								<article
-									class="hover-lift flex flex-col sm:flex-row gap-4 sm:gap-6 rounded-2xl border border-pink-200/50 bg-white p-4 sm:p-6 shadow-sm hover:border-pink-300 hover:shadow-lg dark:border-slate-600 dark:bg-[#2f3a52] dark:hover:border-pink-500/50"
+									class="hover-lift flex flex-col sm:flex-row gap-4 sm:gap-6 rounded-2xl border border-pink-200/50 card-premium bg-white p-4 sm:p-6 shadow-sm hover:border-pink-300 hover:shadow-lg dark:bg-[#2f3a52] dark:hover:border-pink-500/50"
 								>
 									<div
 										class="flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-xl bg-gradient-to-br from-pink-500 to-purple-600 text-center text-white"
@@ -78,7 +78,7 @@
 			</div>
 		</section>
 
-		<section class="border-t border-pink-200/50 py-12 sm:py-16 px-4 sm:px-6 dark:border-slate-600">
+		<section class="border-t border-pink-200/50 section-separator py-12 sm:py-16 px-4 sm:px-6">
 			<AnimateOnView animation="scale">
 				<div class="mx-auto max-w-2xl text-center">
 					<p class="text-slate-600 dark:text-slate-200">For the latest event updates, follow us and contact via WhatsApp.</p>

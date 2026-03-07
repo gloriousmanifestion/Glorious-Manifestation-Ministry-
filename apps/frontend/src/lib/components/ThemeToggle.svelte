@@ -19,7 +19,7 @@
 	}
 </script>
 
-<div class="flex items-center gap-0.5 rounded-full border border-slate-200 bg-slate-100/80 p-0.5 dark:border-slate-600 dark:bg-slate-700/80" role="group" aria-label="Theme">
+<div class="flex items-center gap-0.5 rounded-full border border-slate-200 bg-slate-100/80 p-0.5 dark:border-white/[0.1] dark:bg-slate-700/80" role="group" aria-label="Theme">
 	{#each options as opt}
 		<button
 			type="button"

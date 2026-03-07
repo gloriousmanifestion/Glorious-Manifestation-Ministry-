@@ -49,10 +49,10 @@
 	<!-- Chat panel -->
 	{#if open}
 		<div
-			class="mb-4 w-[min(90vw,24rem)] max-w-sm overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xl shadow-slate-900/20 dark:border-slate-600 dark:bg-[#2f3a52] dark:shadow-none"
+			class="mb-4 w-[min(90vw,24rem)] max-w-sm overflow-hidden rounded-2xl border border-slate-200/80 card-premium bg-white shadow-2xl shadow-slate-900/20 dark:bg-[#2f3a52] dark:shadow-none"
 		>
 			<!-- Header -->
-			<div class="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-pink-50 to-purple-50 px-5 py-4 dark:border-slate-600 dark:from-[#374266] dark:to-[#45527a]">
+			<div class="flex items-center justify-between border-b border-slate-100 section-separator bg-gradient-to-r from-pink-50 to-purple-50 px-5 py-4 dark:from-[#374266] dark:to-[#45527a]">
 				<div class="flex items-center gap-3">
 					<div class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-pink-500 to-purple-600 text-white">
 						<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -89,7 +89,7 @@
 						<button
 							type="button"
 							onclick={showForm}
-							class="flex items-center gap-4 rounded-xl border-2 border-slate-200 p-4 text-left transition-all hover:border-pink-300 hover:bg-pink-50/50 dark:border-slate-600 dark:text-white dark:hover:border-pink-500/50 dark:hover:bg-white/10"
+							class="flex items-center gap-4 rounded-xl border-2 border-slate-200 p-4 text-left transition-all hover:border-pink-300 hover:bg-pink-50/50 dark:border-white/[0.12] dark:text-white dark:hover:border-pink-500/50 dark:hover:bg-white/10"
 						>
 							<div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-pink-500 to-purple-600 text-white">
 								<svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -109,7 +109,7 @@
 						<button
 							type="button"
 							onclick={openWhatsApp}
-							class="flex items-center gap-4 rounded-xl border-2 border-slate-200 p-4 text-left transition-all hover:border-[#25d366]/50 hover:bg-[#25d366]/5 dark:border-slate-600 dark:text-white dark:hover:border-[#25d366]/60 dark:hover:bg-[#25d366]/10"
+							class="flex items-center gap-4 rounded-xl border-2 border-slate-200 p-4 text-left transition-all hover:border-[#25d366]/50 hover:bg-[#25d366]/5 dark:border-white/[0.12] dark:text-white dark:hover:border-[#25d366]/60 dark:hover:bg-[#25d366]/10"
 						>
 							<div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#25d366] text-white">
 								<svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
@@ -164,7 +164,7 @@
 									type="text"
 									bind:value={formData.name}
 									required
-									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-slate-600 dark:bg-[#374266] dark:text-white dark:placeholder-slate-400"
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#374266] dark:text-white dark:placeholder-slate-400"
 									placeholder="Your name"
 								/>
 							</div>
@@ -175,7 +175,7 @@
 									type="email"
 									bind:value={formData.email}
 									required
-									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-slate-600 dark:bg-[#374266] dark:text-white dark:placeholder-slate-400"
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#374266] dark:text-white dark:placeholder-slate-400"
 									placeholder="you@example.com"
 								/>
 							</div>
@@ -186,7 +186,7 @@
 									bind:value={formData.message}
 									required
 									rows="3"
-									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-slate-600 dark:bg-[#374266] dark:text-white dark:placeholder-slate-400"
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#374266] dark:text-white dark:placeholder-slate-400"
 									placeholder="How can we help?"
 								></textarea>
 							</div>
