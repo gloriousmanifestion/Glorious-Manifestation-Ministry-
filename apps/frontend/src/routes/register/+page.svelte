@@ -92,46 +92,46 @@
 	<meta name="description" content="Register for the Pastoral School at Prophetic Glorious Manifestation." />
 </svelte:head>
 
-<div class="min-h-screen flex flex-col bg-slate-50">
+<div class="min-h-screen flex flex-col bg-slate-50 dark:bg-[#374266]">
 	<Nav />
 
 	<main class="flex-1 pt-20 sm:pt-24 pb-12 sm:pb-16">
 		<div class="mx-auto max-w-5xl px-4 sm:px-6">
 			<div class="mb-10 text-center">
-				<h1 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+				<h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl">
 					Create your account
 				</h1>
-				<p class="mt-2 text-slate-600">
+				<p class="mt-2 text-slate-600 dark:text-slate-100">
 					Join our Pastoral School. Complete the form below to get started.
 				</p>
 				{#if preselectedCourse}
-					<div class="mt-4 inline-flex items-center gap-2 rounded-xl border border-pink-200 bg-pink-50/80 px-4 py-3 text-sm">
-						<span class="font-medium text-pink-700">Registering for:</span>
-						<span class="font-semibold text-slate-900">{preselectedCourse.name}</span>
+					<div class="mt-4 inline-flex items-center gap-2 rounded-xl border border-pink-200 bg-pink-50/80 px-4 py-3 text-sm dark:border-pink-800 dark:bg-pink-900/30">
+						<span class="font-medium text-pink-700 dark:text-pink-300">Registering for:</span>
+						<span class="font-semibold text-slate-900 dark:text-white">{preselectedCourse.name}</span>
 					</div>
 				{/if}
 			</div>
 
-			<div class="flex flex-col overflow-hidden rounded-2xl border border-pink-200/50 bg-white shadow-xl lg:flex-row">
+			<div class="flex flex-col overflow-hidden rounded-2xl border border-pink-200/50 bg-white shadow-xl dark:border-slate-600 dark:bg-[#2f3a52] lg:flex-row">
 				<!-- Stepper (left) -->
-				<aside class="border-b border-pink-200/50 bg-gradient-to-b from-pink-50/80 to-purple-50/50 px-4 py-6 sm:px-8 sm:py-10 lg:w-72 lg:border-b-0 lg:border-r">
+				<aside class="border-b border-pink-200/50 bg-gradient-to-b from-pink-50/80 to-purple-50/50 px-4 py-6 sm:px-8 sm:py-10 dark:border-slate-600 dark:from-[#374266] dark:to-[#2f3a52] lg:w-72 lg:border-b-0 lg:border-r">
 					<nav class="flex flex-col gap-1" aria-label="Registration steps">
 						{#each steps as step}
 							<button
 								type="button"
 								class="flex items-center gap-4 rounded-xl px-4 py-3 text-left transition-all duration-200 {currentStep === step.id
-									? 'bg-white shadow-md ring-1 ring-pink-200/60'
+									? 'bg-white shadow-md ring-1 ring-pink-200/60 dark:bg-white/10 dark:ring-slate-500'
 									: currentStep > step.id
-										? 'text-pink-600'
-										: 'text-slate-500 hover:bg-white/60'}"
+										? 'text-pink-600 dark:text-pink-400'
+										: 'text-slate-500 hover:bg-white/60 dark:text-slate-300 dark:hover:bg-white/10'}"
 								onclick={() => currentStep > step.id && (currentStep = step.id)}
 							>
 								<span
 									class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold {currentStep === step.id
 										? 'bg-gradient-to-br from-pink-500 to-purple-600 text-white'
 										: currentStep > step.id
-											? 'bg-pink-100 text-pink-600'
-											: 'bg-slate-200 text-slate-500'}"
+											? 'bg-pink-100 text-pink-600 dark:bg-pink-900/50 dark:text-pink-300'
+											: 'bg-slate-200 text-slate-500 dark:bg-slate-600 dark:text-slate-400'}"
 								>
 									{#if currentStep > step.id}
 										<svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
@@ -142,8 +142,8 @@
 									{/if}
 								</span>
 								<div>
-									<p class="font-medium text-slate-900">{step.title}</p>
-									<p class="text-xs text-slate-500">{step.desc}</p>
+									<p class="font-medium text-slate-900 dark:text-white">{step.title}</p>
+									<p class="text-xs text-slate-500 dark:text-slate-200">{step.desc}</p>
 								</div>
 							</button>
 						{/each}
