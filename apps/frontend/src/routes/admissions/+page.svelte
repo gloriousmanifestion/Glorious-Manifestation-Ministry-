@@ -50,38 +50,38 @@
 			</div>
 		</section>
 
-		<section class="border-t border-pink-200/50 bg-white/60 py-12 sm:py-16 px-4 sm:px-6">
+		<section class="border-t border-pink-200/50 bg-white/60 py-12 sm:py-16 px-4 sm:px-6 dark:border-slate-600 dark:bg-[#374266]/80">
 			<div class="mx-auto max-w-3xl">
 				<AnimateOnView animation="fade-up">
-					<h2 class="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">Program details</h2>
+					<h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-2xl">Program details</h2>
 				</AnimateOnView>
 				<div class="mt-6 grid gap-4 grid-cols-1 sm:grid-cols-3">
 					<AnimateOnView animation="fade-up" stagger={0}>
-						<div class="hover-lift rounded-xl border border-pink-200/50 bg-white p-4">
-							<p class="text-sm font-medium text-pink-600">Duration</p>
-							<p class="mt-1 font-semibold text-slate-900">{SITE.duration}</p>
+						<div class="hover-lift rounded-xl border border-pink-200/50 bg-white p-4 dark:border-slate-600 dark:bg-[#2f3a52]">
+							<p class="text-sm font-medium text-pink-600 dark:text-pink-400">Duration</p>
+							<p class="mt-1 font-semibold text-slate-900 dark:text-white">{SITE.duration}</p>
 						</div>
 					</AnimateOnView>
 					<AnimateOnView animation="fade-up" stagger={1}>
-						<div class="hover-lift rounded-xl border border-pink-200/50 bg-white p-4">
-							<p class="text-sm font-medium text-pink-600">Schedule</p>
-							<p class="mt-1 font-semibold text-slate-900">{SITE.schedule}</p>
+						<div class="hover-lift rounded-xl border border-pink-200/50 bg-white p-4 dark:border-slate-600 dark:bg-[#2f3a52]">
+							<p class="text-sm font-medium text-pink-600 dark:text-pink-400">Schedule</p>
+							<p class="mt-1 font-semibold text-slate-900 dark:text-white">{SITE.schedule}</p>
 						</div>
 					</AnimateOnView>
 					<AnimateOnView animation="fade-up" stagger={2}>
-						<div class="hover-lift rounded-xl border border-pink-200/50 bg-white p-4">
-							<p class="text-sm font-medium text-pink-600">Location</p>
-							<p class="mt-1 font-semibold text-slate-900">{SITE.location}</p>
+						<div class="hover-lift rounded-xl border border-pink-200/50 bg-white p-4 dark:border-slate-600 dark:bg-[#2f3a52]">
+							<p class="text-sm font-medium text-pink-600 dark:text-pink-400">Location</p>
+							<p class="mt-1 font-semibold text-slate-900 dark:text-white">{SITE.location}</p>
 						</div>
 					</AnimateOnView>
 				</div>
 			</div>
 		</section>
 
-		<section class="border-t border-pink-200/50 bg-gradient-to-b from-pink-50/50 to-purple-50/30 py-12 sm:py-16 px-4 sm:px-6">
+		<section class="border-t border-pink-200/50 bg-gradient-to-b from-pink-50/50 to-purple-50/30 py-12 sm:py-16 px-4 sm:px-6 dark:border-slate-600 dark:from-[#374266]/60 dark:to-[#2f3a52]/60">
 			<div class="mx-auto max-w-3xl">
 				<AnimateOnView animation="fade-up">
-					<h2 class="text-2xl font-bold tracking-tight text-slate-900">Requirements</h2>
+					<h2 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Requirements</h2>
 				</AnimateOnView>
 				<ul class="mt-6 space-y-3">
 					{#each requirements as req, i}
@@ -90,7 +90,7 @@
 								<span class="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-pink-500 text-xs font-bold text-white">
 									✓
 								</span>
-								<span class="text-slate-600">{req}</span>
+								<span class="text-slate-600 dark:text-slate-200">{req}</span>
 							</li>
 						</AnimateOnView>
 					{/each}
@@ -98,10 +98,10 @@
 			</div>
 		</section>
 
-		<section class="border-t border-pink-200/50 bg-white/60 py-12 sm:py-16 px-4 sm:px-6">
+		<section class="border-t border-pink-200/50 bg-white/60 py-12 sm:py-16 px-4 sm:px-6 dark:border-slate-600 dark:bg-[#374266]/80">
 			<div class="mx-auto max-w-3xl">
 				<AnimateOnView animation="fade-up">
-					<h2 class="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">How to apply</h2>
+					<h2 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-2xl">How to apply</h2>
 				</AnimateOnView>
 				<div class="mt-6 sm:mt-8 space-y-6">
 					{#each steps as step, i}
@@ -113,8 +113,8 @@
 								{step.num}
 							</span>
 								<div>
-									<h3 class="font-semibold text-slate-900">{step.title}</h3>
-									<p class="mt-1 text-slate-600">{step.desc}</p>
+									<h3 class="font-semibold text-slate-900 dark:text-white">{step.title}</h3>
+									<p class="mt-1 text-slate-600 dark:text-slate-200">{step.desc}</p>
 								</div>
 							</div>
 						</AnimateOnView>
@@ -123,18 +123,18 @@
 			</div>
 		</section>
 
-		<section class="border-t border-pink-200/50 bg-gradient-to-r from-pink-500/10 to-purple-500/10 py-16 sm:py-20 px-4 sm:px-6">
+		<section class="border-t border-pink-200/50 bg-gradient-to-r from-pink-500/10 to-purple-500/10 py-16 sm:py-20 px-4 sm:px-6 dark:border-slate-600 dark:from-pink-500/20 dark:to-purple-500/20">
 			<AnimateOnView animation="scale">
 				<div class="mx-auto max-w-2xl text-center">
-					<h2 class="text-2xl font-bold tracking-tight text-slate-900">Ready to apply?</h2>
-				<p class="mt-4 text-slate-600">Create your account and complete registration. You'll verify and pay from your dashboard.</p>
+					<h2 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Ready to apply?</h2>
+				<p class="mt-4 text-slate-600 dark:text-slate-200">Create your account and complete registration. You'll verify and pay from your dashboard.</p>
 				<a
 					href="/register"
 					class="btn-scale mt-8 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 px-10 py-4 text-base font-semibold text-white shadow-lg transition hover:from-pink-600 hover:to-purple-700"
 				>
 					Create account
 				</a>
-				<p class="mt-4 text-sm text-slate-500">Questions? <a href="https://wa.me/2348026954759" target="_blank" rel="noopener noreferrer" class="font-medium text-pink-600 hover:underline">Contact us on WhatsApp</a></p>
+				<p class="mt-4 text-sm text-slate-500 dark:text-slate-300">Questions? <a href="https://wa.me/2348026954759" target="_blank" rel="noopener noreferrer" class="font-medium text-pink-600 hover:underline dark:text-pink-400">Contact us on WhatsApp</a></p>
 				</div>
 			</AnimateOnView>
 		</section>

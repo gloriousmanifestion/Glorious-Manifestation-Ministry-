@@ -37,8 +37,8 @@
 		{#if !data.course}
 			<section class="px-4 pt-28 pb-16 sm:px-6">
 				<div class="mx-auto max-w-2xl text-center">
-					<h1 class="text-2xl font-bold text-slate-900">Course not found</h1>
-					<p class="mt-4 text-slate-600">The course you're looking for doesn't exist or has been removed.</p>
+					<h1 class="text-2xl font-bold text-slate-900 dark:text-white">Course not found</h1>
+					<p class="mt-4 text-slate-600 dark:text-slate-200">The course you're looking for doesn't exist or has been removed.</p>
 					<a
 						href="/#programs"
 						class="mt-6 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 px-6 py-3 text-sm font-semibold text-white"
@@ -53,7 +53,7 @@
 				<div class="mx-auto max-w-4xl">
 					<a
 						href="/#programs"
-						class="inline-flex items-center gap-2 text-sm font-medium text-pink-600 hover:text-pink-700 mb-6"
+						class="inline-flex items-center gap-2 text-sm font-medium text-pink-600 hover:text-pink-700 dark:text-pink-400 dark:hover:text-pink-300 mb-6"
 					>
 						<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
@@ -63,16 +63,16 @@
 					<AnimateOnView animation="fade-up">
 						<div class="flex items-start gap-4">
 							<span
-								class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-pink-100 to-purple-100 text-3xl"
+								class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-pink-100 to-purple-100 text-3xl dark:from-pink-900/50 dark:to-purple-900/50"
 							>
 								{data.course.icon}
 							</span>
 							<div>
-								<h1 class="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl md:text-4xl">
+								<h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl md:text-4xl">
 									{data.course.name}
 								</h1>
-								<p class="mt-2 text-slate-600">{data.course.shortDescription}</p>
-								<p class="mt-2 text-sm font-medium text-pink-600">{scheduleText} · {SITE.location}</p>
+								<p class="mt-2 text-slate-600 dark:text-slate-200">{data.course.shortDescription}</p>
+								<p class="mt-2 text-sm font-medium text-pink-600 dark:text-pink-400">{scheduleText} · {SITE.location}</p>
 							</div>
 						</div>
 					</AnimateOnView>
@@ -83,14 +83,14 @@
 			<section class="py-12 sm:py-16 px-4 sm:px-6">
 				<div class="mx-auto max-w-4xl">
 					<AnimateOnView animation="fade-up">
-						<h2 class="text-xl font-bold text-slate-900">About this course</h2>
-						<p class="mt-4 text-slate-600 leading-relaxed">{data.course.description}</p>
+						<h2 class="text-xl font-bold text-slate-900 dark:text-white">About this course</h2>
+						<p class="mt-4 text-slate-600 dark:text-slate-200 leading-relaxed">{data.course.description}</p>
 					</AnimateOnView>
 					<AnimateOnView animation="fade-up" delay={100}>
-						<h3 class="mt-10 text-lg font-bold text-slate-900">Topics covered</h3>
+						<h3 class="mt-10 text-lg font-bold text-slate-900 dark:text-white">Topics covered</h3>
 						<ul class="mt-4 flex flex-wrap gap-2">
 							{#each data.course.topics as topic}
-								<li class="rounded-full bg-pink-50 px-4 py-2 text-sm font-medium text-pink-700">
+								<li class="rounded-full bg-pink-50 px-4 py-2 text-sm font-medium text-pink-700 dark:bg-pink-900/40 dark:text-pink-300">
 									{topic}
 								</li>
 							{/each}
@@ -100,21 +100,21 @@
 			</section>
 
 			<!-- Schedule: what to expect -->
-			<section class="border-t border-pink-200/50 bg-gradient-to-b from-white to-pink-50/30 py-12 sm:py-16 px-4 sm:px-6">
+			<section class="border-t border-pink-200/50 bg-gradient-to-b from-white to-pink-50/30 py-12 sm:py-16 px-4 sm:px-6 dark:border-slate-600 dark:from-[#374266] dark:to-[#2f3a52]/80">
 				<div class="mx-auto max-w-4xl">
 					<AnimateOnView animation="fade-up">
-						<h2 class="text-xl font-bold text-slate-900">What to expect</h2>
-						<p class="mt-2 text-slate-600">A typical schedule for this course over the program period.</p>
+						<h2 class="text-xl font-bold text-slate-900 dark:text-white">What to expect</h2>
+						<p class="mt-2 text-slate-600 dark:text-slate-200">A typical schedule for this course over the program period.</p>
 					</AnimateOnView>
 					<ul class="mt-8 space-y-6">
 						{#each data.course.schedule as item, i}
 							<AnimateOnView animation="fade-up" stagger={i}>
-								<li class="rounded-2xl border border-pink-200/50 bg-white p-4 sm:p-6 shadow-sm">
+								<li class="rounded-2xl border border-pink-200/50 bg-white p-4 sm:p-6 shadow-sm dark:border-slate-600 dark:bg-[#2f3a52]">
 									{#if item.week}
-										<p class="text-sm font-semibold uppercase tracking-wider text-pink-600">{item.week}</p>
+										<p class="text-sm font-semibold uppercase tracking-wider text-pink-600 dark:text-pink-400">{item.week}</p>
 									{/if}
-									<h3 class="mt-2 font-semibold text-slate-900">{item.title}</h3>
-									<p class="mt-1 text-slate-600 text-sm">{item.description}</p>
+									<h3 class="mt-2 font-semibold text-slate-900 dark:text-white">{item.title}</h3>
+									<p class="mt-1 text-slate-600 dark:text-slate-200 text-sm">{item.description}</p>
 								</li>
 							</AnimateOnView>
 						{/each}
