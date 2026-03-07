@@ -154,82 +154,82 @@
 				<div class="flex-1 p-4 sm:p-6 lg:p-12">
 					{#if currentStep === 1}
 						<div class="space-y-6">
-							<h2 class="text-xl font-semibold text-slate-900">Personal information</h2>
+							<h2 class="text-xl font-semibold text-slate-900 dark:text-white">Personal information</h2>
 							<div>
-								<label for="name" class="block text-sm font-medium text-slate-700">Full name</label>
+								<label for="name" class="block text-sm font-medium text-slate-700 dark:text-slate-100">Full name</label>
 								<input
 									id="name"
 									type="text"
 									bind:value={formData.name}
-									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 {errors.name ? 'border-red-300' : ''}"
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-slate-600 dark:bg-[#374266] dark:text-white dark:placeholder-slate-400 {errors.name ? 'border-red-300 dark:border-red-600' : ''}"
 									placeholder="John Doe"
 								/>
 								{#if errors.name}
-									<p class="mt-1 text-sm text-red-600">{errors.name}</p>
+									<p class="mt-1 text-sm text-red-600 dark:text-red-300">{errors.name}</p>
 								{/if}
 							</div>
 							<div>
-								<label for="email" class="block text-sm font-medium text-slate-700">Email</label>
+								<label for="email" class="block text-sm font-medium text-slate-700 dark:text-slate-100">Email</label>
 								<input
 									id="email"
 									type="email"
 									bind:value={formData.email}
-									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 {errors.email ? 'border-red-300' : ''}"
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-slate-600 dark:bg-[#374266] dark:text-white dark:placeholder-slate-400 {errors.email ? 'border-red-300 dark:border-red-600' : ''}"
 									placeholder="John@example.com"
 								/>
 								{#if errors.email}
-									<p class="mt-1 text-sm text-red-600">{errors.email}</p>
+									<p class="mt-1 text-sm text-red-600 dark:text-red-300">{errors.email}</p>
 								{/if}
 							</div>
 							<div>
-								<label for="phone" class="block text-sm font-medium text-slate-700">Phone number</label>
+								<label for="phone" class="block text-sm font-medium text-slate-700 dark:text-slate-100">Phone number</label>
 								<input
 									id="phone"
 									type="tel"
 									bind:value={formData.phone}
-									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 {errors.phone ? 'border-red-300' : ''}"
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-slate-600 dark:bg-[#374266] dark:text-white dark:placeholder-slate-400 {errors.phone ? 'border-red-300 dark:border-red-600' : ''}"
 									placeholder="080 1234 5678"
 								/>
 								{#if errors.phone}
-									<p class="mt-1 text-sm text-red-600">{errors.phone}</p>
+									<p class="mt-1 text-sm text-red-600 dark:text-red-300">{errors.phone}</p>
 								{/if}
 							</div>
 							<div>
-								<label for="password" class="block text-sm font-medium text-slate-700">Password</label>
+								<label for="password" class="block text-sm font-medium text-slate-700 dark:text-slate-100">Password</label>
 								<input
 									id="password"
 									type="password"
 									bind:value={formData.password}
-									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 {errors.password ? 'border-red-300' : ''}"
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-slate-600 dark:bg-[#374266] dark:text-white dark:placeholder-slate-400 {errors.password ? 'border-red-300 dark:border-red-600' : ''}"
 									placeholder="At least 8 characters"
 								/>
 								{#if errors.password}
-									<p class="mt-1 text-sm text-red-600">{errors.password}</p>
+									<p class="mt-1 text-sm text-red-600 dark:text-red-300">{errors.password}</p>
 								{/if}
 							</div>
 							<div>
-								<label for="confirmPassword" class="block text-sm font-medium text-slate-700">Confirm password</label>
+								<label for="confirmPassword" class="block text-sm font-medium text-slate-700 dark:text-slate-100">Confirm password</label>
 								<input
 									id="confirmPassword"
 									type="password"
 									bind:value={formData.confirmPassword}
-									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 {errors.confirmPassword ? 'border-red-300' : ''}"
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-slate-600 dark:bg-[#374266] dark:text-white dark:placeholder-slate-400 {errors.confirmPassword ? 'border-red-300 dark:border-red-600' : ''}"
 									placeholder="Re-enter your password"
 								/>
 								{#if errors.confirmPassword}
-									<p class="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>
+									<p class="mt-1 text-sm text-red-600 dark:text-red-300">{errors.confirmPassword}</p>
 								{/if}
 							</div>
 						</div>
 					{:else if currentStep === 2}
 						<div class="space-y-6">
-							<h2 class="text-xl font-semibold text-slate-900">Ministry information</h2>
+							<h2 class="text-xl font-semibold text-slate-900 dark:text-white">Ministry information</h2>
 							<div>
-								<label for="calling" class="block text-sm font-medium text-slate-700">Ministry calling</label>
+								<label for="calling" class="block text-sm font-medium text-slate-700 dark:text-slate-100">Ministry calling</label>
 								<select
 									id="calling"
 									bind:value={formData.calling}
-									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 {errors.calling ? 'border-red-300' : ''}"
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-slate-600 dark:bg-[#374266] dark:text-white {errors.calling ? 'border-red-300 dark:border-red-600' : ''}"
 								>
 									<option value="">Select your calling</option>
 									<option value="pastor">Pastor</option>
@@ -240,64 +240,64 @@
 									<option value="other">Other</option>
 								</select>
 								{#if errors.calling}
-									<p class="mt-1 text-sm text-red-600">{errors.calling}</p>
+									<p class="mt-1 text-sm text-red-600 dark:text-red-300">{errors.calling}</p>
 								{/if}
 							</div>
 							<div>
-								<label for="ministryRole" class="block text-sm font-medium text-slate-700">Current ministry role</label>
+								<label for="ministryRole" class="block text-sm font-medium text-slate-700 dark:text-slate-100">Current ministry role</label>
 								<input
 									id="ministryRole"
 									type="text"
 									bind:value={formData.ministryRole}
-									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 {errors.ministryRole ? 'border-red-300' : ''}"
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-slate-600 dark:bg-[#374266] dark:text-white dark:placeholder-slate-400 {errors.ministryRole ? 'border-red-300 dark:border-red-600' : ''}"
 									placeholder="e.g. Associate Pastor, Youth Minister"
 								/>
 								{#if errors.ministryRole}
-									<p class="mt-1 text-sm text-red-600">{errors.ministryRole}</p>
+									<p class="mt-1 text-sm text-red-600 dark:text-red-300">{errors.ministryRole}</p>
 								{/if}
 							</div>
 							<div>
-								<label for="churchName" class="block text-sm font-medium text-slate-700">Church / ministry name</label>
+								<label for="churchName" class="block text-sm font-medium text-slate-700 dark:text-slate-100">Church / ministry name</label>
 								<input
 									id="churchName"
 									type="text"
 									bind:value={formData.churchName}
-									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 {errors.churchName ? 'border-red-300' : ''}"
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-slate-600 dark:bg-[#374266] dark:text-white dark:placeholder-slate-400 {errors.churchName ? 'border-red-300 dark:border-red-600' : ''}"
 									placeholder="Your church or ministry"
 								/>
 								{#if errors.churchName}
-									<p class="mt-1 text-sm text-red-600">{errors.churchName}</p>
+									<p class="mt-1 text-sm text-red-600 dark:text-red-300">{errors.churchName}</p>
 								{/if}
 							</div>
 						</div>
 					{:else}
 						<div class="space-y-6">
-							<h2 class="text-xl font-semibold text-slate-900">Review your application</h2>
-							<div class="rounded-xl border border-slate-200 bg-slate-50/50 p-6">
+							<h2 class="text-xl font-semibold text-slate-900 dark:text-white">Review your application</h2>
+							<div class="rounded-xl border border-slate-200 bg-slate-50/50 p-6 dark:border-slate-600 dark:bg-white/5">
 								<dl class="grid gap-4 sm:grid-cols-2">
 									<div>
-										<dt class="text-sm font-medium text-slate-500">Name</dt>
-										<dd class="mt-1 font-medium text-slate-900">{formData.name}</dd>
+										<dt class="text-sm font-medium text-slate-500 dark:text-slate-300">Name</dt>
+										<dd class="mt-1 font-medium text-slate-900 dark:text-white">{formData.name}</dd>
 									</div>
 									<div>
-										<dt class="text-sm font-medium text-slate-500">Email</dt>
-										<dd class="mt-1 font-medium text-slate-900">{formData.email}</dd>
+										<dt class="text-sm font-medium text-slate-500 dark:text-slate-300">Email</dt>
+										<dd class="mt-1 font-medium text-slate-900 dark:text-white">{formData.email}</dd>
 									</div>
 									<div>
-										<dt class="text-sm font-medium text-slate-500">Phone</dt>
-										<dd class="mt-1 font-medium text-slate-900">{formData.phone}</dd>
+										<dt class="text-sm font-medium text-slate-500 dark:text-slate-300">Phone</dt>
+										<dd class="mt-1 font-medium text-slate-900 dark:text-white">{formData.phone}</dd>
 									</div>
 									<div>
-										<dt class="text-sm font-medium text-slate-500">Calling</dt>
-										<dd class="mt-1 font-medium text-slate-900">{formData.calling}</dd>
+										<dt class="text-sm font-medium text-slate-500 dark:text-slate-300">Calling</dt>
+										<dd class="mt-1 font-medium text-slate-900 dark:text-white">{formData.calling}</dd>
 									</div>
 									<div>
-										<dt class="text-sm font-medium text-slate-500">Church</dt>
-										<dd class="mt-1 font-medium text-slate-900">{formData.churchName}</dd>
+										<dt class="text-sm font-medium text-slate-500 dark:text-slate-300">Church</dt>
+										<dd class="mt-1 font-medium text-slate-900 dark:text-white">{formData.churchName}</dd>
 									</div>
 								</dl>
 							</div>
-							<p class="text-sm text-slate-600">
+							<p class="text-sm text-slate-600 dark:text-slate-200">
 								{#if preselectedCourse}
 									By submitting, you'll be taken to your dashboard to review your course and complete payment—no need to select a course again.
 								{:else}
@@ -305,17 +305,17 @@
 								{/if}
 							</p>
 							{#if submitError}
-								<p class="text-sm text-red-600">{submitError}</p>
+								<p class="text-sm text-red-600 dark:text-red-300">{submitError}</p>
 							{/if}
 						</div>
 					{/if}
 
 					<!-- Actions -->
-					<div class="mt-6 sm:mt-10 flex items-center justify-between gap-4 border-t border-slate-200 pt-6 sm:pt-8">
+					<div class="mt-6 sm:mt-10 flex items-center justify-between gap-4 border-t border-slate-200 dark:border-slate-600 pt-6 sm:pt-8">
 						<button
 							type="button"
 							onclick={prev}
-							class="rounded-xl px-5 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 {currentStep === 1 ? 'invisible' : ''}"
+							class="rounded-xl px-5 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/10 {currentStep === 1 ? 'invisible' : ''}"
 						>
 							Back
 						</button>
