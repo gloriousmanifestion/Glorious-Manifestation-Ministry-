@@ -49,10 +49,10 @@
 	<!-- Chat panel -->
 	{#if open}
 		<div
-			class="mb-4 w-[min(90vw,24rem)] max-w-sm overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xl shadow-slate-900/20"
+			class="mb-4 w-[min(90vw,24rem)] max-w-sm overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xl shadow-slate-900/20 dark:border-slate-600 dark:bg-[#2f3a52] dark:shadow-none"
 		>
 			<!-- Header -->
-			<div class="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-pink-50 to-purple-50 px-5 py-4">
+			<div class="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-pink-50 to-purple-50 px-5 py-4 dark:border-slate-600 dark:from-[#374266] dark:to-[#45527a]">
 				<div class="flex items-center gap-3">
 					<div class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-pink-500 to-purple-600 text-white">
 						<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -65,14 +65,14 @@
 						</svg>
 					</div>
 					<div>
-						<p class="font-semibold text-slate-900">Need help?</p>
-						<p class="text-xs text-slate-500">We're here to assist</p>
+						<p class="font-semibold text-slate-900 dark:text-white">Need help?</p>
+						<p class="text-xs text-slate-500 dark:text-slate-200">We're here to assist</p>
 					</div>
 				</div>
 				<button
 					type="button"
 					onclick={closeChat}
-					class="rounded-lg p-2 text-slate-600 hover:bg-white/80 hover:text-slate-900"
+					class="rounded-lg p-2 text-slate-600 hover:bg-white/80 hover:text-slate-900 dark:text-slate-100 dark:hover:bg-white/20 dark:hover:text-white"
 					aria-label="Close chat"
 				>
 					<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -84,12 +84,12 @@
 			<!-- Content -->
 			<div class="p-5">
 				{#if mode === 'choice'}
-					<p class="mb-4 text-sm text-slate-600">How would you like to reach us?</p>
+					<p class="mb-4 text-sm text-slate-600 dark:text-slate-100">How would you like to reach us?</p>
 					<div class="flex flex-col gap-3">
 						<button
 							type="button"
 							onclick={showForm}
-							class="flex items-center gap-4 rounded-xl border-2 border-slate-200 p-4 text-left transition-all hover:border-pink-300 hover:bg-pink-50/50"
+							class="flex items-center gap-4 rounded-xl border-2 border-slate-200 p-4 text-left transition-all hover:border-pink-300 hover:bg-pink-50/50 dark:border-slate-600 dark:text-white dark:hover:border-pink-500/50 dark:hover:bg-white/10"
 						>
 							<div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-pink-500 to-purple-600 text-white">
 								<svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -102,14 +102,14 @@
 								</svg>
 							</div>
 							<div>
-								<p class="font-semibold text-slate-900">Send a message</p>
-								<p class="text-xs text-slate-500">We'll reply via email</p>
+								<p class="font-semibold text-slate-900 dark:text-white">Send a message</p>
+								<p class="text-xs text-slate-500 dark:text-slate-200">We'll reply via email</p>
 							</div>
 						</button>
 						<button
 							type="button"
 							onclick={openWhatsApp}
-							class="flex items-center gap-4 rounded-xl border-2 border-slate-200 p-4 text-left transition-all hover:border-[#25d366]/50 hover:bg-[#25d366]/5"
+							class="flex items-center gap-4 rounded-xl border-2 border-slate-200 p-4 text-left transition-all hover:border-[#25d366]/50 hover:bg-[#25d366]/5 dark:border-slate-600 dark:text-white dark:hover:border-[#25d366]/60 dark:hover:bg-[#25d366]/10"
 						>
 							<div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#25d366] text-white">
 								<svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
@@ -119,25 +119,25 @@
 								</svg>
 							</div>
 							<div>
-								<p class="font-semibold text-slate-900">Chat on WhatsApp</p>
-								<p class="text-xs text-slate-500">Quick replies, usually within hours</p>
+								<p class="font-semibold text-slate-900 dark:text-white">Chat on WhatsApp</p>
+								<p class="text-xs text-slate-500 dark:text-slate-200">Quick replies, usually within hours</p>
 							</div>
 						</button>
 					</div>
 				{:else}
 					{#if formSent}
 						<div class="py-8 text-center">
-							<div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-100 text-green-600">
+							<div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-300">
 								<svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
 								</svg>
 							</div>
-							<p class="font-medium text-slate-900">Your email client will open</p>
-							<p class="mt-1 text-sm text-slate-500">Send the message to reach us.</p>
+							<p class="font-medium text-slate-900 dark:text-white">Your email client will open</p>
+							<p class="mt-1 text-sm text-slate-500 dark:text-slate-200">Send the message to reach us.</p>
 							<button
 								type="button"
 								onclick={backToChoice}
-								class="mt-4 text-sm font-medium text-pink-600 hover:text-pink-700"
+								class="mt-4 text-sm font-medium text-pink-600 hover:text-pink-700 dark:text-pink-400 dark:hover:text-pink-300"
 							>
 								← Back to options
 							</button>
@@ -147,46 +147,46 @@
 							<button
 								type="button"
 								onclick={backToChoice}
-								class="rounded-lg p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+								class="rounded-lg p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-200 dark:hover:bg-white/20 dark:hover:text-white"
 								aria-label="Back"
 							>
 								<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
 								</svg>
 							</button>
-							<p class="font-semibold text-slate-900">Send a message</p>
+							<p class="font-semibold text-slate-900 dark:text-white">Send a message</p>
 						</div>
 						<form onsubmit={submitForm} class="space-y-4">
 							<div>
-								<label for="chat-name" class="block text-sm font-medium text-slate-700">Name</label>
+								<label for="chat-name" class="block text-sm font-medium text-slate-700 dark:text-slate-100">Name</label>
 								<input
 									id="chat-name"
 									type="text"
 									bind:value={formData.name}
 									required
-									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-slate-600 dark:bg-[#374266] dark:text-white dark:placeholder-slate-400"
 									placeholder="Your name"
 								/>
 							</div>
 							<div>
-								<label for="chat-email" class="block text-sm font-medium text-slate-700">Email</label>
+								<label for="chat-email" class="block text-sm font-medium text-slate-700 dark:text-slate-100">Email</label>
 								<input
 									id="chat-email"
 									type="email"
 									bind:value={formData.email}
 									required
-									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-slate-600 dark:bg-[#374266] dark:text-white dark:placeholder-slate-400"
 									placeholder="you@example.com"
 								/>
 							</div>
 							<div>
-								<label for="chat-message" class="block text-sm font-medium text-slate-700">Message</label>
+								<label for="chat-message" class="block text-sm font-medium text-slate-700 dark:text-slate-100">Message</label>
 								<textarea
 									id="chat-message"
 									bind:value={formData.message}
 									required
 									rows="3"
-									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-slate-600 dark:bg-[#374266] dark:text-white dark:placeholder-slate-400"
 									placeholder="How can we help?"
 								></textarea>
 							</div>

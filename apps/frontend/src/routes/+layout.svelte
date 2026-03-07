@@ -4,8 +4,10 @@
 	import SeoHead from '$lib/components/SeoHead.svelte';
 	import Chatbot from '$lib/components/Chatbot.svelte';
 	import { hydrateUser } from '$lib/auth';
+	import { initTheme } from '$lib/stores/theme';
 
 	onMount(() => {
+		initTheme();
 		hydrateUser();
 	});
 </script>

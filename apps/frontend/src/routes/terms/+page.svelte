@@ -124,7 +124,7 @@
 						<p>
 							For questions about these Terms, contact {SITE.name} at
 							<a href="/contact" class="text-pink-600 underline hover:no-underline">our contact page</a>
-							or email {SITE.contactEmail}.
+							or email {SITE.contactEmail}. 
 						</p>
 					</section>
 		</div>
