@@ -95,6 +95,13 @@
 			{/each}
 			{#if isLoggedIn}
 				<a
+					href="/admin"
+					class="ml-2 rounded-lg px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-pink-50 hover:text-pink-600 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-pink-400"
+					aria-current={pathname.startsWith('/admin') ? 'page' : undefined}
+				>
+					Admin
+				</a>
+				<a
 					href="/dashboard"
 					class="ml-2 rounded-full px-5 py-2.5 text-sm font-semibold transition {isActive('/dashboard')
 						? 'border-2 border-pink-500 bg-pink-100 text-pink-700 dark:border-pink-400 dark:bg-white/15 dark:text-pink-300'
@@ -201,6 +208,16 @@
 				</p>
 				<div class="flex flex-col gap-1">
 					{#if isLoggedIn}
+						<a
+							href="/admin"
+							class="rounded-xl px-4 py-3.5 text-base font-medium touch-manipulation {pathname.startsWith('/admin')
+								? 'bg-pink-50 text-pink-600 dark:bg-white/10 dark:text-pink-400'
+								: 'text-slate-700 hover:bg-pink-50 dark:text-slate-100 dark:hover:bg-white/10'}"
+							aria-current={pathname.startsWith('/admin') ? 'page' : undefined}
+							onclick={() => (sheetOpen = false)}
+						>
+							Admin
+						</a>
 						<a
 							href="/dashboard"
 							class="rounded-xl px-4 py-3.5 text-base font-medium touch-manipulation {isActive('/dashboard')
