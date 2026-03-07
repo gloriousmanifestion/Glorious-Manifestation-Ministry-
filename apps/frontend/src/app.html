@@ -6,13 +6,18 @@
 			(function () {
 				var t = localStorage.getItem('pms_theme');
 				var dark =
-					t === 'dark' ||
-					(t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+					t === 'light'
+						? false
+						: t === 'dark'
+							? true
+							: t === 'system'
+								? window.matchMedia('(prefers-color-scheme: dark)').matches
+								: true;
 				if (dark) document.documentElement.classList.add('dark');
 			})();
 		</script>
 		<link rel="icon" href="%sveltekit.assets%/favicon.png" type="image/png" />
-		<meta name="theme-color" content="#FFFCFA" />
+		<meta name="theme-color" content="#374266" />
 		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 		<meta
 			name="description"

@@ -9,14 +9,14 @@ const STORAGE_KEY = 'pms_theme';
 export type Theme = 'light' | 'dark' | 'system';
 
 function getStored(): Theme {
-	if (typeof window === 'undefined') return 'light';
+	if (typeof window === 'undefined') return 'dark';
 	try {
 		const v = localStorage.getItem(STORAGE_KEY);
 		if (v === 'light' || v === 'dark' || v === 'system') return v;
 	} catch {
 		/* ignore */
 	}
-	return 'light';
+	return 'dark';
 }
 
 function isDarkEffective(theme: Theme): boolean {
