@@ -217,7 +217,7 @@
 	<button
 		type="button"
 		onclick={() => (open ? closeChat() : openChat())}
-		class="flex h-14 w-14 min-w-[3.5rem] min-h-[3.5rem] items-center justify-center rounded-full bg-gradient-to-br from-pink-500 to-purple-600 text-white shadow-lg shadow-pink-500/30 transition hover:scale-105 hover:shadow-xl active:scale-95 touch-manipulation {!open ? 'animate-chatbot-blink' : ''}"
+		class="flex h-14 w-14 min-w-[3.5rem] min-h-[3.5rem] items-center justify-center rounded-full text-white shadow-lg transition hover:scale-105 hover:shadow-xl active:scale-95 touch-manipulation {!open ? (fabIcon === 1 ? 'animate-chatbot-blink-green' : 'animate-chatbot-blink') : ''} {open || fabIcon === 0 ? 'bg-gradient-to-br from-pink-500 to-purple-600 shadow-pink-500/30' : 'bg-[#25d366] shadow-[#25d366]/40'}"
 		aria-label="Open chat"
 	>
 		{#if open}
@@ -257,7 +257,23 @@
 				0 0 0 8px rgb(236 72 153 / 0.15);
 		}
 	}
+	@keyframes chatbot-blink-green {
+		0%,
+		100% {
+			opacity: 1;
+			box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1),
+				0 0 0 0 rgb(37 211 102 / 0.3);
+		}
+		50% {
+			opacity: 0.92;
+			box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1),
+				0 0 0 8px rgb(37 211 102 / 0.2);
+		}
+	}
 	.animate-chatbot-blink {
 		animation: chatbot-blink 1.5s ease-in-out infinite;
+	}
+	.animate-chatbot-blink-green {
+		animation: chatbot-blink-green 1.5s ease-in-out infinite;
 	}
 </style>
