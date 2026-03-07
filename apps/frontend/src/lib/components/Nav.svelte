@@ -13,9 +13,7 @@
 		{ href: '/contact', label: 'Contact', icon: 'envelope' }
 	];
 
-	let mobileOpen = $state(false);
 	let sheetOpen = $state(false);
-	let sheetEl = $state<HTMLDivElement | null>(null);
 	let scrolled = $state(false);
 	const user = $derived($userStore);
 	const isLoggedIn = $derived(user !== null);
@@ -43,6 +41,15 @@
 		}
 	}
 
+	$effect(() => {
+		if (!sheetOpen) return;
+		const onKey = (e: KeyboardEvent) => {
+			if (e.key === 'Escape') sheetOpen = false;
+		};
+		window.addEventListener('keydown', onKey);
+		return () => window.removeEventListener('keydown', onKey);
+	});
+
 	onMount(() => {
 		const checkScroll = () => {
 			scrolled = typeof window !== 'undefined' && window.scrollY > 10;
@@ -55,7 +62,7 @@
 
 <!-- Desktop: top header -->
 <header
-	class="fixed top-0 left-0 right-0 z-50 pt-[env(safe-area-inset-top)] transition-all duration-300 hidden md:block {scrolled || mobileOpen
+	class="fixed top-0 left-0 right-0 z-50 pt-[env(safe-area-inset-top)] transition-all duration-300 hidden md:block {scrolled
 		? 'border-b border-pink-200/50 section-separator bg-white/90 backdrop-blur-xl dark:bg-[#374266]/90'
 		: 'border-b border-transparent bg-transparent dark:bg-transparent'}"
 >
@@ -174,15 +181,10 @@
 			type="button"
 			class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity"
 			aria-label="Close menu"
-			onclick={() => (sheetOpen = false)}
+			onclick={(e) => e.target === e.currentTarget && (sheetOpen = false)}
 		></button>
 		<div
-			bind:this={sheetEl}
 			class="nav-sheet absolute bottom-0 left-0 right-0 rounded-t-2xl border-t border-pink-200/50 bg-white pb-[env(safe-area-inset-bottom)] dark:border-slate-600 dark:bg-[#374266]"
-			role="document"
-			tabindex="-1"
-			onclick={(e) => e.stopPropagation()}
-			onkeydown={(e) => e.key === 'Escape' && (sheetOpen = false)}
 		>
 			<div class="flex justify-center pt-3 pb-2">
 				<span class="h-1 w-12 rounded-full bg-slate-300 dark:bg-slate-500" aria-hidden="true"></span>
