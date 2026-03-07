@@ -15,7 +15,9 @@
 
 <SeoHead />
 
-<slot />
+<div class="pb-20 md:pb-0">
+	<slot />
+</div>
 
 <HeroLogoProgress />
 <Chatbot />
