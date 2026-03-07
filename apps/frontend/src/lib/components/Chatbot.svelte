@@ -59,10 +59,10 @@
 	<!-- Chat panel -->
 	{#if open}
 		<div
-			class="mb-4 w-[min(90vw,24rem)] max-w-sm overflow-hidden rounded-2xl border border-slate-200/80 card-premium bg-white shadow-2xl shadow-slate-900/20 dark:bg-[#2f3a52] dark:shadow-none"
+			class="mb-4 w-[min(90vw,24rem)] max-w-sm overflow-hidden rounded-2xl border border-slate-200/80 card-premium bg-white shadow-2xl shadow-slate-900/20 dark:bg-[#1e2642] dark:shadow-none"
 		>
 			<!-- Header -->
-			<div class="flex items-center justify-between border-b border-slate-100 section-separator bg-gradient-to-r from-pink-50 to-purple-50 px-5 py-4 dark:from-[#374266] dark:to-[#45527a]">
+			<div class="flex items-center justify-between border-b border-slate-100 section-separator bg-gradient-to-r from-pink-50 to-purple-50 px-5 py-4 dark:from-[#252d47] dark:to-[#2d3659]">
 				<div class="flex items-center gap-3">
 					<div class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-pink-500 to-purple-600 text-white">
 						<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -174,7 +174,7 @@
 									type="text"
 									bind:value={formData.name}
 									required
-									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#374266] dark:text-white dark:placeholder-slate-400"
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#252d47] dark:text-white dark:placeholder-slate-400"
 									placeholder="Your name"
 								/>
 							</div>
@@ -185,7 +185,7 @@
 									type="email"
 									bind:value={formData.email}
 									required
-									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#374266] dark:text-white dark:placeholder-slate-400"
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#252d47] dark:text-white dark:placeholder-slate-400"
 									placeholder="you@example.com"
 								/>
 							</div>
@@ -196,7 +196,7 @@
 									bind:value={formData.message}
 									required
 									rows="3"
-									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#374266] dark:text-white dark:placeholder-slate-400"
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#252d47] dark:text-white dark:placeholder-slate-400"
 									placeholder="How can we help?"
 								></textarea>
 							</div>

@@ -24,7 +24,7 @@
 		<button
 			type="button"
 			class="rounded-full p-2 transition {$themeStore === opt.value
-				? 'bg-white text-pink-600 shadow dark:bg-[#374266] dark:text-pink-400'
+				? 'bg-white text-pink-600 shadow dark:bg-[#252d47] dark:text-pink-400'
 				: 'text-slate-500 hover:text-slate-700 dark:text-slate-100 dark:hover:text-white'}"
 			aria-pressed={$themeStore === opt.value}
 			aria-label="{opt.label} theme"

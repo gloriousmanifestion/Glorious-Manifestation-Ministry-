@@ -24,11 +24,11 @@
 	--font-title: 'Outfit Variable', system-ui, sans-serif;
 }
 
-/* Dark theme – base #374266, high-contrast text (white / off-white) */
+/* Dark theme – darker slate-blue base (#252d47), high-contrast text */
 .dark {
-	--color-bg: #374266;
-	--color-bg-warm: #2f3a52;
-	--color-bg-cream: #45527a;
+	--color-bg: #252d47;
+	--color-bg-warm: #1e2642;
+	--color-bg-cream: #2d3659;
 	--color-primary: #f9a8d4;
 	--color-primary-dark: #f472b6;
 	--color-accent: #c084fc;
@@ -112,10 +112,10 @@ textarea {
 
 .dark .gradient-mesh {
 	background:
-		radial-gradient(ellipse 80% 50% at 50% -20%, #374266 0%, #2f3a52 100%),
-		radial-gradient(ellipse 60% 40% at 80% 50%, rgba(244, 114, 182, 0.12), transparent),
-		radial-gradient(ellipse 50% 30% at 20% 80%, rgba(192, 132, 252, 0.1), transparent),
-		linear-gradient(180deg, #374266 0%, #2f3a52 50%, #1e2642 100%);
+		radial-gradient(ellipse 80% 50% at 50% -20%, #252d47 0%, #1e2642 100%),
+		radial-gradient(ellipse 60% 40% at 80% 50%, rgba(244, 114, 182, 0.1), transparent),
+		radial-gradient(ellipse 50% 30% at 20% 80%, rgba(192, 132, 252, 0.08), transparent),
+		linear-gradient(180deg, #252d47 0%, #1e2642 50%, #161c33 100%);
 }
 
 /* Shine line under tagline */

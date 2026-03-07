@@ -92,7 +92,7 @@
 	<meta name="description" content="Register for the Pastoral School at Prophetic Glorious Manifestation." />
 </svelte:head>
 
-<div class="min-h-screen flex flex-col bg-slate-50 dark:bg-[#374266]">
+<div class="min-h-screen flex flex-col bg-slate-50 dark:bg-[#252d47]">
 	<Nav />
 
 	<main class="flex-1 pt-20 sm:pt-24 pb-12 sm:pb-16">
@@ -112,9 +112,9 @@
 				{/if}
 			</div>
 
-			<div class="flex flex-col overflow-hidden rounded-2xl border border-pink-200/50 card-premium bg-white shadow-xl dark:bg-[#2f3a52] lg:flex-row">
+			<div class="flex flex-col overflow-hidden rounded-2xl border border-pink-200/50 card-premium bg-white shadow-xl dark:bg-[#1e2642] lg:flex-row">
 				<!-- Stepper (left) -->
-				<aside class="border-b border-pink-200/50 section-separator bg-gradient-to-b from-pink-50/80 to-purple-50/50 px-4 py-6 sm:px-8 sm:py-10 dark:from-[#374266] dark:to-[#2f3a52] lg:w-72 lg:border-b-0 lg:border-r">
+				<aside class="border-b border-pink-200/50 section-separator bg-gradient-to-b from-pink-50/80 to-purple-50/50 px-4 py-6 sm:px-8 sm:py-10 dark:from-[#252d47] dark:to-[#1e2642] lg:w-72 lg:border-b-0 lg:border-r">
 					<nav class="flex flex-col gap-1" aria-label="Registration steps">
 						{#each steps as step}
 							<button
@@ -161,7 +161,7 @@
 									id="name"
 									type="text"
 									bind:value={formData.name}
-									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#374266] dark:text-white dark:placeholder-slate-400 {errors.name ? 'border-red-300 dark:border-red-600' : ''}"
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#252d47] dark:text-white dark:placeholder-slate-400 {errors.name ? 'border-red-300 dark:border-red-600' : ''}"
 									placeholder="John Doe"
 								/>
 								{#if errors.name}
@@ -174,7 +174,7 @@
 									id="email"
 									type="email"
 									bind:value={formData.email}
-									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#374266] dark:text-white dark:placeholder-slate-400 {errors.email ? 'border-red-300 dark:border-red-600' : ''}"
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#252d47] dark:text-white dark:placeholder-slate-400 {errors.email ? 'border-red-300 dark:border-red-600' : ''}"
 									placeholder="John@example.com"
 								/>
 								{#if errors.email}
@@ -187,7 +187,7 @@
 									id="phone"
 									type="tel"
 									bind:value={formData.phone}
-									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#374266] dark:text-white dark:placeholder-slate-400 {errors.phone ? 'border-red-300 dark:border-red-600' : ''}"
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#252d47] dark:text-white dark:placeholder-slate-400 {errors.phone ? 'border-red-300 dark:border-red-600' : ''}"
 									placeholder="080 1234 5678"
 								/>
 								{#if errors.phone}
@@ -200,7 +200,7 @@
 									id="password"
 									type="password"
 									bind:value={formData.password}
-									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#374266] dark:text-white dark:placeholder-slate-400 {errors.password ? 'border-red-300 dark:border-red-600' : ''}"
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#252d47] dark:text-white dark:placeholder-slate-400 {errors.password ? 'border-red-300 dark:border-red-600' : ''}"
 									placeholder="At least 8 characters"
 								/>
 								{#if errors.password}
@@ -213,7 +213,7 @@
 									id="confirmPassword"
 									type="password"
 									bind:value={formData.confirmPassword}
-									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#374266] dark:text-white dark:placeholder-slate-400 {errors.confirmPassword ? 'border-red-300 dark:border-red-600' : ''}"
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#252d47] dark:text-white dark:placeholder-slate-400 {errors.confirmPassword ? 'border-red-300 dark:border-red-600' : ''}"
 									placeholder="Re-enter your password"
 								/>
 								{#if errors.confirmPassword}
@@ -229,7 +229,7 @@
 								<select
 									id="calling"
 									bind:value={formData.calling}
-									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#374266] dark:text-white {errors.calling ? 'border-red-300 dark:border-red-600' : ''}"
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#252d47] dark:text-white {errors.calling ? 'border-red-300 dark:border-red-600' : ''}"
 								>
 									<option value="">Select your calling</option>
 									<option value="pastor">Pastor</option>
@@ -249,7 +249,7 @@
 									id="ministryRole"
 									type="text"
 									bind:value={formData.ministryRole}
-									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#374266] dark:text-white dark:placeholder-slate-400 {errors.ministryRole ? 'border-red-300 dark:border-red-600' : ''}"
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#252d47] dark:text-white dark:placeholder-slate-400 {errors.ministryRole ? 'border-red-300 dark:border-red-600' : ''}"
 									placeholder="e.g. Associate Pastor, Youth Minister"
 								/>
 								{#if errors.ministryRole}
@@ -262,7 +262,7 @@
 									id="churchName"
 									type="text"
 									bind:value={formData.churchName}
-									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#374266] dark:text-white dark:placeholder-slate-400 {errors.churchName ? 'border-red-300 dark:border-red-600' : ''}"
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#252d47] dark:text-white dark:placeholder-slate-400 {errors.churchName ? 'border-red-300 dark:border-red-600' : ''}"
 									placeholder="Your church or ministry"
 								/>
 								{#if errors.churchName}

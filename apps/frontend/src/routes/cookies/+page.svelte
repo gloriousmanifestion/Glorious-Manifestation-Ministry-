@@ -12,7 +12,7 @@
 	/>
 </svelte:head>
 
-<div class="min-h-screen flex flex-col bg-white dark:bg-[#374266]">
+<div class="min-h-screen flex flex-col bg-white dark:bg-[#252d47]">
 	<Nav />
 	<main class="flex-1 w-full max-w-3xl mx-auto px-4 sm:px-6 pt-24 sm:pt-28 pb-12 sm:pb-16">
 		<a

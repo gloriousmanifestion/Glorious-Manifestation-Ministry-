@@ -15,7 +15,7 @@
 	];
 </script>
 
-<footer class="border-t border-slate-200/80 section-separator bg-slate-50 dark:bg-[#2f3a52]">
+<footer class="border-t border-slate-200/80 section-separator bg-slate-50 dark:bg-[#1e2642]">
 	<div class="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
 		<div class="grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
 			<!-- Brand -->

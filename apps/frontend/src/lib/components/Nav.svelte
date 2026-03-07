@@ -63,7 +63,7 @@
 <!-- Desktop: top header -->
 <header
 	class="fixed top-0 left-0 right-0 z-50 pt-[env(safe-area-inset-top)] transition-all duration-300 hidden md:block {scrolled
-		? 'border-b border-pink-200/50 section-separator bg-white/90 backdrop-blur-xl dark:bg-[#374266]/90'
+		? 'border-b border-pink-200/50 section-separator bg-white/90 backdrop-blur-xl dark:bg-[#252d47]/90'
 		: 'border-b border-transparent bg-transparent dark:bg-transparent'}"
 >
 	<nav class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
@@ -124,7 +124,7 @@
 <!-- Mobile: top bar (logo only) -->
 <header
 	class="fixed top-0 left-0 right-0 z-40 flex items-center justify-center pt-[env(safe-area-inset-top)] pb-3 md:hidden {scrolled
-		? 'border-b border-pink-200/50 bg-white/90 backdrop-blur-xl dark:bg-[#374266]/90'
+		? 'border-b border-pink-200/50 bg-white/90 backdrop-blur-xl dark:bg-[#252d47]/90'
 		: 'border-b border-transparent bg-transparent dark:bg-transparent'}"
 >
 	<a
@@ -138,7 +138,7 @@
 
 <!-- Mobile: bottom nav (5 items + hamburger) -->
 <nav
-	class="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around border-t border-pink-200/50 bg-white/95 pb-[env(safe-area-inset-bottom)] pt-2 backdrop-blur-xl md:hidden dark:border-slate-600 dark:bg-[#374266]/95"
+	class="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around border-t border-pink-200/50 bg-white/95 pb-[env(safe-area-inset-bottom)] pt-2 backdrop-blur-xl md:hidden dark:border-slate-600 dark:bg-[#252d47]/95"
 	aria-label="Main navigation"
 >
 	{#each navLinks as link}
@@ -184,7 +184,7 @@
 			onclick={(e) => e.target === e.currentTarget && (sheetOpen = false)}
 		></button>
 		<div
-			class="nav-sheet absolute bottom-0 left-0 right-0 rounded-t-2xl border-t border-pink-200/50 bg-white pb-[env(safe-area-inset-bottom)] dark:border-slate-600 dark:bg-[#374266]"
+			class="nav-sheet absolute bottom-0 left-0 right-0 rounded-t-2xl border-t border-pink-200/50 bg-white pb-[env(safe-area-inset-bottom)] dark:border-slate-600 dark:bg-[#252d47]"
 		>
 			<div class="flex justify-center pt-3 pb-2">
 				<span class="h-1 w-12 rounded-full bg-slate-300 dark:bg-slate-500" aria-hidden="true"></span>

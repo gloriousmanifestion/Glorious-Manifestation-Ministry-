@@ -22,7 +22,7 @@
 	/>
 </svelte:head>
 
-<div class="min-h-screen flex flex-col dark:bg-[#374266]">
+<div class="min-h-screen flex flex-col dark:bg-[#252d47]">
 	<Nav />
 
 	<main class="flex-1">
@@ -72,7 +72,7 @@
 		</section>
 
 		<!-- About & mission -->
-		<section id="about" class="border-t border-pink-200/50 section-separator bg-white/60 py-12 sm:py-16 px-4 sm:px-6 dark:bg-[#374266]/80">
+		<section id="about" class="border-t border-pink-200/50 section-separator bg-white/60 py-12 sm:py-16 px-4 sm:px-6 dark:bg-[#252d47]/80">
 			<div class="mx-auto max-w-4xl">
 				<AnimateOnView animation="fade-up">
 					<div class="mb-12 overflow-hidden rounded-2xl border border-pink-200/50 card-premium shadow-lg transition-shadow duration-500 hover:shadow-xl ">
@@ -99,7 +99,7 @@
 		<LeaderSection />
 
 		<!-- Our values -->
-		<section class="border-t border-pink-200/50 section-separator bg-gradient-to-b from-pink-50/50 to-purple-50/30 py-12 sm:py-16 px-4 sm:px-6 dark:from-[#374266] dark:to-[#2f3a52]">
+		<section class="border-t border-pink-200/50 section-separator bg-gradient-to-b from-pink-50/50 to-purple-50/30 py-12 sm:py-16 px-4 sm:px-6 dark:from-[#252d47] dark:to-[#1e2642]">
 			<div class="mx-auto max-w-6xl">
 				<AnimateOnView animation="fade-up">
 					<h2 class="text-center text-xl font-bold tracking-tight text-slate-900 sm:text-2xl md:text-3xl dark:text-white">Our values</h2>
@@ -107,7 +107,7 @@
 				<div class="mt-8 sm:mt-12 grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
 					{#each values as value, i}
 						<AnimateOnView animation="fade-up" stagger={i}>
-							<div class="hover-lift rounded-2xl border border-pink-200/50 card-premium bg-white p-6 shadow-sm  dark:bg-[#45527a]/80 dark:shadow-none">
+							<div class="hover-lift rounded-2xl border border-pink-200/50 card-premium bg-white p-6 shadow-sm  dark:bg-[#2d3659]/80 dark:shadow-none">
 								<h3 class="text-lg font-semibold text-slate-900 dark:text-white">{value.title}</h3>
 								<p class="mt-2 text-sm text-slate-600 dark:text-slate-100">{value.description}</p>
 							</div>
@@ -118,7 +118,7 @@
 		</section>
 
 		<!-- Programs -->
-		<section id="programs" class="border-t border-pink-200/50 section-separator bg-gradient-to-b from-pink-50/50 to-purple-50/30 py-16 sm:py-24 px-4 sm:px-6 dark:from-[#374266] dark:to-[#2f3a52]">
+		<section id="programs" class="border-t border-pink-200/50 section-separator bg-gradient-to-b from-pink-50/50 to-purple-50/30 py-16 sm:py-24 px-4 sm:px-6 dark:from-[#252d47] dark:to-[#1e2642]">
 			<div class="mx-auto max-w-6xl">
 				<AnimateOnView animation="fade-up">
 					<p class="text-center text-sm font-medium uppercase tracking-[0.2em] text-pink-600 dark:text-pink-400">
@@ -137,7 +137,7 @@
 							<li>
 								<a
 									href="/courses/{course.id}"
-									class="hover-lift group block rounded-2xl border border-pink-200/50 card-premium bg-white p-6 shadow-sm transition hover:border-pink-300 hover:shadow-xl hover:shadow-pink-100/50  dark:bg-[#45527a]/80 dark:hover:border-pink-500/30 dark:hover:shadow-pink-500/10"
+									class="hover-lift group block rounded-2xl border border-pink-200/50 card-premium bg-white p-6 shadow-sm transition hover:border-pink-300 hover:shadow-xl hover:shadow-pink-100/50  dark:bg-[#2d3659]/80 dark:hover:border-pink-500/30 dark:hover:shadow-pink-500/10"
 								>
 									<div class="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-pink-100 to-purple-100 text-2xl transition-transform duration-300 group-hover:scale-110 dark:from-pink-500/20 dark:to-purple-500/20">
 										{course.icon}

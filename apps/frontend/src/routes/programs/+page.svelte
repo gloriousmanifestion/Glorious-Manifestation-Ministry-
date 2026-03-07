@@ -98,7 +98,7 @@
 		</section>
 
 		<!-- About & mission -->
-		<section class="border-t border-pink-200/50 bg-white/60 py-12 sm:py-16 px-4 sm:px-6 section-separator dark:bg-[#374266]/80">
+		<section class="border-t border-pink-200/50 bg-white/60 py-12 sm:py-16 px-4 sm:px-6 section-separator dark:bg-[#252d47]/80">
 			<div class="mx-auto max-w-4xl">
 				<AnimateOnView animation="fade-up">
 					<h2 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Our mission</h2>
@@ -113,7 +113,7 @@
 		</section>
 
 		<!-- Program highlights -->
-		<section class="border-t border-pink-200/50 bg-gradient-to-b from-pink-50/50 to-purple-50/30 py-12 sm:py-16 px-4 sm:px-6 section-separator dark:from-[#374266]/60 dark:to-[#2f3a52]/60">
+		<section class="border-t border-pink-200/50 bg-gradient-to-b from-pink-50/50 to-purple-50/30 py-12 sm:py-16 px-4 sm:px-6 section-separator dark:from-[#252d47]/60 dark:to-[#1e2642]/60">
 			<div class="mx-auto max-w-4xl">
 				<AnimateOnView animation="fade-up">
 					<h2 class="text-center text-xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-2xl">Program details</h2>
@@ -121,7 +121,7 @@
 				<div class="mt-8 grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-3">
 					{#each highlights as item, i}
 						<AnimateOnView animation="fade-up" stagger={i} duration={500}>
-							<div class="hover-lift rounded-2xl border border-pink-200/60 card-premium bg-white p-6 text-center shadow-sm hover:border-pink-300 hover:shadow-lg dark:bg-[#2f3a52] dark:hover:border-pink-500/50">
+							<div class="hover-lift rounded-2xl border border-pink-200/60 card-premium bg-white p-6 text-center shadow-sm hover:border-pink-300 hover:shadow-lg dark:bg-[#1e2642] dark:hover:border-pink-500/50">
 								<p class="text-sm font-medium uppercase tracking-wider text-pink-600 dark:text-pink-400">{item.label}</p>
 								<p class="mt-2 text-lg font-semibold text-slate-900 dark:text-white">{item.value}</p>
 							</div>
@@ -132,7 +132,7 @@
 		</section>
 
 		<!-- Our values -->
-		<section class="border-t border-pink-200/50 bg-white/60 py-12 sm:py-16 px-4 sm:px-6 section-separator dark:bg-[#374266]/80">
+		<section class="border-t border-pink-200/50 bg-white/60 py-12 sm:py-16 px-4 sm:px-6 section-separator dark:bg-[#252d47]/80">
 			<div class="mx-auto max-w-6xl">
 				<AnimateOnView animation="fade-up">
 					<h2 class="text-center text-xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-2xl md:text-3xl">Our values</h2>
@@ -140,7 +140,7 @@
 				<div class="mt-8 sm:mt-12 grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
 					{#each values as value, i}
 						<AnimateOnView animation="fade-up" stagger={i}>
-							<div class="hover-lift rounded-2xl border border-pink-200/50 card-premium bg-white p-6 shadow-sm dark:bg-[#2f3a52]">
+							<div class="hover-lift rounded-2xl border border-pink-200/50 card-premium bg-white p-6 shadow-sm dark:bg-[#1e2642]">
 								<h3 class="text-lg font-semibold text-slate-900 dark:text-white">{value.title}</h3>
 								<p class="mt-2 text-sm text-slate-600 dark:text-slate-200">{value.description}</p>
 							</div>
@@ -151,7 +151,7 @@
 		</section>
 
 		<!-- Courses -->
-		<section id="courses" class="border-t border-pink-200/50 bg-gradient-to-b from-pink-50/50 to-purple-50/30 py-12 sm:py-16 px-4 sm:px-6 section-separator dark:from-[#374266]/60 dark:to-[#2f3a52]/60">
+		<section id="courses" class="border-t border-pink-200/50 bg-gradient-to-b from-pink-50/50 to-purple-50/30 py-12 sm:py-16 px-4 sm:px-6 section-separator dark:from-[#252d47]/60 dark:to-[#1e2642]/60">
 			<div class="mx-auto max-w-4xl">
 				<AnimateOnView animation="fade-up">
 					<h2 class="text-center text-xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-2xl mb-8 sm:mb-12">All courses</h2>
@@ -160,7 +160,7 @@
 				{#each COURSE_CATALOG as course, i}
 					<AnimateOnView animation="slide-left" stagger={i} duration={500}>
 						<article
-							class="hover-lift rounded-2xl border border-pink-200/50 card-premium bg-white p-4 sm:p-8 shadow-sm hover:border-pink-300 hover:shadow-xl dark:bg-[#2f3a52] dark:hover:border-pink-500/50"
+							class="hover-lift rounded-2xl border border-pink-200/50 card-premium bg-white p-4 sm:p-8 shadow-sm hover:border-pink-300 hover:shadow-xl dark:bg-[#1e2642] dark:hover:border-pink-500/50"
 						>
 							<a href="/courses/{course.id}" class="flex flex-col sm:flex-row items-start gap-4 group">
 								<span
@@ -194,7 +194,7 @@
 		</section>
 
 		<!-- FAQ / Helpful info -->
-		<section class="border-t border-pink-200/50 bg-white/60 py-12 sm:py-16 px-4 sm:px-6 section-separator dark:bg-[#374266]/80">
+		<section class="border-t border-pink-200/50 bg-white/60 py-12 sm:py-16 px-4 sm:px-6 section-separator dark:bg-[#252d47]/80">
 			<div class="mx-auto max-w-3xl">
 				<AnimateOnView animation="fade-up">
 					<h2 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Frequently asked questions</h2>
@@ -202,7 +202,7 @@
 				<div class="mt-8 space-y-6">
 					{#each faqs as faq, i}
 						<AnimateOnView animation="fade-up" stagger={i}>
-							<div class="rounded-2xl border border-pink-200/50 card-premium bg-white p-6 shadow-sm dark:bg-[#2f3a52]">
+							<div class="rounded-2xl border border-pink-200/50 card-premium bg-white p-6 shadow-sm dark:bg-[#1e2642]">
 								<h3 class="font-semibold text-slate-900 dark:text-white">{faq.q}</h3>
 								<!-- The answer content is authored by us and does not include user input. -->
 								<!-- eslint-disable-next-line svelte/no-at-html-tags -->

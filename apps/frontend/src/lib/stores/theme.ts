@@ -32,7 +32,7 @@ function apply(theme: Theme) {
 	document.documentElement.setAttribute('data-theme', theme);
 	const meta = document.querySelector('meta[name="theme-color"]');
 	if (meta) {
-		meta.setAttribute('content', dark ? '#374266' : '#FFFCFA');
+		meta.setAttribute('content', dark ? '#252d47' : '#FFFCFA');
 	}
 }
 

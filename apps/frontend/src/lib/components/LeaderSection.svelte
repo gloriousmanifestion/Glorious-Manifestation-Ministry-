@@ -5,7 +5,7 @@
 	const leader = SITE.leader;
 </script>
 
-<section class="border-t border-slate-200/50 section-separator bg-white py-20 sm:py-28 px-4 sm:px-6 dark:bg-[#374266]/80">
+<section class="border-t border-slate-200/50 section-separator bg-white py-20 sm:py-28 px-4 sm:px-6 dark:bg-[#252d47]/80">
 	<div class="mx-auto max-w-5xl">
 		<AnimateOnView animation="fade-up">
 			<div class="flex flex-col lg:flex-row lg:items-center lg:gap-20">
