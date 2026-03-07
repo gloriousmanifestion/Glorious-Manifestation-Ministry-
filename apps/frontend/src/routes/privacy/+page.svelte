@@ -12,12 +12,12 @@
 	/>
 </svelte:head>
 
-<div class="min-h-screen flex flex-col bg-white">
+<div class="min-h-screen flex flex-col bg-white dark:bg-[#374266]">
 	<Nav />
 	<main class="flex-1 w-full max-w-3xl mx-auto px-4 sm:px-6 pt-24 sm:pt-28 pb-12 sm:pb-16">
 		<a
 			href="/"
-			class="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900 mb-8 transition"
+			class="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900 mb-8 transition dark:text-slate-200 dark:hover:text-white"
 		>
 			<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
 				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
@@ -25,12 +25,12 @@
 			Back to home
 		</a>
 		<div class="text-center">
-			<h1 class="text-2xl font-bold text-slate-900 mb-2">Privacy Policy</h1>
-			<p class="text-sm text-slate-500 mb-8">Last updated: February 2025</p>
+			<h1 class="text-2xl font-bold text-slate-900 dark:text-white mb-2">Privacy Policy</h1>
+			<p class="text-sm text-slate-500 dark:text-slate-200 mb-8">Last updated: February 2025</p>
 		</div>
-		<div class="prose prose-slate max-w-none text-slate-600 space-y-6 text-left">
+		<div class="prose prose-slate max-w-none text-slate-600 dark:text-slate-100 space-y-6 text-left dark:prose-invert">
 					<section>
-						<h2 class="text-lg font-semibold text-slate-900 mt-8 mb-3">1. Introduction</h2>
+						<h2 class="text-lg font-semibold text-slate-900 dark:text-white mt-8 mb-3">1. Introduction</h2>
 						<p>
 							The {SITE.schoolName} under {SITE.name} ("we", "us", "our") operates this website and
 							provides ministry training services. This Privacy Policy explains how we collect, use,
@@ -41,7 +41,7 @@
 					</section>
 
 					<section>
-						<h2 class="text-lg font-semibold text-slate-900 mt-8 mb-3">2. Information we collect</h2>
+						<h2 class="text-lg font-semibold text-slate-900 dark:text-white mt-8 mb-3">2. Information we collect</h2>
 						<p class="mb-3">We may collect:</p>
 						<ul class="list-disc pl-6 space-y-1 mb-3">
 							<li>
@@ -64,7 +64,7 @@
 					</section>
 
 					<section>
-						<h2 class="text-lg font-semibold text-slate-900 mt-8 mb-3">3. How we use your information</h2>
+						<h2 class="text-lg font-semibold text-slate-900 dark:text-white mt-8 mb-3">3. How we use your information</h2>
 						<p>We use the information we collect to:</p>
 						<ul class="list-disc pl-6 space-y-1">
 							<li>Provide, maintain, and improve our website and Pastoral School services.</li>
@@ -73,13 +73,13 @@
 							<li>Protect against fraud, abuse, and security incidents.</li>
 							<li>
 								Comply with legal obligations and enforce our
-								<a href="/terms" class="text-pink-600 underline hover:no-underline">Terms of Service</a>.
+								<a href="/terms" class="text-pink-600 underline hover:no-underline dark:text-pink-400 dark:hover:text-pink-300">Terms of Service</a>.
 							</li>
 						</ul>
 					</section>
 
 					<section>
-						<h2 class="text-lg font-semibold text-slate-900 mt-8 mb-3">4. Legal basis (where applicable)</h2>
+						<h2 class="text-lg font-semibold text-slate-900 dark:text-white mt-8 mb-3">4. Legal basis (where applicable)</h2>
 						<p>
 							Where required by law (e.g. in the UK, EU, or EEA), we process your data on the basis
 							of: (a) performance of our contract with you (providing registration and training);
@@ -89,7 +89,7 @@
 					</section>
 
 					<section>
-						<h2 class="text-lg font-semibold text-slate-900 mt-8 mb-3">5. Sharing and disclosure</h2>
+						<h2 class="text-lg font-semibold text-slate-900 dark:text-white mt-8 mb-3">5. Sharing and disclosure</h2>
 						<p>We may share your information with:</p>
 						<ul class="list-disc pl-6 space-y-1">
 							<li>
@@ -104,7 +104,7 @@
 					</section>
 
 					<section>
-						<h2 class="text-lg font-semibold text-slate-900 mt-8 mb-3">6. Data retention</h2>
+						<h2 class="text-lg font-semibold text-slate-900 dark:text-white mt-8 mb-3">6. Data retention</h2>
 						<p>
 							We retain your information for as long as your account is active and as needed to
 							provide the service, comply with law, resolve disputes, and enforce our agreements.
@@ -114,7 +114,7 @@
 					</section>
 
 					<section>
-						<h2 class="text-lg font-semibold text-slate-900 mt-8 mb-3">7. Security</h2>
+						<h2 class="text-lg font-semibold text-slate-900 dark:text-white mt-8 mb-3">7. Security</h2>
 						<p>
 							We use technical and organisational measures (including encryption where appropriate)
 							to protect your data. Despite our efforts, no system is completely secure; you are
@@ -123,27 +123,27 @@
 					</section>
 
 					<section>
-						<h2 class="text-lg font-semibold text-slate-900 mt-8 mb-3">8. Your rights</h2>
+						<h2 class="text-lg font-semibold text-slate-900 dark:text-white mt-8 mb-3">8. Your rights</h2>
 						<p>
 							Depending on where you live, you may have the right to: access your data, correct it,
 							request deletion, restrict or object to certain processing, data portability, and
 							withdraw consent. You may also have the right to lodge a complaint with a supervisory
 							authority. To exercise these rights, contact us using the details on
-							<a href="/contact" class="text-pink-600 underline hover:no-underline">our contact page</a>
+							<a href="/contact" class="text-pink-600 underline hover:no-underline dark:text-pink-400 dark:hover:text-pink-300">our contact page</a>
 							or at {SITE.contactEmail}.
 						</p>
 					</section>
 
 					<section>
-						<h2 class="text-lg font-semibold text-slate-900 mt-8 mb-3">9. Cookies</h2>
+						<h2 class="text-lg font-semibold text-slate-900 dark:text-white mt-8 mb-3">9. Cookies</h2>
 						<p>
 							We use cookies and similar technologies as described in our
-							<a href="/cookies" class="text-pink-600 underline hover:no-underline">Cookie Policy</a>.
+							<a href="/cookies" class="text-pink-600 underline hover:no-underline dark:text-pink-400 dark:hover:text-pink-300">Cookie Policy</a>.
 						</p>
 					</section>
 
 					<section>
-						<h2 class="text-lg font-semibold text-slate-900 mt-8 mb-3">10. International transfers</h2>
+						<h2 class="text-lg font-semibold text-slate-900 dark:text-white mt-8 mb-3">10. International transfers</h2>
 						<p>
 							Your information may be processed in countries other than your own. Where we transfer
 							data from the UK or EEA, we use appropriate safeguards (e.g. standard contractual
@@ -152,7 +152,7 @@
 					</section>
 
 					<section>
-						<h2 class="text-lg font-semibold text-slate-900 mt-8 mb-3">11. Changes</h2>
+						<h2 class="text-lg font-semibold text-slate-900 dark:text-white mt-8 mb-3">11. Changes</h2>
 						<p>
 							We may update this Privacy Policy from time to time. We will post the revised policy
 							here and update the "Last updated" date. Continued use of our services after changes
@@ -162,10 +162,10 @@
 					</section>
 
 					<section>
-						<h2 class="text-lg font-semibold text-slate-900 mt-8 mb-3">12. Contact</h2>
+						<h2 class="text-lg font-semibold text-slate-900 dark:text-white mt-8 mb-3">12. Contact</h2>
 						<p>
 							For privacy-related questions or to exercise your rights, contact {SITE.name} at
-							<a href="/contact" class="text-pink-600 underline hover:no-underline">our contact page</a>
+							<a href="/contact" class="text-pink-600 underline hover:no-underline dark:text-pink-400 dark:hover:text-pink-300">our contact page</a>
 							or email {SITE.contactEmail}.
 						</p>
 					</section>
