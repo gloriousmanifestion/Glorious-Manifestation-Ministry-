@@ -242,3 +242,30 @@ export async function updateLearningPlan(
 	if (!res.ok) throw new Error((json as { message?: string }).message ?? 'Failed to update learning plan');
 	return json as LearningPlan;
 }
+
+// --- Invitations (super_admin only) ---
+
+export type InviteRole = 'admin' | 'super_admin';
+
+export interface InviteResult {
+	token: string;
+	link: string;
+	expires_at: string;
+	role: InviteRole;
+}
+
+/** Create an invite link. Backend: POST /admin/invites. Only super_admin can call. */
+export async function createInvite(role: InviteRole): Promise<InviteResult> {
+	const res = await fetch(`${API_BASE}/admin/invites`, {
+		method: 'POST',
+		headers: getAuthHeaders(),
+		body: JSON.stringify({ role })
+	});
+	const json = await safeJson<InviteResult | { message?: string }>(res);
+	if (!res.ok) throw new Error((json as { message?: string }).message ?? 'Failed to create invite');
+	const result = json as InviteResult;
+	if (!result.link && result.token && typeof window !== 'undefined') {
+		result.link = `${window.location.origin}/invite/${result.token}`;
+	}
+	return result;
+}

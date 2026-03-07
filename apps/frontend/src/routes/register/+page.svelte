@@ -28,6 +28,9 @@
 	let submitting = $state(false);
 	let submitError = $state('');
 
+	const inviteTokenFromUrl = $derived($page.url.searchParams.get('invite'));
+	const isInviteSignup = $derived(!!inviteTokenFromUrl);
+
 	function validateStep(step: number): boolean {
 		errors = {};
 		submitError = '';
@@ -75,9 +78,10 @@
 				ministryRole: formData.ministryRole,
 				churchName: formData.churchName,
 				calling: formData.calling,
-				selectedCourseId: preselectedCourse ? preselectedCourse.id : null
+				selectedCourseId: preselectedCourse ? preselectedCourse.id : null,
+				inviteToken: inviteTokenFromUrl ?? undefined
 			});
-			goto('/dashboard');
+			goto(isInviteSignup ? '/admin' : '/dashboard');
 		} catch (e) {
 			submitError = e instanceof Error ? e.message : 'Registration failed. Please try again.';
 		} finally {
@@ -99,12 +103,18 @@
 		<div class="mx-auto max-w-5xl px-4 sm:px-6">
 			<div class="mb-10 text-center">
 				<h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl">
-					Create your account
+					{isInviteSignup ? 'Create your admin account' : 'Create your account'}
 				</h1>
 				<p class="mt-2 text-slate-600 dark:text-slate-100">
-					Join our Pastoral School. Complete the form below to get started.
+					{isInviteSignup
+						? 'You were invited to join the platform as an admin. Complete the form below.'
+						: 'Join our Pastoral School. Complete the form below to get started.'}
 				</p>
-				{#if preselectedCourse}
+				{#if isInviteSignup}
+					<div class="mt-4 inline-flex items-center gap-2 rounded-xl border border-pink-200 bg-pink-50/80 px-4 py-3 text-sm dark:border-pink-800 dark:bg-pink-900/30">
+						<span class="font-medium text-pink-700 dark:text-pink-300">Admin / Super Admin signup</span>
+					</div>
+				{:else if preselectedCourse}
 					<div class="mt-4 inline-flex items-center gap-2 rounded-xl border border-pink-200 bg-pink-50/80 px-4 py-3 text-sm dark:border-pink-800 dark:bg-pink-900/30">
 						<span class="font-medium text-pink-700 dark:text-pink-300">Registering for:</span>
 						<span class="font-semibold text-slate-900 dark:text-white">{preselectedCourse.name}</span>

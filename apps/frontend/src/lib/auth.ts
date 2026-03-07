@@ -6,9 +6,12 @@
 import { writable, get } from 'svelte/store';
 import * as api from '$lib/auth-api';
 import { toUser } from '$lib/auth-api';
+import type { UserRole } from '$lib/auth-api';
 
 const TOKEN_KEY = 'pms_token';
 const USER_KEY = 'pms_user';
+
+export type { UserRole };
 
 export interface User {
 	id: string;
@@ -22,6 +25,8 @@ export interface User {
 	verified: boolean;
 	paymentComplete: boolean;
 	createdAt: string;
+	/** student (default) | admin | super_admin. Only admin/super_admin can access /admin. */
+	role: UserRole;
 }
 
 export interface Course {
@@ -40,7 +45,9 @@ function loadUser(): User | null {
 	try {
 		const raw = localStorage.getItem(USER_KEY);
 		if (!raw) return null;
-		return JSON.parse(raw) as User;
+		const u = JSON.parse(raw) as User;
+		if (!u.role) u.role = 'student';
+		return u;
 	} catch {
 		return null;
 	}
@@ -104,8 +111,20 @@ function createAuthStore() {
 			const u = get(userStore);
 			return u !== null && !u.paymentComplete;
 		},
+		/** True if user can access /admin (admin or super_admin). */
+		get canAccessAdmin() {
+			const u = get(userStore);
+			return u !== null && (u.role === 'admin' || u.role === 'super_admin');
+		},
+		get isSuperAdmin() {
+			const u = get(userStore);
+			return u !== null && u.role === 'super_admin';
+		},
 		async register(
-			data: Omit<User, 'id' | 'verified' | 'paymentComplete' | 'createdAt'> & { password: string }
+			data: Omit<User, 'id' | 'verified' | 'paymentComplete' | 'createdAt' | 'role'> & {
+				password: string;
+				inviteToken?: string;
+			}
 		) {
 			const res = await api.register({
 				name: data.name,
@@ -115,7 +134,8 @@ function createAuthStore() {
 				ministry_role: data.ministryRole,
 				church_name: data.churchName,
 				calling: data.calling,
-				selected_course_id: data.selectedCourseId
+				selected_course_id: data.selectedCourseId,
+				invite_token: data.inviteToken
 			});
 			localStorage.setItem(TOKEN_KEY, res.token);
 			const user = toUser(res.user);

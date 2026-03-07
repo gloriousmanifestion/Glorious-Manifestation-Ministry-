@@ -55,7 +55,7 @@
 	}
 </script>
 
-<div class="fixed bottom-[max(1.5rem,env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))] z-50">
+<div class="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))] z-50 md:bottom-[max(1.5rem,env(safe-area-inset-bottom))]">
 	<!-- Chat panel -->
 	{#if open}
 		<div

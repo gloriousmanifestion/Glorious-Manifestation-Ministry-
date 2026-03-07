@@ -17,6 +17,7 @@
 	let scrolled = $state(false);
 	const user = $derived($userStore);
 	const isLoggedIn = $derived(user !== null);
+	const canAccessAdmin = $derived(user !== null && (user.role === 'admin' || user.role === 'super_admin'));
 	const pathname = $derived($page.url.pathname);
 
 	function isActive(href: string): boolean {
@@ -94,13 +95,15 @@
 				</a>
 			{/each}
 			{#if isLoggedIn}
-				<a
-					href="/admin"
-					class="ml-2 rounded-lg px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-pink-50 hover:text-pink-600 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-pink-400"
-					aria-current={pathname.startsWith('/admin') ? 'page' : undefined}
-				>
-					Admin
-				</a>
+				{#if canAccessAdmin}
+					<a
+						href="/admin"
+						class="ml-2 rounded-lg px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-pink-50 hover:text-pink-600 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-pink-400"
+						aria-current={pathname.startsWith('/admin') ? 'page' : undefined}
+					>
+						Admin
+					</a>
+				{/if}
 				<a
 					href="/dashboard"
 					class="ml-2 rounded-full px-5 py-2.5 text-sm font-semibold transition {isActive('/dashboard')
@@ -208,16 +211,18 @@
 				</p>
 				<div class="flex flex-col gap-1">
 					{#if isLoggedIn}
-						<a
-							href="/admin"
-							class="rounded-xl px-4 py-3.5 text-base font-medium touch-manipulation {pathname.startsWith('/admin')
-								? 'bg-pink-50 text-pink-600 dark:bg-white/10 dark:text-pink-400'
-								: 'text-slate-700 hover:bg-pink-50 dark:text-slate-100 dark:hover:bg-white/10'}"
-							aria-current={pathname.startsWith('/admin') ? 'page' : undefined}
-							onclick={() => (sheetOpen = false)}
-						>
-							Admin
-						</a>
+						{#if canAccessAdmin}
+							<a
+								href="/admin"
+								class="rounded-xl px-4 py-3.5 text-base font-medium touch-manipulation {pathname.startsWith('/admin')
+									? 'bg-pink-50 text-pink-600 dark:bg-white/10 dark:text-pink-400'
+									: 'text-slate-700 hover:bg-pink-50 dark:text-slate-100 dark:hover:bg-white/10'}"
+								aria-current={pathname.startsWith('/admin') ? 'page' : undefined}
+								onclick={() => (sheetOpen = false)}
+							>
+								Admin
+							</a>
+						{/if}
 						<a
 							href="/dashboard"
 							class="rounded-xl px-4 py-3.5 text-base font-medium touch-manipulation {isActive('/dashboard')

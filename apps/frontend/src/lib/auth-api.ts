@@ -4,6 +4,9 @@
  */
 import { safeJson } from '$lib/api/safe-json';
 
+/** User role: student (default), admin, or super_admin (created via invitation) */
+export type UserRole = 'student' | 'admin' | 'super_admin';
+
 export interface UserResponse {
 	id: string;
 	email: string;
@@ -16,6 +19,8 @@ export interface UserResponse {
 	verified: boolean;
 	payment_complete: boolean;
 	created_at: string;
+	/** Omitted by backend = student. Backend must return for admin/super_admin. */
+	role?: UserRole;
 }
 
 /** Map API UserResponse to frontend User shape (camelCase) */
@@ -31,7 +36,8 @@ export function toUser(r: UserResponse) {
 		selectedCourseId: r.selected_course_id,
 		verified: r.verified,
 		paymentComplete: r.payment_complete,
-		createdAt: r.created_at
+		createdAt: r.created_at,
+		role: (r.role ?? 'student') as UserRole
 	};
 }
 
@@ -49,6 +55,8 @@ export interface RegisterRequest {
 	church_name: string;
 	calling: string;
 	selected_course_id: string | null;
+	/** When present, backend creates admin/super_admin account (validates token). */
+	invite_token?: string;
 }
 
 export interface LoginRequest {
@@ -89,7 +97,8 @@ export async function register(data: RegisterRequest): Promise<AuthResponse> {
 		body: JSON.stringify({
 			...data,
 			ministry_role: data.ministry_role,
-			church_name: data.church_name
+			church_name: data.church_name,
+			invite_token: data.invite_token
 		})
 	});
 	const json = await safeJson<unknown>(res);
@@ -173,4 +182,38 @@ export async function getCourses(): Promise<Array<{ id: string; name: string; du
 		throw new Error((err.message as string) || (err.error as string) || 'Failed to fetch courses');
 	}
 	return Array.isArray(json) ? json : [];
+}
+
+// --- Invitations (admin/super_admin signup) ---
+
+/**
+ * Bootstrap token for first-time setup (Option A).
+ * Backend contract:
+ * - GET /auth/invite/bootstrap (or GET /auth/invite/:token when token === ADMIN_BOOTSTRAP_TOKEN from env):
+ *   If no super_admin exists yet (or token matches), return { valid: true, role: 'super_admin' }.
+ * - POST /auth/register with invite_token: 'bootstrap' (or env token):
+ *   Validate bootstrap token, create user with role 'super_admin'.
+ * Use env ADMIN_BOOTSTRAP_TOKEN for a secret URL (e.g. /invite/<secret>) instead of literal "bootstrap" if preferred.
+ */
+export const BOOTSTRAP_INVITE_TOKEN = 'bootstrap';
+
+export interface InviteInfo {
+	valid: boolean;
+	role: UserRole;
+	email?: string;
+	expires_at?: string;
+}
+
+/** Validate invite token; returns role and optional email. Backend: GET /auth/invite/:token */
+export async function getInvite(token: string): Promise<InviteInfo | null> {
+	const res = await fetch(`${API_BASE}/auth/invite/${encodeURIComponent(token)}`, {
+		headers: getAuthHeaders()
+	});
+	if (res.status === 404 || res.status === 410) return null;
+	const json = await safeJson<InviteInfo | { message?: string }>(res);
+	if (!res.ok) {
+		throw new Error((json as { message?: string }).message ?? 'Invalid or expired invite');
+	}
+	const info = json as InviteInfo;
+	return info.valid ? info : null;
 }
