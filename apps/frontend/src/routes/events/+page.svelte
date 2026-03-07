@@ -35,23 +35,23 @@
 
 	<main class="flex-1">
 		<section class="gradient-mesh px-4 sm:px-6 pt-24 sm:pt-28 pb-12 sm:pb-16 text-center">
-			<p class="hero-enter-delay-1 mb-4 text-sm font-medium uppercase tracking-[0.2em] text-pink-600">Calendar</p>
-			<h1 class="hero-enter-delay-2 mx-auto max-w-3xl text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl md:text-5xl">
+			<p class="hero-enter-delay-1 mb-4 text-sm font-medium uppercase tracking-[0.2em] text-pink-600 dark:text-pink-400">Calendar</p>
+			<h1 class="hero-enter-delay-2 mx-auto max-w-3xl text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl md:text-5xl">
 				Events
 			</h1>
-			<p class="hero-enter-delay-3 mx-auto mt-6 max-w-2xl text-lg text-slate-600">
+			<p class="hero-enter-delay-3 mx-auto mt-6 max-w-2xl text-lg text-slate-600 dark:text-slate-100">
 				Stay updated with school activities, revivals, and special programs.
 			</p>
 		</section>
 
-		<section class="border-t border-pink-200/50 bg-white/60 py-12 sm:py-16 px-4 sm:px-6">
+		<section class="border-t border-pink-200/50 bg-white/60 py-12 sm:py-16 px-4 sm:px-6 dark:border-slate-600 dark:bg-[#374266]/80">
 			<div class="mx-auto max-w-3xl">
 				{#if loading}
 					<div class="flex justify-center py-12">
 						<div class="h-8 w-8 animate-spin rounded-full border-2 border-pink-500 border-t-transparent"></div>
 					</div>
 				{:else if error}
-					<div class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+					<div class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">
 						{error}
 					</div>
 				{:else}
@@ -59,7 +59,7 @@
 						{#each events as event, i}
 							<AnimateOnView animation="fade-up" stagger={i}>
 								<article
-									class="hover-lift flex flex-col sm:flex-row gap-4 sm:gap-6 rounded-2xl border border-pink-200/50 bg-white p-4 sm:p-6 shadow-sm hover:border-pink-300 hover:shadow-lg"
+									class="hover-lift flex flex-col sm:flex-row gap-4 sm:gap-6 rounded-2xl border border-pink-200/50 bg-white p-4 sm:p-6 shadow-sm hover:border-pink-300 hover:shadow-lg dark:border-slate-600 dark:bg-[#2f3a52] dark:hover:border-pink-500/50"
 								>
 									<div
 										class="flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-xl bg-gradient-to-br from-pink-500 to-purple-600 text-center text-white"
@@ -67,8 +67,8 @@
 										<span class="text-xs font-medium uppercase leading-tight">{event.date}</span>
 									</div>
 									<div>
-										<h2 class="text-lg font-bold text-slate-900">{event.title}</h2>
-										<p class="mt-2 text-slate-600">{event.description ?? ''}</p>
+										<h2 class="text-lg font-bold text-slate-900 dark:text-white">{event.title}</h2>
+										<p class="mt-2 text-slate-600 dark:text-slate-200">{event.description ?? ''}</p>
 									</div>
 								</article>
 							</AnimateOnView>
@@ -78,10 +78,10 @@
 			</div>
 		</section>
 
-		<section class="border-t border-pink-200/50 py-12 sm:py-16 px-4 sm:px-6">
+		<section class="border-t border-pink-200/50 py-12 sm:py-16 px-4 sm:px-6 dark:border-slate-600">
 			<AnimateOnView animation="scale">
 				<div class="mx-auto max-w-2xl text-center">
-					<p class="text-slate-600">For the latest event updates, follow us and contact via WhatsApp.</p>
+					<p class="text-slate-600 dark:text-slate-200">For the latest event updates, follow us and contact via WhatsApp.</p>
 					<a
 						href="https://wa.me/2348026954759"
 						target="_blank"

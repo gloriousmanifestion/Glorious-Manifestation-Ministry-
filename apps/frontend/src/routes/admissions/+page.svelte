@@ -33,11 +33,11 @@
 
 	<main class="flex-1">
 		<section class="gradient-mesh px-4 sm:px-6 pt-24 sm:pt-28 pb-12 sm:pb-16 text-center">
-			<p class="hero-enter-delay-1 mb-4 text-sm font-medium uppercase tracking-[0.2em] text-pink-600">Apply now</p>
-			<h1 class="hero-enter-delay-2 mx-auto max-w-3xl text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl md:text-5xl">
+			<p class="hero-enter-delay-1 mb-4 text-sm font-medium uppercase tracking-[0.2em] text-pink-600 dark:text-pink-400">Apply now</p>
+			<h1 class="hero-enter-delay-2 mx-auto max-w-3xl text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl md:text-5xl">
 				Admissions
 			</h1>
-			<p class="hero-enter-delay-3 mx-auto mt-6 max-w-2xl text-lg text-slate-600">
+			<p class="hero-enter-delay-3 mx-auto mt-6 max-w-2xl text-lg text-slate-600 dark:text-slate-100">
 				{SITE.schoolName} is now open for pastors, ministers and prophets. Program runs {SITE.duration}, {SITE.schedule}.
 			</p>
 			<div class="hero-enter-delay-4 mt-8">
