@@ -204,10 +204,14 @@
 		role="dialog"
 		aria-modal="true"
 		aria-labelledby="plan-modal-title"
+		onkeydown={(e) => e.key === 'Escape' && closeModal()}
+		onclick={() => closeModal()}
 	>
 		<div
 			class="my-8 w-full max-w-lg rounded-2xl border border-slate-700 bg-slate-900 shadow-xl"
+			role="document"
 			onclick={(e) => e.stopPropagation()}
+			onkeydown={(e) => e.stopPropagation()}
 		>
 			<div class="border-b border-slate-800 px-6 py-4">
 				<h2 id="plan-modal-title" class="text-lg font-semibold text-white">
@@ -263,8 +267,12 @@
 					</div>
 				</div>
 				<div>
-					<label class="block text-sm font-medium text-slate-400">Courses included</label>
-					<div class="mt-2 space-y-2 rounded-lg border border-slate-700 bg-slate-800/50 p-3 max-h-48 overflow-y-auto">
+					<span id="plan-courses-label" class="block text-sm font-medium text-slate-400">Courses included</span>
+					<div
+						class="mt-2 space-y-2 rounded-lg border border-slate-700 bg-slate-800/50 p-3 max-h-48 overflow-y-auto"
+						role="group"
+						aria-labelledby="plan-courses-label"
+					>
 						{#each courses as c}
 							<label class="flex cursor-pointer items-center gap-2 text-sm text-slate-300">
 								<input
