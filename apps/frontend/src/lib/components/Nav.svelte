@@ -5,6 +5,7 @@
 	import { userStore } from '$lib/auth';
 	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 
+	// Desktop: all 5 links in header. Mobile bottom bar: first 4 + "More" = 5 items (Contact, Theme, Account live in More sheet).
 	const navLinks = [
 		{ href: '/', label: 'Home', icon: 'home' },
 		{ href: '/programs', label: 'Programs', icon: 'book' },
@@ -12,6 +13,7 @@
 		{ href: '/events', label: 'Events', icon: 'calendar' },
 		{ href: '/contact', label: 'Contact', icon: 'envelope' }
 	];
+	const mobileNavLinks = navLinks.slice(0, 4);
 
 	let sheetOpen = $state(false);
 	let scrolled = $state(false);
@@ -146,15 +148,15 @@
 	</a>
 </header>
 
-<!-- Mobile: bottom nav (5 items + hamburger) -->
+<!-- Mobile: bottom nav (exactly 5 items: 4 links + More) -->
 <nav
-	class="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around border-t border-pink-200/50 bg-white/95 pb-[env(safe-area-inset-bottom)] pt-2 backdrop-blur-xl md:hidden dark:border-slate-600 dark:bg-[#252d47]/95"
+	class="mobile-bottom-nav fixed bottom-0 left-0 right-0 z-50 flex w-full min-w-0 items-center justify-around border-t border-pink-200/50 bg-white/95 pb-[env(safe-area-inset-bottom)] pt-2 backdrop-blur-xl md:hidden dark:border-slate-600 dark:bg-[#252d47]/95"
 	aria-label="Main navigation"
 >
-	{#each navLinks as link}
+	{#each mobileNavLinks as link}
 		<a
 			href={link.href}
-			class="flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-medium transition touch-manipulation {isActive(link.href)
+			class="flex min-w-0 flex-1 basis-0 flex-col items-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-medium transition touch-manipulation {isActive(link.href)
 				? 'text-pink-600 dark:text-pink-400'
 				: 'text-slate-500 active:bg-pink-50 dark:text-slate-300 dark:active:bg-white/10'}"
 			aria-current={isActive(link.href) ? 'page' : undefined}
@@ -162,12 +164,12 @@
 			<svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
 				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={iconPath(link.icon)} />
 			</svg>
-			<span class="truncate">{link.label}</span>
+			<span class="truncate max-w-full">{link.label}</span>
 		</a>
 	{/each}
 	<button
 		type="button"
-		class="flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-medium text-slate-500 transition touch-manipulation active:bg-pink-50 dark:text-slate-300 dark:active:bg-white/10"
+		class="flex min-w-0 flex-1 basis-0 flex-col items-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-medium text-slate-500 transition touch-manipulation active:bg-pink-50 dark:text-slate-300 dark:active:bg-white/10"
 		aria-expanded={sheetOpen}
 		aria-label="More menu"
 		onclick={() => (sheetOpen = true)}
@@ -199,7 +201,22 @@
 			<div class="flex justify-center pt-3 pb-2">
 				<span class="h-1 w-12 rounded-full bg-slate-300 dark:bg-slate-500" aria-hidden="true"></span>
 			</div>
-			<div class="max-h-[60vh] overflow-y-auto px-4 pb-4">
+			<div class="max-h-[60vh] overflow-y-auto overflow-x-hidden px-4 pb-4">
+				<p class="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-400">
+					More
+				</p>
+				<div class="mb-4">
+					<a
+						href="/contact"
+						class="rounded-xl px-4 py-3.5 text-base font-medium touch-manipulation {isActive('/contact')
+							? 'bg-pink-50 text-pink-600 dark:bg-white/10 dark:text-pink-400'
+							: 'text-slate-700 hover:bg-pink-50 dark:text-slate-100 dark:hover:bg-white/10'}"
+						aria-current={isActive('/contact') ? 'page' : undefined}
+						onclick={() => (sheetOpen = false)}
+					>
+						Contact
+					</a>
+				</div>
 				<p class="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-400">
 					Theme
 				</p>
@@ -256,6 +273,9 @@
 {/if}
 
 <style>
+	.mobile-bottom-nav {
+		overflow-x: hidden;
+	}
 	.nav-sheet {
 		animation: nav-sheet-in 0.25s ease-out;
 	}
