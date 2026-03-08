@@ -4,7 +4,9 @@
 	import { page } from '$app/stores';
 	import { userStore, authReady } from '$lib/auth';
 	import { SITE } from '$lib/config';
+	import type { Snippet } from 'svelte';
 
+	let { children }: { children?: Snippet } = $props();
 	let mounted = $state(false);
 	const user = $derived($userStore);
 	const pathname = $derived($page.url.pathname);
@@ -129,7 +131,7 @@
 		<!-- Main content -->
 		<main class="flex-1 pl-64">
 			<div class="min-h-screen px-6 py-8">
-				<slot />
+				{@render children?.()}
 			</div>
 		</main>
 	</div>
