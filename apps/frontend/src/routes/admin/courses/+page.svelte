@@ -166,6 +166,9 @@
 		aria-modal="true"
 		aria-labelledby="course-modal-title"
 	>
+		<!-- Modal content: stopPropagation so clicking inside doesn't close. Div required (cannot nest form in button). -->
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
 			class="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 shadow-xl"
 			onclick={(e) => e.stopPropagation()}
