@@ -18,6 +18,7 @@ use argon2::{
     Argon2,
 };
 use rand_core::OsRng;
+use wangamail_rs::{BodyType, GraphMailClient, Message, MessageBody, Recipient, SendMailRequest};
 
 #[derive(Debug, Deserialize)]
 pub struct RegisterRequest {
@@ -61,6 +62,52 @@ fn verify_password(password: &str, hash: &str) -> Result<bool, String> {
     Ok(Argon2::default()
         .verify_password(password.as_bytes(), &parsed)
         .is_ok())
+}
+
+async fn send_registration_email(to: &str, name: &str) -> Result<(), String> {
+    let tenant_id = std::env::var("AZURE_TENANT_ID")
+        .map_err(|_| "AZURE_TENANT_ID is not set".to_string())?;
+    let client_id = std::env::var("AZURE_CLIENT_ID")
+        .map_err(|_| "AZURE_CLIENT_ID is not set".to_string())?;
+    let client_secret = std::env::var("AZURE_CLIENT_SECRET")
+        .map_err(|_| "AZURE_CLIENT_SECRET is not set".to_string())?;
+    let from_user = std::env::var("WANGAMAIL_FROM_USER")
+        .map_err(|_| "WANGAMAIL_FROM_USER is not set".to_string())?;
+
+    let client = GraphMailClient::builder()
+        .tenant_id(tenant_id)
+        .client_id(client_id)
+        .client_secret(client_secret)
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let subject = "Welcome to Prophetic Ministry Manifestation Pastoral School";
+    let body_text = format!(
+        "Hi {name},\n\n\
+Thank you for registering for the Prophetic Ministry Manifestation Pastoral School.\n\n\
+Your account has been created successfully.\n\
+Please log in with your email and password to complete your profile and verification.\n\n\
+If you did not create this account, please ignore this email.\n\n\
+Blessings,\n\
+Prophetic Ministry Manifestation Pastoral School"
+    );
+
+    let message = Message {
+        subject: subject.to_string(),
+        body: MessageBody {
+            content_type: BodyType::Text,
+            content: body_text,
+        },
+        to_recipients: vec![Recipient::new(to)],
+        ..Default::default()
+    };
+
+    let request = SendMailRequest::new(message);
+
+    client
+        .send_mail(&from_user, request)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 pub fn auth_routes(pool: AnyPool) -> Router {
@@ -160,6 +207,12 @@ async fn register(
         payment_complete: false,
         created_at: now,
     };
+
+    // Fire-and-forget registration email via Microsoft Graph using wangamail-rs.
+    // Failing to send email must not block registration.
+    if let Err(e) = send_registration_email(&user.email, &user.name).await {
+        tracing::error!("Registration email error for {}: {}", user.email, e);
+    }
 
     let token = create_token(&id).map_err(|_| {
         (
