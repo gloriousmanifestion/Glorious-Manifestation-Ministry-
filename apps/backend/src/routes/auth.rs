@@ -65,10 +65,10 @@ fn verify_password(password: &str, hash: &str) -> Result<bool, String> {
 }
 
 async fn send_registration_email(to: &str, name: &str) -> Result<(), String> {
-    let tenant_id = std::env::var("AZURE_TENANT_ID")
-        .map_err(|_| "AZURE_TENANT_ID is not set".to_string())?;
-    let client_id = std::env::var("AZURE_CLIENT_ID")
-        .map_err(|_| "AZURE_CLIENT_ID is not set".to_string())?;
+    let tenant_id =
+        std::env::var("AZURE_TENANT_ID").map_err(|_| "AZURE_TENANT_ID is not set".to_string())?;
+    let client_id =
+        std::env::var("AZURE_CLIENT_ID").map_err(|_| "AZURE_CLIENT_ID is not set".to_string())?;
     let client_secret = std::env::var("AZURE_CLIENT_SECRET")
         .map_err(|_| "AZURE_CLIENT_SECRET is not set".to_string())?;
     let from_user = std::env::var("WANGAMAIL_FROM_USER")
