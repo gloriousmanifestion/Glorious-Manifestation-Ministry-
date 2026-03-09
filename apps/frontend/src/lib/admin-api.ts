@@ -88,7 +88,11 @@ function getMockMetrics(): AdminMetrics {
 
 // --- Users ---
 
-export async function getAdminUsers(params?: { search?: string; page?: number; limit?: number }): Promise<{
+export async function getAdminUsers(params?: {
+	search?: string;
+	page?: number;
+	limit?: number;
+}): Promise<{
 	users: AdminUser[];
 	total: number;
 }> {
@@ -158,7 +162,12 @@ function getMockAdminCourses(): AdminCourse[] {
 	];
 }
 
-export async function createCourse(data: { name: string; duration: string; description?: string; price?: number }): Promise<AdminCourse> {
+export async function createCourse(data: {
+	name: string;
+	duration: string;
+	description?: string;
+	price?: number;
+}): Promise<AdminCourse> {
 	const res = await fetch(`${API_BASE}/admin/courses`, {
 		method: 'POST',
 		headers: getAuthHeaders(),
@@ -171,7 +180,13 @@ export async function createCourse(data: { name: string; duration: string; descr
 
 export async function updateCourse(
 	id: string,
-	data: Partial<{ name: string; duration: string; description: string; price: number; active: boolean }>
+	data: Partial<{
+		name: string;
+		duration: string;
+		description: string;
+		price: number;
+		active: boolean;
+	}>
 ): Promise<AdminCourse> {
 	const res = await fetch(`${API_BASE}/admin/courses/${id}`, {
 		method: 'PATCH',
@@ -191,7 +206,8 @@ export async function getLearningPlans(): Promise<LearningPlan[]> {
 		return getMockLearningPlans();
 	}
 	const json = await safeJson<LearningPlan[] | { message?: string }>(res);
-	if (!res.ok) throw new Error((json as { message?: string }).message ?? 'Failed to load learning plans');
+	if (!res.ok)
+		throw new Error((json as { message?: string }).message ?? 'Failed to load learning plans');
 	return Array.isArray(json) ? json : [];
 }
 
@@ -204,7 +220,14 @@ function getMockLearningPlans(): LearningPlan[] {
 			price: 30000,
 			currency: 'NGN',
 			duration: 'February to July',
-			courseIds: ['pastoral-leadership', 'prophetic-ministry', 'ministerial-training', 'biblical-studies', 'worship-praise', 'evangelism-outreach'],
+			courseIds: [
+				'pastoral-leadership',
+				'prophetic-ministry',
+				'ministerial-training',
+				'biblical-studies',
+				'worship-praise',
+				'evangelism-outreach'
+			],
 			active: true,
 			createdAt: '2025-01-01T00:00:00Z'
 		}
@@ -225,13 +248,21 @@ export async function createLearningPlan(data: {
 		body: JSON.stringify(data)
 	});
 	const json = await safeJson<LearningPlan | { message?: string }>(res);
-	if (!res.ok) throw new Error((json as { message?: string }).message ?? 'Failed to create learning plan');
+	if (!res.ok)
+		throw new Error((json as { message?: string }).message ?? 'Failed to create learning plan');
 	return json as LearningPlan;
 }
 
 export async function updateLearningPlan(
 	id: string,
-	data: Partial<{ name: string; description: string; price: number; duration: string; courseIds: string[]; active: boolean }>
+	data: Partial<{
+		name: string;
+		description: string;
+		price: number;
+		duration: string;
+		courseIds: string[];
+		active: boolean;
+	}>
 ): Promise<LearningPlan> {
 	const res = await fetch(`${API_BASE}/admin/learning-plans/${id}`, {
 		method: 'PATCH',
@@ -239,7 +270,8 @@ export async function updateLearningPlan(
 		body: JSON.stringify(data)
 	});
 	const json = await safeJson<LearningPlan | { message?: string }>(res);
-	if (!res.ok) throw new Error((json as { message?: string }).message ?? 'Failed to update learning plan');
+	if (!res.ok)
+		throw new Error((json as { message?: string }).message ?? 'Failed to update learning plan');
 	return json as LearningPlan;
 }
 

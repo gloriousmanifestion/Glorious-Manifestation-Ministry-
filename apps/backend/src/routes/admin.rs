@@ -30,48 +30,36 @@ async fn metrics(
     State(pool): State<AnyPool>,
     AdminUser(_user_id, _role): AdminUser,
 ) -> Result<Json<AdminMetricsResponse>, (StatusCode, Json<serde_json::Value>)> {
-    let total: (i64,) = sqlx::query_as(if db::is_postgres() {
-        "SELECT COUNT(*) FROM users"
-    } else {
-        "SELECT COUNT(*) FROM users"
-    })
-    .fetch_one(&pool)
-    .await
-    .map_err(|e| {
-        tracing::error!("Metrics total error: {:?}", e);
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(serde_json::json!({"message": "Failed to load metrics"})),
-        )
-    })?;
-    let verified: (i64,) = sqlx::query_as(if db::is_postgres() {
-        "SELECT COUNT(*) FROM users WHERE verified = 1"
-    } else {
-        "SELECT COUNT(*) FROM users WHERE verified = 1"
-    })
-    .fetch_one(&pool)
-    .await
-    .map_err(|e| {
-        tracing::error!("Metrics verified error: {:?}", e);
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(serde_json::json!({"message": "Failed to load metrics"})),
-        )
-    })?;
-    let paid: (i64,) = sqlx::query_as(if db::is_postgres() {
-        "SELECT COUNT(*) FROM users WHERE payment_complete = 1"
-    } else {
-        "SELECT COUNT(*) FROM users WHERE payment_complete = 1"
-    })
-    .fetch_one(&pool)
-    .await
-    .map_err(|e| {
-        tracing::error!("Metrics paid error: {:?}", e);
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(serde_json::json!({"message": "Failed to load metrics"})),
-        )
-    })?;
+    let total: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM users")
+        .fetch_one(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Metrics total error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"message": "Failed to load metrics"})),
+            )
+        })?;
+    let verified: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM users WHERE verified = 1")
+        .fetch_one(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Metrics verified error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"message": "Failed to load metrics"})),
+            )
+        })?;
+    let paid: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM users WHERE payment_complete = 1")
+        .fetch_one(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Metrics paid error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"message": "Failed to load metrics"})),
+            )
+        })?;
     let total_u = total.0.max(0) as u64;
     let verified_u = verified.0.max(0) as u64;
     let paid_u = paid.0.max(0) as u64;
@@ -81,21 +69,12 @@ async fn metrics(
     } else {
         0.0
     };
-    let (month_count,): (i64,) = if db::is_postgres() {
-        sqlx::query_as(
-            "SELECT COUNT(*) FROM users WHERE created_at >= date('now', 'start of month')",
-        )
-        .fetch_one(&pool)
-        .await
-        .unwrap_or((0,))
-    } else {
-        sqlx::query_as(
-            "SELECT COUNT(*) FROM users WHERE created_at >= date('now', 'start of month')",
-        )
-        .fetch_one(&pool)
-        .await
-        .unwrap_or((0,))
-    };
+    let (month_count,): (i64,) = sqlx::query_as(
+        "SELECT COUNT(*) FROM users WHERE created_at >= date('now', 'start of month')",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap_or((0,));
     Ok(Json(AdminMetricsResponse {
         total_registrations: total_u,
         verified_count: verified_u,
@@ -136,7 +115,7 @@ async fn list_users(
     Query(q): Query<AdminUsersQuery>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     let page = q.page.unwrap_or(1).max(1);
-    let limit = q.limit.unwrap_or(20).min(100).max(1);
+    let limit = q.limit.unwrap_or(20).clamp(1, 100);
     let offset = (page - 1) * limit;
 
     let (count,): (i64,) = if let Some(ref s) = q.search {
@@ -194,26 +173,24 @@ async fn list_users(
             .fetch_all(&pool)
             .await
         }
+    } else if db::is_postgres() {
+        sqlx::query_as(
+            "SELECT id, email, name, phone, ministry_role, church_name, verified, payment_complete, selected_course_id, created_at FROM users \
+             ORDER BY created_at DESC LIMIT $1 OFFSET $2",
+        )
+        .bind(limit as i64)
+        .bind(offset as i64)
+        .fetch_all(&pool)
+        .await
     } else {
-        if db::is_postgres() {
-            sqlx::query_as(
-                "SELECT id, email, name, phone, ministry_role, church_name, verified, payment_complete, selected_course_id, created_at FROM users \
-                 ORDER BY created_at DESC LIMIT $1 OFFSET $2",
-            )
-            .bind(limit as i64)
-            .bind(offset as i64)
-            .fetch_all(&pool)
-            .await
-        } else {
-            sqlx::query_as(
-                "SELECT id, email, name, phone, ministry_role, church_name, verified, payment_complete, selected_course_id, created_at FROM users \
-                 ORDER BY created_at DESC LIMIT ? OFFSET ?",
-            )
-            .bind(limit as i64)
-            .bind(offset as i64)
-            .fetch_all(&pool)
-            .await
-        }
+        sqlx::query_as(
+            "SELECT id, email, name, phone, ministry_role, church_name, verified, payment_complete, selected_course_id, created_at FROM users \
+             ORDER BY created_at DESC LIMIT ? OFFSET ?",
+        )
+        .bind(limit as i64)
+        .bind(offset as i64)
+        .fetch_all(&pool)
+        .await
     }
     .map_err(|e| {
         tracing::error!("Admin list users error: {:?}", e);
@@ -256,18 +233,17 @@ async fn list_courses_admin(
     State(pool): State<AnyPool>,
     AdminUser(_user_id, _role): AdminUser,
 ) -> Result<Json<Vec<serde_json::Value>>, (StatusCode, Json<serde_json::Value>)> {
-    let rows: Vec<CourseRow> = sqlx::query_as(
-        "SELECT id, name, duration, description, price, active FROM courses",
-    )
-    .fetch_all(&pool)
-    .await
-    .map_err(|e| {
-        tracing::error!("Admin list courses error: {:?}", e);
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(serde_json::json!({"message": "Failed to load courses"})),
-        )
-    })?;
+    let rows: Vec<CourseRow> =
+        sqlx::query_as("SELECT id, name, duration, description, price, active FROM courses")
+            .fetch_all(&pool)
+            .await
+            .map_err(|e| {
+                tracing::error!("Admin list courses error: {:?}", e);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({"message": "Failed to load courses"})),
+                )
+            })?;
     let list: Vec<serde_json::Value> = rows
         .into_iter()
         .map(|r| {
@@ -507,7 +483,8 @@ async fn create_learning_plan(
     axum::Json(body): axum::Json<CreateLearningPlanBody>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     let id = Uuid::new_v4().to_string();
-    let course_ids_json = serde_json::to_string(&body.course_ids).unwrap_or_else(|_| "[]".to_string());
+    let course_ids_json =
+        serde_json::to_string(&body.course_ids).unwrap_or_else(|_| "[]".to_string());
     if db::is_postgres() {
         sqlx::query(
             "INSERT INTO learning_plans (id, name, description, price, currency, duration, course_ids, active) VALUES ($1, $2, $3, $4, $5, $6, $7, 1)",
@@ -598,9 +575,17 @@ async fn update_learning_plan(
         Json(serde_json::json!({"message": "Learning plan not found"})),
     ))?;
     let name = body.name.as_deref().unwrap_or(&row.name).to_string();
-    let description = body.description.as_deref().unwrap_or(&row.description).to_string();
+    let description = body
+        .description
+        .as_deref()
+        .unwrap_or(&row.description)
+        .to_string();
     let price = body.price.unwrap_or(row.price);
-    let duration = body.duration.as_deref().unwrap_or(&row.duration).to_string();
+    let duration = body
+        .duration
+        .as_deref()
+        .unwrap_or(&row.duration)
+        .to_string();
     let course_ids = body
         .course_ids
         .as_ref()
@@ -722,7 +707,8 @@ async fn create_invite(
             Json(serde_json::json!({"message": "Failed to create invite"})),
         )
     })?;
-    let base = std::env::var("APP_BASE_URL").unwrap_or_else(|_| "http://localhost:5173".to_string());
+    let base =
+        std::env::var("APP_BASE_URL").unwrap_or_else(|_| "http://localhost:5173".to_string());
     let link = format!("{}/invite/{}", base.trim_end_matches('/'), token);
     Ok(Json(CreateInviteResponse {
         token,
@@ -736,9 +722,15 @@ pub fn admin_routes(pool: AnyPool) -> Router {
     Router::new()
         .route("/admin/metrics", get(metrics))
         .route("/admin/users", get(list_users))
-        .route("/admin/courses", get(list_courses_admin).post(create_course))
+        .route(
+            "/admin/courses",
+            get(list_courses_admin).post(create_course),
+        )
         .route("/admin/courses/:id", patch(update_course))
-        .route("/admin/learning-plans", get(list_learning_plans).post(create_learning_plan))
+        .route(
+            "/admin/learning-plans",
+            get(list_learning_plans).post(create_learning_plan),
+        )
         .route("/admin/learning-plans/:id", patch(update_learning_plan))
         .route("/admin/invites", post(create_invite))
         .with_state(pool)

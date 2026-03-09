@@ -146,27 +146,25 @@ async fn get_invite(
     State(pool): State<AnyPool>,
     Path(token): Path<String>,
 ) -> Json<InviteInfoResponse> {
-    let bootstrap = std::env::var("BOOTSTRAP_INVITE_TOKEN").unwrap_or_else(|_| "bootstrap".to_string());
+    let bootstrap =
+        std::env::var("BOOTSTRAP_INVITE_TOKEN").unwrap_or_else(|_| "bootstrap".to_string());
     if token == bootstrap {
-        let has_super: bool = if db::is_postgres() {
+        let has_super: bool =
             sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM users WHERE role = 'super_admin'")
                 .fetch_one(&pool)
                 .await
                 .unwrap_or(1)
-                > 0
-        } else {
-            sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM users WHERE role = 'super_admin'")
-                .fetch_one(&pool)
-                .await
-                .unwrap_or(1)
-                > 0
-        };
+                > 0;
         return Json(InviteInfoResponse {
             valid: !has_super,
             role: Some("super_admin".to_string()),
             email: None,
             expires_at: None,
-            message: if has_super { Some("Bootstrap already used".to_string()) } else { None },
+            message: if has_super {
+                Some("Bootstrap already used".to_string())
+            } else {
+                None
+            },
         });
     }
     let now = chrono::Utc::now().to_rfc3339();
@@ -217,9 +215,10 @@ async fn resolve_register_role(
     let Some(tok) = invite_token else {
         return Ok(("student".to_string(), None));
     };
-    let bootstrap = std::env::var("BOOTSTRAP_INVITE_TOKEN").unwrap_or_else(|_| "bootstrap".to_string());
+    let bootstrap =
+        std::env::var("BOOTSTRAP_INVITE_TOKEN").unwrap_or_else(|_| "bootstrap".to_string());
     if tok == bootstrap {
-        let has_super: bool = if db::is_postgres() {
+        let has_super: bool =
             sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM users WHERE role = 'super_admin'")
                 .fetch_one(pool)
                 .await
@@ -230,24 +229,13 @@ async fn resolve_register_role(
                         Json(serde_json::json!({"error": "bootstrap_check_failed", "message": "Could not check bootstrap"})),
                     )
                 })?
-                > 0
-        } else {
-            sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM users WHERE role = 'super_admin'")
-                .fetch_one(pool)
-                .await
-                .map_err(|e| {
-                    tracing::error!("Bootstrap check error: {:?}", e);
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        Json(serde_json::json!({"error": "bootstrap_check_failed", "message": "Could not check bootstrap"})),
-                    )
-                })?
-                > 0
-        };
+                > 0;
         if has_super {
             return Err((
                 StatusCode::BAD_REQUEST,
-                Json(serde_json::json!({"error": "bootstrap_used", "message": "Bootstrap invite already used"})),
+                Json(
+                    serde_json::json!({"error": "bootstrap_used", "message": "Bootstrap invite already used"}),
+                ),
             ));
         }
         return Ok(("super_admin".to_string(), None));
@@ -293,7 +281,9 @@ async fn resolve_register_role(
         Some(r) => Ok((r.role, Some(r.id))),
         None => Err((
             StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({"error": "invalid_invite", "message": "Invalid or expired invite"})),
+            Json(
+                serde_json::json!({"error": "invalid_invite", "message": "Invalid or expired invite"}),
+            ),
         )),
     }
 }

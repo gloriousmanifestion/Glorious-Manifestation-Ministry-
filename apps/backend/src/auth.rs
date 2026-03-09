@@ -97,10 +97,7 @@ where
             .map_err(|_| (StatusCode::UNAUTHORIZED, "Invalid or expired token"))?;
         let role = claims.role.as_str();
         if role != "admin" && role != "super_admin" {
-            return Err((
-                StatusCode::FORBIDDEN,
-                "Admin or super_admin role required",
-            ));
+            return Err((StatusCode::FORBIDDEN, "Admin or super_admin role required"));
         }
         Ok(AdminUser(claims.sub, claims.role))
     }
