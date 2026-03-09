@@ -15,7 +15,13 @@ pub struct User {
     pub selected_course_id: Option<String>,
     pub verified: bool,
     pub payment_complete: bool,
+    #[serde(default = "default_role")]
+    pub role: String,
     pub created_at: String,
+}
+
+fn default_role() -> String {
+    "student".to_string()
 }
 
 impl User {
@@ -31,6 +37,7 @@ impl User {
             selected_course_id: self.selected_course_id.clone(),
             verified: self.verified,
             payment_complete: self.payment_complete,
+            role: self.role.clone(),
             created_at: self.created_at.clone(),
         }
     }
@@ -48,5 +55,6 @@ pub struct UserResponse {
     pub selected_course_id: Option<String>,
     pub verified: bool,
     pub payment_complete: bool,
+    pub role: String,
     pub created_at: String,
 }

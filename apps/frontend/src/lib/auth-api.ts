@@ -91,6 +91,7 @@ function getErrorMessage(json: unknown, fallback: string): string {
 }
 
 export async function register(data: RegisterRequest): Promise<AuthResponse> {
+	const d = data as RegisterRequest & { inviteToken?: string };
 	const res = await fetch(`${API_BASE}/auth/register`, {
 		method: 'POST',
 		headers: getAuthHeaders(),
@@ -98,7 +99,7 @@ export async function register(data: RegisterRequest): Promise<AuthResponse> {
 			...data,
 			ministry_role: data.ministry_role,
 			church_name: data.church_name,
-			invite_token: data.invite_token
+			invite_token: data.invite_token ?? d.inviteToken
 		})
 	});
 	const json = await safeJson<unknown>(res);

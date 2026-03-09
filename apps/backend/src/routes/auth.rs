@@ -1,5 +1,5 @@
 use axum::{
-    extract::State,
+    extract::{Path, State},
     http::StatusCode,
     response::Json,
     routing::{get, post},
@@ -30,6 +30,8 @@ pub struct RegisterRequest {
     pub church_name: String,
     pub calling: String,
     pub selected_course_id: Option<String>,
+    /// When set (e.g. from /invite/[token]), validates invite and sets user role to invite role.
+    pub invite_token: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -110,6 +112,24 @@ Prophetic Ministry Manifestation Pastoral School"
         .map_err(|e| e.to_string())
 }
 
+#[derive(Debug, Serialize)]
+pub struct InviteInfoResponse {
+    pub valid: bool,
+    pub role: Option<String>,
+    pub email: Option<String>,
+    pub expires_at: Option<String>,
+    pub message: Option<String>,
+}
+
+#[derive(Debug, sqlx::FromRow)]
+struct InviteRow {
+    #[allow(dead_code)]
+    id: String,
+    role: String,
+    email: Option<String>,
+    expires_at: String,
+}
+
 pub fn auth_routes(pool: AnyPool) -> Router {
     Router::new()
         .route("/auth/register", post(register))
@@ -118,7 +138,164 @@ pub fn auth_routes(pool: AnyPool) -> Router {
         .route("/auth/verify", post(verify))
         .route("/auth/complete-payment", post(complete_payment))
         .route("/auth/courses", get(list_courses))
+        .route("/auth/invite/:token", get(get_invite))
         .with_state(pool)
+}
+
+async fn get_invite(
+    State(pool): State<AnyPool>,
+    Path(token): Path<String>,
+) -> Json<InviteInfoResponse> {
+    let bootstrap = std::env::var("BOOTSTRAP_INVITE_TOKEN").unwrap_or_else(|_| "bootstrap".to_string());
+    if token == bootstrap {
+        let has_super: bool = if db::is_postgres() {
+            sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM users WHERE role = 'super_admin'")
+                .fetch_one(&pool)
+                .await
+                .unwrap_or(1)
+                > 0
+        } else {
+            sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM users WHERE role = 'super_admin'")
+                .fetch_one(&pool)
+                .await
+                .unwrap_or(1)
+                > 0
+        };
+        return Json(InviteInfoResponse {
+            valid: !has_super,
+            role: Some("super_admin".to_string()),
+            email: None,
+            expires_at: None,
+            message: if has_super { Some("Bootstrap already used".to_string()) } else { None },
+        });
+    }
+    let now = chrono::Utc::now().to_rfc3339();
+    let row: Option<InviteRow> = if db::is_postgres() {
+        sqlx::query_as(
+            "SELECT id, role, email, expires_at FROM invites WHERE token = $1 AND used_at IS NULL AND expires_at > $2",
+        )
+        .bind(&token)
+        .bind(&now)
+        .fetch_optional(&pool)
+        .await
+        .ok()
+        .flatten()
+    } else {
+        sqlx::query_as(
+            "SELECT id, role, email, expires_at FROM invites WHERE token = ? AND used_at IS NULL AND expires_at > ?",
+        )
+        .bind(&token)
+        .bind(&now)
+        .fetch_optional(&pool)
+        .await
+        .ok()
+        .flatten()
+    };
+    match row {
+        Some(r) => Json(InviteInfoResponse {
+            valid: true,
+            role: Some(r.role),
+            email: r.email,
+            expires_at: Some(r.expires_at),
+            message: None,
+        }),
+        None => Json(InviteInfoResponse {
+            valid: false,
+            role: None,
+            email: None,
+            expires_at: None,
+            message: Some("Invalid or expired invite".to_string()),
+        }),
+    }
+}
+
+/// Resolve role for registration: (role, invite_id to mark used if any).
+async fn resolve_register_role(
+    pool: &AnyPool,
+    invite_token: Option<&str>,
+) -> Result<(String, Option<String>), (StatusCode, Json<serde_json::Value>)> {
+    let Some(tok) = invite_token else {
+        return Ok(("student".to_string(), None));
+    };
+    let bootstrap = std::env::var("BOOTSTRAP_INVITE_TOKEN").unwrap_or_else(|_| "bootstrap".to_string());
+    if tok == bootstrap {
+        let has_super: bool = if db::is_postgres() {
+            sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM users WHERE role = 'super_admin'")
+                .fetch_one(pool)
+                .await
+                .map_err(|e| {
+                    tracing::error!("Bootstrap check error: {:?}", e);
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(serde_json::json!({"error": "bootstrap_check_failed", "message": "Could not check bootstrap"})),
+                    )
+                })?
+                > 0
+        } else {
+            sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM users WHERE role = 'super_admin'")
+                .fetch_one(pool)
+                .await
+                .map_err(|e| {
+                    tracing::error!("Bootstrap check error: {:?}", e);
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(serde_json::json!({"error": "bootstrap_check_failed", "message": "Could not check bootstrap"})),
+                    )
+                })?
+                > 0
+        };
+        if has_super {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": "bootstrap_used", "message": "Bootstrap invite already used"})),
+            ));
+        }
+        return Ok(("super_admin".to_string(), None));
+    }
+    let now = chrono::Utc::now().to_rfc3339();
+    #[derive(Debug, sqlx::FromRow)]
+    struct InviteIdRole {
+        id: String,
+        role: String,
+    }
+    let row: Option<InviteIdRole> = if db::is_postgres() {
+        sqlx::query_as(
+            "SELECT id, role FROM invites WHERE token = $1 AND used_at IS NULL AND expires_at > $2",
+        )
+        .bind(tok)
+        .bind(&now)
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Invite lookup error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "invite_lookup_failed", "message": "Could not validate invite"})),
+            )
+        })?
+    } else {
+        sqlx::query_as(
+            "SELECT id, role FROM invites WHERE token = ? AND used_at IS NULL AND expires_at > ?",
+        )
+        .bind(tok)
+        .bind(&now)
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Invite lookup error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "invite_lookup_failed", "message": "Could not validate invite"})),
+            )
+        })?
+    };
+    match row {
+        Some(r) => Ok((r.role, Some(r.id))),
+        None => Err((
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"error": "invalid_invite", "message": "Invalid or expired invite"})),
+        )),
+    }
 }
 
 async fn register(
@@ -153,29 +330,33 @@ async fn register(
         )
     })?;
 
+    let (role, invite_id_to_use) =
+        resolve_register_role(&pool, req.invite_token.as_deref()).await?;
+
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().to_rfc3339();
 
     let insert_sql = if db::is_postgres() {
-        r#"INSERT INTO users (id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, created_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 0, 0, $10)"#
+        r#"INSERT INTO users (id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 0, 0, $10, $11)"#
     } else {
-        r#"INSERT INTO users (id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)"#
+        r#"INSERT INTO users (id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?)"#
     };
 
     sqlx::query(insert_sql)
         .bind(&id)
-    .bind(&req.email)
-    .bind(&password_hash)
-    .bind(&req.name)
-    .bind(&req.phone)
-    .bind(&req.ministry_role)
-    .bind(&req.church_name)
-    .bind(&req.calling)
-    .bind(&req.selected_course_id)
-    .bind(&now)
-    .execute(&pool)
+        .bind(&req.email)
+        .bind(&password_hash)
+        .bind(&req.name)
+        .bind(&req.phone)
+        .bind(&req.ministry_role)
+        .bind(&req.church_name)
+        .bind(&req.calling)
+        .bind(&req.selected_course_id)
+        .bind(&role)
+        .bind(&now)
+        .execute(&pool)
     .await
     .map_err(|e| {
         if let sqlx::Error::Database(db) = &e {
@@ -193,6 +374,20 @@ async fn register(
         )
     })?;
 
+    if let Some(invite_id) = invite_id_to_use {
+        let update_invite_sql = if db::is_postgres() {
+            "UPDATE invites SET used_at = $1, used_by = $2 WHERE id = $3"
+        } else {
+            "UPDATE invites SET used_at = ?, used_by = ? WHERE id = ?"
+        };
+        let _ = sqlx::query(update_invite_sql)
+            .bind(&now)
+            .bind(&id)
+            .bind(&invite_id)
+            .execute(&pool)
+            .await;
+    }
+
     let user = User {
         id: id.clone(),
         email: req.email,
@@ -205,6 +400,7 @@ async fn register(
         selected_course_id: req.selected_course_id,
         verified: false,
         payment_complete: false,
+        role: role.clone(),
         created_at: now,
     };
 
@@ -214,7 +410,7 @@ async fn register(
         tracing::error!("Registration email error for {}: {}", user.email, e);
     }
 
-    let token = create_token(&id).map_err(|_| {
+    let token = create_token(&id, &role).map_err(|_| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({"error": "token_failed", "message": "Could not create token"})),
@@ -232,9 +428,9 @@ async fn login(
     axum::Json(req): axum::Json<LoginRequest>,
 ) -> Result<Json<AuthResponse>, (StatusCode, Json<serde_json::Value>)> {
     let login_sql = if db::is_postgres() {
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, created_at FROM users WHERE email = $1"
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE email = $1"
     } else {
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, created_at FROM users WHERE email = ?"
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE email = ?"
     };
     let user: Option<User> = sqlx::query_as(login_sql)
         .bind(&req.email)
@@ -262,7 +458,7 @@ async fn login(
         ));
     }
 
-    let token = create_token(&user.id).map_err(|_| {
+    let token = create_token(&user.id, &user.role).map_err(|_| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({"error": "token_failed", "message": "Could not create token"})),
@@ -280,9 +476,9 @@ async fn me(
     AuthUser(user_id): AuthUser,
 ) -> Result<Json<UserResponse>, (StatusCode, Json<serde_json::Value>)> {
     let me_sql = if db::is_postgres() {
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, created_at FROM users WHERE id = $1"
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE id = $1"
     } else {
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, created_at FROM users WHERE id = ?"
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE id = ?"
     };
     let user: Option<User> = sqlx::query_as(me_sql)
         .bind(&user_id)
@@ -330,9 +526,9 @@ async fn update_me(
         })?;
 
     let me_sql2 = if db::is_postgres() {
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, created_at FROM users WHERE id = $1"
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE id = $1"
     } else {
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, created_at FROM users WHERE id = ?"
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE id = ?"
     };
     let user: Option<User> = sqlx::query_as(me_sql2)
         .bind(&user_id)
@@ -372,9 +568,9 @@ async fn verify(
         })?;
 
     let verify_select_sql = if db::is_postgres() {
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, created_at FROM users WHERE id = $1"
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE id = $1"
     } else {
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, created_at FROM users WHERE id = ?"
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE id = ?"
     };
     let user: Option<User> = sqlx::query_as(verify_select_sql)
         .bind(&user_id)
@@ -414,9 +610,9 @@ async fn complete_payment(
         })?;
 
     let payment_select_sql = if db::is_postgres() {
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, created_at FROM users WHERE id = $1"
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE id = $1"
     } else {
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, created_at FROM users WHERE id = ?"
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE id = ?"
     };
     let user: Option<User> = sqlx::query_as(payment_select_sql)
         .bind(&user_id)

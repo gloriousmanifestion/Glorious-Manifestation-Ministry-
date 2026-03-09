@@ -38,6 +38,7 @@ async fn main() {
         .nest(
             "/api/v1",
             routes::auth_routes(pool.clone())
+                .merge(routes::admin_routes(pool.clone()))
                 .merge(routes::events_routes(pool.clone()))
                 .merge(routes::contact_routes(pool)),
         )
