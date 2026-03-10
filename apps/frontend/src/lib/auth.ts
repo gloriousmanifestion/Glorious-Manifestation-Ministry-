@@ -153,6 +153,12 @@ function createAuthStore() {
 			saveUser(user);
 			return user;
 		},
+		async requestPasswordReset(email: string) {
+			await api.requestPasswordReset(email);
+		},
+		async resetPassword(token: string, password: string) {
+			await api.resetPassword(token, password);
+		},
 		async verifyAccount() {
 			const r = await api.verifyAccount();
 			const user = toUser(r);

@@ -64,6 +64,15 @@ export interface LoginRequest {
 	password: string;
 }
 
+export interface ForgotPasswordRequest {
+	email: string;
+}
+
+export interface ResetPasswordRequest {
+	token: string;
+	password: string;
+}
+
 const API_BASE = '/api/v1';
 
 function getAuthHeaders(): HeadersInit {
@@ -120,6 +129,34 @@ export async function login(data: LoginRequest): Promise<AuthResponse> {
 		throw new Error(getErrorMessage(json, 'Login failed'));
 	}
 	return json as AuthResponse;
+}
+
+export async function requestPasswordReset(email: string): Promise<void> {
+	const res = await fetch(`${API_BASE}/auth/forgot-password`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json'
+		},
+		body: JSON.stringify({ email })
+	});
+	const json = await safeJson<unknown>(res);
+	if (!res.ok) {
+		throw new Error(getErrorMessage(json, 'Failed to request password reset'));
+	}
+}
+
+export async function resetPassword(token: string, password: string): Promise<void> {
+	const res = await fetch(`${API_BASE}/auth/reset-password`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json'
+		},
+		body: JSON.stringify({ token, password })
+	});
+	const json = await safeJson<unknown>(res);
+	if (!res.ok) {
+		throw new Error(getErrorMessage(json, 'Failed to reset password'));
+	}
 }
 
 export async function getMe(): Promise<UserResponse | null> {

@@ -40,6 +40,17 @@ pub struct LoginRequest {
     pub password: String,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct ForgotPasswordRequest {
+    pub email: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ResetPasswordRequest {
+    pub token: String,
+    pub password: String,
+}
+
 #[derive(Debug, Serialize)]
 pub struct AuthResponse {
     pub user: UserResponse,
@@ -134,6 +145,8 @@ pub fn auth_routes(pool: AnyPool) -> Router {
     Router::new()
         .route("/auth/register", post(register))
         .route("/auth/login", post(login))
+        .route("/auth/forgot-password", post(forgot_password))
+        .route("/auth/reset-password", post(reset_password))
         .route("/auth/me", get(me).patch(update_me))
         .route("/auth/verify", post(verify))
         .route("/auth/complete-payment", post(complete_payment))
@@ -461,6 +474,237 @@ async fn login(
         user: user.to_response(),
         token,
     }))
+}
+
+async fn send_password_reset_email(to: &str, name: &str, reset_link: &str) -> Result<(), String> {
+    let tenant_id =
+        std::env::var("AZURE_TENANT_ID").map_err(|_| "AZURE_TENANT_ID is not set".to_string())?;
+    let client_id =
+        std::env::var("AZURE_CLIENT_ID").map_err(|_| "AZURE_CLIENT_ID is not set".to_string())?;
+    let client_secret = std::env::var("AZURE_CLIENT_SECRET")
+        .map_err(|_| "AZURE_CLIENT_SECRET is not set".to_string())?;
+    let from_user = std::env::var("WANGAMAIL_FROM_USER")
+        .map_err(|_| "WANGAMAIL_FROM_USER is not set".to_string())?;
+
+    let client = GraphMailClient::builder()
+        .tenant_id(tenant_id)
+        .client_id(client_id)
+        .client_secret(client_secret)
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let subject = "Reset your Prophetic Ministry Manifestation Pastoral School password";
+    let body_text = format!(
+        "Hi {name},\n\n\
+We received a request to reset your password for the Prophetic Ministry Manifestation Pastoral School.\n\n\
+You can reset your password using the link below:\n\
+{reset_link}\n\n\
+If you did not request a password reset, you can safely ignore this email.\n\n\
+Blessings,\n\
+Prophetic Ministry Manifestation Pastoral School"
+    );
+
+    let message = Message {
+        subject: subject.to_string(),
+        body: MessageBody {
+            content_type: BodyType::Text,
+            content: body_text,
+        },
+        to_recipients: vec![Recipient::new(to)],
+        ..Default::default()
+    };
+
+    let request = SendMailRequest::new(message);
+
+    client
+        .send_mail(&from_user, request)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+async fn forgot_password(
+    State(pool): State<AnyPool>,
+    axum::Json(req): axum::Json<ForgotPasswordRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    let email = req.email.trim();
+    if email.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "error": "email_required",
+                "message": "Email is required"
+            })),
+        ));
+    }
+
+    let user_sql = if db::is_postgres() {
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE email = $1"
+    } else {
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE email = ?"
+    };
+
+    let user: Option<User> = sqlx::query_as(user_sql)
+        .bind(email)
+        .fetch_optional(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Forgot password query error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(
+                    serde_json::json!({"error": "forgot_password_failed", "message": "Could not process request"}),
+                ),
+            )
+        })?;
+
+    if let Some(user) = user {
+        let token = Uuid::new_v4().to_string();
+        let id = Uuid::new_v4().to_string();
+        let expires_at = (chrono::Utc::now() + chrono::Duration::hours(1)).to_rfc3339();
+
+        let insert_sql = if db::is_postgres() {
+            "INSERT INTO password_reset_tokens (id, user_id, token, expires_at) VALUES ($1, $2, $3, $4)"
+        } else {
+            "INSERT INTO password_reset_tokens (id, user_id, token, expires_at) VALUES (?, ?, ?, ?)"
+        };
+
+        if let Err(e) = sqlx::query(insert_sql)
+            .bind(&id)
+            .bind(&user.id)
+            .bind(&token)
+            .bind(&expires_at)
+            .execute(&pool)
+            .await
+        {
+            tracing::error!("Insert password reset token error: {:?}", e);
+        } else {
+            let base_url = std::env::var("APP_BASE_URL")
+                .unwrap_or_else(|_| "http://localhost:5173".to_string());
+            let reset_link = format!(
+                "{}/reset-password?token={}",
+                base_url.trim_end_matches('/'),
+                token
+            );
+
+            if let Err(e) =
+                send_password_reset_email(&user.email, &user.name, &reset_link).await
+            {
+                tracing::error!(
+                    "Password reset email error for {}: {}",
+                    user.email,
+                    e
+                );
+            }
+        }
+    }
+
+    // Always return success to avoid leaking which emails exist.
+    Ok(Json(serde_json::json!({
+        "status": "ok",
+        "message": "If an account exists for that email, a reset link has been sent."
+    })))
+}
+
+#[derive(Debug, sqlx::FromRow)]
+struct PasswordResetRow {
+    id: String,
+    user_id: String,
+    expires_at: String,
+    used_at: Option<String>,
+}
+
+async fn reset_password(
+    State(pool): State<AnyPool>,
+    axum::Json(req): axum::Json<ResetPasswordRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    if req.password.len() < 8 {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(
+                serde_json::json!({"error": "password_too_short", "message": "Password must be at least 8 characters"}),
+            ),
+        ));
+    }
+
+    let now = chrono::Utc::now().to_rfc3339();
+
+    let select_sql = if db::is_postgres() {
+        "SELECT id, user_id, expires_at, used_at FROM password_reset_tokens WHERE token = $1 AND used_at IS NULL AND expires_at > $2"
+    } else {
+        "SELECT id, user_id, expires_at, used_at FROM password_reset_tokens WHERE token = ? AND used_at IS NULL AND expires_at > ?"
+    };
+
+    let row: Option<PasswordResetRow> = sqlx::query_as(select_sql)
+        .bind(&req.token)
+        .bind(&now)
+        .fetch_optional(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Reset password token lookup error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(
+                    serde_json::json!({"error": "reset_password_failed", "message": "Could not process request"}),
+                ),
+            )
+        })?;
+
+    let row = row.ok_or((
+        StatusCode::BAD_REQUEST,
+        Json(
+            serde_json::json!({"error": "invalid_token", "message": "Invalid or expired reset token"}),
+        ),
+    ))?;
+
+    let new_hash = hash_password(&req.password).map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(
+                serde_json::json!({"error": "hash_failed", "message": "Could not hash password"}),
+            ),
+        )
+    })?;
+
+    let update_user_sql = if db::is_postgres() {
+        "UPDATE users SET password_hash = $1 WHERE id = $2"
+    } else {
+        "UPDATE users SET password_hash = ? WHERE id = ?"
+    };
+
+    sqlx::query(update_user_sql)
+        .bind(&new_hash)
+        .bind(&row.user_id)
+        .execute(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Reset password user update error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(
+                    serde_json::json!({"error": "reset_password_failed", "message": "Could not update password"}),
+                ),
+            )
+        })?;
+
+    let update_token_sql = if db::is_postgres() {
+        "UPDATE password_reset_tokens SET used_at = $1 WHERE id = $2"
+    } else {
+        "UPDATE password_reset_tokens SET used_at = ? WHERE id = ?"
+    };
+
+    if let Err(e) = sqlx::query(update_token_sql)
+        .bind(&now)
+        .bind(&row.id)
+        .execute(&pool)
+        .await
+    {
+        tracing::error!("Reset password token mark used error: {:?}", e);
+    }
+
+    Ok(Json(serde_json::json!({
+        "status": "ok",
+        "message": "Password has been reset successfully."
+    })))
 }
 
 async fn me(
