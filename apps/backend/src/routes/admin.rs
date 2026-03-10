@@ -804,9 +804,8 @@ async fn list_payment_proofs(
             .fetch_optional(&pool)
             .await
             .unwrap_or(None);
-        let (name, email, phone) = user_row
-            .map(|(n, e, p)| (n, e, p))
-            .unwrap_or_else(|| ("Unknown".to_string(), "".to_string(), "".to_string()));
+        let (name, email, phone) =
+            user_row.unwrap_or_else(|| ("Unknown".to_string(), "".to_string(), "".to_string()));
 
         result.push(serde_json::json!({
             "id": row.id,

@@ -603,7 +603,9 @@ async fn forgot_password(
 struct PasswordResetRow {
     id: String,
     user_id: String,
+    #[allow(dead_code)]
     expires_at: String,
+    #[allow(dead_code)]
     used_at: Option<String>,
 }
 
@@ -894,11 +896,6 @@ struct PaymentProofRow {
     reviewed_at: Option<String>,
     reviewed_by: Option<String>,
     comment: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct UploadPaymentProofPayload {
-    note: Option<String>,
 }
 
 use axum::extract::Multipart;
