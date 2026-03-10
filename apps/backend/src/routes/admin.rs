@@ -458,9 +458,9 @@ async fn list_learning_plans(
                 "price": r.price,
                 "currency": r.currency,
                 "duration": r.duration,
-                "course_ids": course_ids,
+                "courseIds": course_ids,
                 "active": r.active != 0,
-                "created_at": r.created_at,
+                "createdAt": r.created_at,
             })
         })
         .collect();
@@ -468,6 +468,7 @@ async fn list_learning_plans(
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateLearningPlanBody {
     pub name: String,
     pub description: String,
@@ -526,13 +527,14 @@ async fn create_learning_plan(
         "price": body.price,
         "currency": body.currency,
         "duration": body.duration,
-        "course_ids": body.course_ids,
+        "courseIds": body.course_ids,
         "active": true,
-        "created_at": chrono::Utc::now().to_rfc3339(),
+        "createdAt": chrono::Utc::now().to_rfc3339(),
     })))
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateLearningPlanBody {
     pub name: Option<String>,
     pub description: Option<String>,
@@ -634,9 +636,9 @@ async fn update_learning_plan(
         "price": price,
         "currency": row.currency,
         "duration": duration,
-        "course_ids": course_ids_vec,
+        "courseIds": course_ids_vec,
         "active": active != 0,
-        "created_at": row.created_at,
+        "createdAt": row.created_at,
     })))
 }
 

@@ -14,6 +14,14 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
+  # App config (set these as GitHub Secrets)
+  APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
+  BOOTSTRAP_INVITE_TOKEN: ${{ secrets.BOOTSTRAP_INVITE_TOKEN }}
+  # Transactional email via Microsoft Graph (wangamail-rs)
+  AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+  WANGAMAIL_FROM_USER: ${{ secrets.WANGAMAIL_FROM_USER }}
 
 jobs:
   format:
@@ -864,6 +872,12 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           VAULT_ENCRYPTION_KEY: ${{ secrets.VAULT_ENCRYPTION_KEY }}
+          APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
+          BOOTSTRAP_INVITE_TOKEN: ${{ secrets.BOOTSTRAP_INVITE_TOKEN }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          WANGAMAIL_FROM_USER: ${{ secrets.WANGAMAIL_FROM_USER }}
         run: |
           if [[ -z "$DATABASE_URL" ]]; then
             echo "Error: DATABASE_URL secret is not set or not available. Ensure it is configured in the production environment (Settings → Environments → production → Environment secrets) or in repository secrets." >&2
@@ -884,6 +898,24 @@ jobs:
           printf 'VAULT_PATH=${{ steps.deploy_env.outputs.vault_dir }}\n' >> backend.env
           if [[ -n "$VAULT_ENCRYPTION_KEY" ]]; then
             printf 'VAULT_ENCRYPTION_KEY=%s\n' "$VAULT_ENCRYPTION_KEY" >> backend.env
+          fi
+          if [[ -n "$APP_BASE_URL" ]]; then
+            printf 'APP_BASE_URL=%s\n' "$APP_BASE_URL" >> backend.env
+          fi
+          if [[ -n "$BOOTSTRAP_INVITE_TOKEN" ]]; then
+            printf 'BOOTSTRAP_INVITE_TOKEN=%s\n' "$BOOTSTRAP_INVITE_TOKEN" >> backend.env
+          fi
+          if [[ -n "$AZURE_TENANT_ID" ]]; then
+            printf 'AZURE_TENANT_ID=%s\n' "$AZURE_TENANT_ID" >> backend.env
+          fi
+          if [[ -n "$AZURE_CLIENT_ID" ]]; then
+            printf 'AZURE_CLIENT_ID=%s\n' "$AZURE_CLIENT_ID" >> backend.env
+          fi
+          if [[ -n "$AZURE_CLIENT_SECRET" ]]; then
+            printf 'AZURE_CLIENT_SECRET=%s\n' "$AZURE_CLIENT_SECRET" >> backend.env
+          fi
+          if [[ -n "$WANGAMAIL_FROM_USER" ]]; then
+            printf 'WANGAMAIL_FROM_USER=%s\n' "$WANGAMAIL_FROM_USER" >> backend.env
           fi
 
       - name: Deploy backend to VM (systemd)
