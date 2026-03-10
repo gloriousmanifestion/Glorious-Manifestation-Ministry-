@@ -76,6 +76,14 @@
 							class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 shadow-sm transition focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#252d47] dark:text-white dark:placeholder-slate-400"
 							placeholder="Your password"
 						/>
+						<p class="mt-2 text-right text-xs text-slate-600 dark:text-slate-300">
+							<a
+								href="/forgot-password"
+								class="font-medium text-pink-600 hover:text-pink-500 dark:text-pink-400 dark:hover:text-pink-300"
+							>
+								Forgot your password?
+							</a>
+						</p>
 					</div>
 					<button
 						type="submit"
