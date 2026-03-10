@@ -139,6 +139,8 @@ pub fn auth_routes(pool: AnyPool) -> Router {
         .route("/auth/complete-payment", post(complete_payment))
         .route("/auth/courses", get(list_courses))
         .route("/auth/invite/:token", get(get_invite))
+        .route("/payments/proofs", post(upload_payment_proof))
+        .route("/payments/proofs/me", get(list_my_payment_proofs))
         .with_state(pool)
 }
 
@@ -641,4 +643,190 @@ async fn list_courses(
             )
         })?;
     Ok(Json(courses))
+}
+
+// ---------- Payment proofs (POP upload + listing for student) ----------
+
+#[derive(Debug, Serialize, sqlx::FromRow)]
+struct PaymentProofRow {
+    id: String,
+    user_id: String,
+    file_url: String,
+    status: String,
+    note: Option<String>,
+    uploaded_at: String,
+    reviewed_at: Option<String>,
+    reviewed_by: Option<String>,
+    comment: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UploadPaymentProofPayload {
+    note: Option<String>,
+}
+
+use axum::extract::Multipart;
+
+async fn upload_payment_proof(
+    State(pool): State<AnyPool>,
+    AuthUser(user_id): AuthUser,
+    mut multipart: Multipart,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    use tokio::io::AsyncWriteExt;
+
+    let mut file_path: Option<String> = None;
+    let mut note: Option<String> = None;
+
+    while let Some(field) = multipart.next_field().await.map_err(|e| {
+        tracing::error!("Multipart error: {:?}", e);
+        (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"error": "invalid_multipart", "message": "Invalid upload"})),
+        )
+    })? {
+        let name = field.name().unwrap_or("").to_string();
+        if name == "file" {
+            let file_name = field
+                .file_name()
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| format!("pop-{}.bin", Uuid::new_v4()));
+            let bytes = field.bytes().await.map_err(|e| {
+                tracing::error!("Read upload error: {:?}", e);
+                (
+                    StatusCode::BAD_REQUEST,
+                    Json(
+                        serde_json::json!({"error": "upload_failed", "message": "Could not read uploaded file"}),
+                    ),
+                )
+            })?;
+
+            let upload_dir =
+                std::env::var("PAYMENT_PROOFS_DIR").unwrap_or_else(|_| "uploads/payment_proofs".into());
+            tokio::fs::create_dir_all(&upload_dir).await.map_err(|e| {
+                tracing::error!("Create upload dir error: {:?}", e);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(
+                        serde_json::json!({"error": "upload_failed", "message": "Could not prepare upload directory"}),
+                    ),
+                )
+            })?;
+            let path = format!("{}/{}", upload_dir.trim_end_matches('/'), file_name);
+            let mut file = tokio::fs::File::create(&path).await.map_err(|e| {
+                tracing::error!("Create upload file error: {:?}", e);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(
+                        serde_json::json!({"error": "upload_failed", "message": "Could not save uploaded file"}),
+                    ),
+                )
+            })?;
+            file.write_all(&bytes).await.map_err(|e| {
+                tracing::error!("Write upload file error: {:?}", e);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(
+                        serde_json::json!({"error": "upload_failed", "message": "Could not save uploaded file"}),
+                    ),
+                )
+            })?;
+            file_path = Some(path);
+        } else if name == "note" {
+            let text = field.text().await.unwrap_or_default();
+            if !text.trim().is_empty() {
+                note = Some(text.trim().to_string());
+            }
+        }
+    }
+
+    let file_path = match file_path {
+        Some(p) => p,
+        None => {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": "file_required", "message": "Please upload a file"})),
+            ))
+        }
+    };
+
+    let id = Uuid::new_v4().to_string();
+    let now = chrono::Utc::now().to_rfc3339();
+    let status = "pending".to_string();
+
+    let insert_sql = if db::is_postgres() {
+        "INSERT INTO payment_proofs (id, user_id, file_url, status, note, uploaded_at) VALUES ($1, $2, $3, $4, $5, $6)"
+    } else {
+        "INSERT INTO payment_proofs (id, user_id, file_url, status, note, uploaded_at) VALUES (?, ?, ?, ?, ?, ?)"
+    };
+    sqlx::query(insert_sql)
+        .bind(&id)
+        .bind(&user_id)
+        .bind(&file_path)
+        .bind(&status)
+        .bind(&note)
+        .bind(&now)
+        .execute(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Insert payment proof error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(
+                    serde_json::json!({"error": "upload_failed", "message": "Could not save payment proof"}),
+                ),
+            )
+        })?;
+
+    Ok(Json(serde_json::json!({
+        "id": id,
+        "file_url": file_path,
+        "status": status,
+        "note": note,
+        "uploaded_at": now,
+        "reviewed_at": null,
+        "reviewed_by": null,
+        "comment": null
+    })))
+}
+
+async fn list_my_payment_proofs(
+    State(pool): State<AnyPool>,
+    AuthUser(user_id): AuthUser,
+) -> Result<Json<Vec<serde_json::Value>>, (StatusCode, Json<serde_json::Value>)> {
+    let sql = if db::is_postgres() {
+        "SELECT id, user_id, file_url, status, note, uploaded_at, reviewed_at, reviewed_by, comment \
+         FROM payment_proofs WHERE user_id = $1 ORDER BY uploaded_at DESC"
+    } else {
+        "SELECT id, user_id, file_url, status, note, uploaded_at, reviewed_at, reviewed_by, comment \
+         FROM payment_proofs WHERE user_id = ? ORDER BY uploaded_at DESC"
+    };
+    let rows: Vec<PaymentProofRow> = sqlx::query_as(sql)
+        .bind(&user_id)
+        .fetch_all(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("List my payment proofs error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(
+                    serde_json::json!({"error": "fetch_failed", "message": "Could not load payment proofs"}),
+                ),
+            )
+        })?;
+    let list: Vec<serde_json::Value> = rows
+        .into_iter()
+        .map(|r| {
+            serde_json::json!({
+                "id": r.id,
+                "file_url": r.file_url,
+                "status": r.status,
+                "note": r.note,
+                "uploaded_at": r.uploaded_at,
+                "reviewed_at": r.reviewed_at,
+                "reviewed_by": r.reviewed_by,
+                "comment": r.comment,
+            })
+        })
+        .collect();
+    Ok(Json(list))
 }

@@ -90,21 +90,6 @@
 					Don't have an account?
 					<a href="/register" class="font-medium text-pink-600 hover:text-pink-500 dark:text-pink-400 dark:hover:text-pink-300"> Register</a>
 				</p>
-
-				<div class="mt-6 rounded-xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-800/50">
-					<p class="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
-						First-time setup
-					</p>
-					<p class="mt-1 text-sm text-slate-600 dark:text-slate-300">
-						Setting up the platform? Create the initial Super Admin account to invite more admins and manage the site.
-					</p>
-					<a
-						href="/invite/bootstrap"
-						class="mt-2 inline-block text-sm font-medium text-pink-600 hover:text-pink-700 dark:text-pink-400 dark:hover:text-pink-300"
-					>
-						Create initial Super Admin account →
-					</a>
-				</div>
 			</div>
 		</div>
 	</main>

@@ -749,5 +749,10 @@ pub fn admin_routes(pool: AnyPool) -> Router {
         )
         .route("/admin/learning-plans/:id", patch(update_learning_plan))
         .route("/admin/invites", post(create_invite))
+        .route("/admin/payment-proofs", get(list_payment_proofs))
+        .route(
+            "/admin/payment-proofs/:id/review",
+            post(review_payment_proof),
+        )
         .with_state(pool)
 }
