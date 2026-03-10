@@ -1,19 +1,28 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import * as adminApi from '$lib/admin-api';
-	import type { AdminMetrics, AdminUser } from '$lib/admin-api';
+	import type { AdminMetrics, AdminUser, AdminPaymentProof } from '$lib/admin-api';
 	import { SITE } from '$lib/config';
 
 	let metrics = $state<AdminMetrics | null>(null);
 	let recentUsers = $state<AdminUser[]>([]);
 	let loading = $state(true);
 	let error = $state('');
+	let pendingProofs = $state<AdminPaymentProof[]>([]);
+	let proofsError = $state('');
+	let proofsLoading = $state(false);
 
 	onMount(async () => {
 		try {
 			metrics = await adminApi.getAdminMetrics();
 			const { users } = await adminApi.getAdminUsers({ limit: 8 });
 			recentUsers = users;
+			try {
+				pendingProofs = await adminApi.getPaymentProofs({ status: 'pending', limit: 10 });
+			} catch (e) {
+				proofsError =
+					e instanceof Error ? e.message : 'Failed to load payment proofs. Backend not ready?';
+			}
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to load dashboard';
 		} finally {
@@ -32,6 +41,21 @@
 			month: 'short',
 			year: 'numeric'
 		});
+	}
+
+	async function handleReviewProof(id: string, status: 'approved' | 'rejected') {
+		if (proofsLoading) return;
+		proofsLoading = true;
+		proofsError = '';
+		try {
+			await adminApi.reviewPaymentProof(id, status);
+			pendingProofs = pendingProofs.filter((p) => p.id !== id);
+		} catch (e) {
+			proofsError =
+				e instanceof Error ? e.message : 'Failed to update proof status. Please try again.';
+		} finally {
+			proofsLoading = false;
+		}
 	}
 </script>
 
@@ -235,6 +259,100 @@
 			{#if recentUsers.length === 0}
 				<div class="px-5 py-12 text-center text-slate-500">No registrations yet.</div>
 			{/if}
+		</div>
+
+		<!-- Payment proofs (POP) -->
+		<div class="mt-8 rounded-xl border border-slate-800 bg-slate-900/80">
+			<div class="flex items-center justify-between border-b border-slate-800 px-5 py-4">
+				<h2 class="text-lg font-semibold text-white">Payment proofs</h2>
+				<p class="text-xs text-slate-500">
+					Review student uploads and mark payments as approved or rejected.
+				</p>
+			</div>
+			{#if proofsError}
+				<div class="border-b border-slate-800 bg-red-900/20 px-5 py-3 text-xs text-red-300">
+					{proofsError}
+				</div>
+			{/if}
+			<div class="overflow-x-auto">
+				<table class="w-full min-w-[720px]">
+					<thead>
+						<tr class="border-b border-slate-800 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
+							<th class="px-5 py-3">Student</th>
+							<th class="px-5 py-3">Contact</th>
+							<th class="px-5 py-3">Note</th>
+							<th class="px-5 py-3">Uploaded</th>
+							<th class="px-5 py-3">Actions</th>
+						</tr>
+					</thead>
+					<tbody>
+						{#if pendingProofs.length === 0}
+							<tr>
+								<td
+									class="px-5 py-8 text-center text-slate-500"
+									colspan="5"
+								>
+									No pending payment proofs.
+								</td>
+							</tr>
+						{:else}
+							{#each pendingProofs as proof}
+								<tr class="border-b border-slate-800/80 transition hover:bg-slate-800/50">
+									<td class="px-5 py-3 text-sm text-slate-100">
+										<div class="font-medium">{proof.userName}</div>
+										<div class="text-xs text-slate-500">{proof.userEmail}</div>
+									</td>
+									<td class="px-5 py-3 text-xs text-slate-400">
+										<div class="truncate">{proof.userEmail}</div>
+										{#if proof.userPhone}
+											<div class="mt-1 truncate">{proof.userPhone}</div>
+										{/if}
+									</td>
+									<td class="px-5 py-3 text-xs text-slate-300 max-w-xs">
+										{proof.note || '—'}
+									</td>
+									<td class="px-5 py-3 text-xs text-slate-400">
+										{new Date(proof.uploadedAt).toLocaleString(undefined, {
+											day: 'numeric',
+											month: 'short',
+											hour: '2-digit',
+											minute: '2-digit'
+										})}
+									</td>
+									<td class="px-5 py-3 text-xs">
+										<div class="flex flex-wrap gap-2">
+											<a
+												href={proof.fileUrl}
+												target="_blank"
+												rel="noopener noreferrer"
+												class="inline-flex items-center gap-1 rounded-full border border-slate-700 px-3 py-1 text-[11px] font-medium text-slate-200 hover:border-slate-500"
+											>
+												View file
+											</a>
+											<button
+												type="button"
+												class="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold text-emerald-300 hover:bg-emerald-500/20 disabled:opacity-50"
+												disabled={proofsLoading}
+												onclick={() => handleReviewProof(proof.id, 'approved')}
+											>
+												Approve
+											</button>
+											<button
+												type="button"
+												class="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-3 py-1 text-[11px] font-semibold text-red-300 hover:bg-red-500/20 disabled:opacity-50"
+												disabled={proofsLoading}
+												onclick={() => handleReviewProof(proof.id, 'rejected')}
+											>
+												Reject
+											</button>
+										</div>
+									</td>
+								</tr>
+							{/each}
+						{/if}
+					</tbody>
+				</table>
+			</div>
 		</div>
 	{/if}
 </div>

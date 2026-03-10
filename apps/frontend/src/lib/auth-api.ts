@@ -171,6 +171,54 @@ export async function completePayment(): Promise<UserResponse> {
 	return json as UserResponse;
 }
 
+// --- Payment proofs (POP upload) ---
+
+export type PaymentProofStatus = 'pending' | 'approved' | 'rejected';
+
+export interface PaymentProof {
+	id: string;
+	file_url: string;
+	status: PaymentProofStatus;
+	uploaded_at: string;
+	reviewed_at?: string | null;
+	reviewed_by?: string | null;
+	comment?: string | null;
+}
+
+export async function getMyPaymentProofs(): Promise<PaymentProof[]> {
+	const res = await fetch(`${API_BASE}/payments/proofs/me`, {
+		headers: getAuthHeaders()
+	});
+	const json = await safeJson<PaymentProof[] | Record<string, unknown>>(res);
+	if (!res.ok) {
+		const err = json as Record<string, unknown>;
+		throw new Error(
+			(err.message as string) || (err.error as string) || 'Failed to load payment proofs'
+		);
+	}
+	return Array.isArray(json) ? (json as PaymentProof[]) : [];
+}
+
+export async function uploadPaymentProof(file: File, note?: string): Promise<PaymentProof> {
+	const formData = new FormData();
+	formData.append('file', file);
+	if (note) formData.append('note', note);
+
+	const token =
+		typeof window !== 'undefined' ? window.localStorage.getItem('pms_token') : undefined;
+
+	const res = await fetch(`${API_BASE}/payments/proofs`, {
+		method: 'POST',
+		headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+		body: formData
+	});
+	const json = await safeJson<unknown>(res);
+	if (!res.ok) {
+		throw new Error(getErrorMessage(json, 'Failed to upload proof of payment'));
+	}
+	return json as PaymentProof;
+}
+
 export async function getCourses(): Promise<Array<{ id: string; name: string; duration: string }>> {
 	const res = await fetch(`${API_BASE}/auth/courses`, {
 		headers: getAuthHeaders()

@@ -275,6 +275,83 @@ export async function updateLearningPlan(
 	return json as LearningPlan;
 }
 
+// --- Payment proofs (POP review) ---
+
+export type AdminPaymentProofStatus = 'pending' | 'approved' | 'rejected';
+
+export interface AdminPaymentProof {
+	id: string;
+	userId: string;
+	userName: string;
+	userEmail: string;
+	userPhone?: string | null;
+	uploadedAt: string;
+	status: AdminPaymentProofStatus;
+	fileUrl: string;
+	note?: string | null;
+}
+
+export async function getPaymentProofs(params?: {
+	status?: AdminPaymentProofStatus;
+	limit?: number;
+}): Promise<AdminPaymentProof[]> {
+	const q = new URLSearchParams();
+	if (params?.status) q.set('status', params.status);
+	if (params?.limit) q.set('limit', String(params.limit ?? 20));
+	const url = `${API_BASE}/admin/payment-proofs${q.toString() ? '?' + q.toString() : ''}`;
+	const res = await fetch(url, { headers: getAuthHeaders() });
+	if (res.status === 404 || res.status === 502) {
+		return getMockPaymentProofs();
+	}
+	const json = await safeJson<AdminPaymentProof[] | { message?: string }>(res);
+	if (!res.ok)
+		throw new Error((json as { message?: string }).message ?? 'Failed to load payment proofs');
+	return Array.isArray(json) ? (json as AdminPaymentProof[]) : [];
+}
+
+export async function reviewPaymentProof(
+	id: string,
+	status: AdminPaymentProofStatus,
+	comment?: string
+): Promise<void> {
+	const res = await fetch(`${API_BASE}/admin/payment-proofs/${encodeURIComponent(id)}/review`, {
+		method: 'POST',
+		headers: getAuthHeaders(),
+		body: JSON.stringify({ status, comment })
+	});
+	const json = await safeJson<{ message?: string } | Record<string, unknown>>(res);
+	if (!res.ok) {
+		throw new Error((json as { message?: string }).message ?? 'Failed to update proof status');
+	}
+}
+
+function getMockPaymentProofs(): AdminPaymentProof[] {
+	return [
+		{
+			id: 'pop_1',
+			userId: '1',
+			userName: 'John Adebayo',
+			userEmail: 'pastor@church.org',
+			userPhone: '+234 800 000 0001',
+			uploadedAt: new Date().toISOString(),
+			status: 'pending',
+			fileUrl: '#',
+			note: 'GTBank transfer on 3rd March, 45,000 NGN'
+		},
+		{
+			id: 'pop_2',
+			userId: '2',
+			userName: 'Chioma Okeke',
+			userEmail: 'minister@faith.org',
+			userPhone: '+234 800 000 0002',
+			uploadedAt: new Date(Date.now() - 3600_000).toISOString(),
+			status: 'pending',
+			fileUrl: '#',
+			note: 'UBA transfer, full payment'
+		}
+	];
+}
+
 // --- Invitations (super_admin only) ---
 
 export type InviteRole = 'admin' | 'super_admin';

@@ -4,12 +4,15 @@
 	import Nav from '$lib/components/Nav.svelte';
 	import Footer from '$lib/components/Footer.svelte';
 	import { auth, userStore, authReady, fetchCourses } from '$lib/auth';
-	import type { Course } from '$lib/auth';
+	import type { Course, PaymentProof } from '$lib/auth';
 	import { SITE } from '$lib/config';
 	import { getCourseDetailById } from '$lib/courses';
 
 	let mounted = $state(false);
 	let courses = $state<Course[]>([]);
+	let paymentProofs = $state<PaymentProof[]>([]);
+	let uploadingProof = $state(false);
+	let proofError = $state('');
 
 	$effect(() => {
 		if (!mounted) return;
@@ -24,6 +27,12 @@
 		mounted = true;
 		try {
 			courses = await fetchCourses();
+			try {
+				paymentProofs = await auth.getMyPaymentProofs();
+			} catch {
+				// POP API may not yet be implemented; fail softly.
+				paymentProofs = [];
+			}
 		} catch {
 			// Fallback empty - user can still use dashboard
 		}
@@ -33,6 +42,10 @@
 	const showVerifyBanner = $derived(user && !user.verified);
 	const showPaymentBanner = $derived(user && !user.paymentComplete);
 	const selectedCourse = $derived(user?.selectedCourseId ? courses.find((c) => c.id === user.selectedCourseId) : null);
+
+	const latestProof = $derived(
+		paymentProofs.length ? paymentProofs.slice().sort((a, b) => (a.uploaded_at < b.uploaded_at ? 1 : -1))[0] : null
+	);
 
 	let verifyLoading = $state(false);
 	let actionError = $state('');
@@ -244,6 +257,42 @@
 										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
 									</svg>
 								</a>
+								<!-- Proof of payment helper -->
+								<div class="mt-4 rounded-xl border border-slate-200/70 bg-slate-50/80 p-3 text-xs text-slate-600 dark:border-white/10 dark:bg-[#1e2642] dark:text-slate-100">
+									<p class="font-medium text-slate-700 dark:text-slate-100">
+										Already paid via bank transfer or other method?
+									</p>
+									<p class="mt-1">
+										Upload a clear proof of payment so the admin team can verify and mark your payment
+										as complete.
+									</p>
+									{#if latestProof}
+										<p class="mt-2">
+											<span class="font-semibold">Latest proof status:</span>
+											<span class="ml-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold
+												{latestProof.status === 'approved'
+													? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+													: latestProof.status === 'rejected'
+													? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+													: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'}">
+												{latestProof.status === 'approved'
+													? 'Approved'
+													: latestProof.status === 'rejected'
+														? 'Rejected'
+														: 'Pending review'}
+											</span>
+										</p>
+									{/if}
+									<a
+										href="#pop-upload"
+										class="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-pink-600 hover:text-pink-700 dark:text-pink-400 dark:hover:text-pink-300"
+									>
+										Go to proof upload
+										<svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4M3 12h18" />
+										</svg>
+									</a>
+								</div>
 							{/if}
 						{:else}
 							<p class="mt-4 text-slate-700 dark:text-slate-100">No course selected yet.</p>
@@ -277,6 +326,129 @@
 							<p class="font-medium text-slate-900 dark:text-white">{SITE.location}</p>
 						</div>
 					</div>
+				</div>
+
+				<!-- Proof of payment upload -->
+				<div
+					id="pop-upload"
+					class="mt-6 sm:mt-8 rounded-2xl border border-slate-200/80 section-separator card-premium bg-white/95 p-4 sm:p-6 shadow-sm dark:bg-[#1e2642]"
+				>
+					<h2 class="text-lg font-semibold text-slate-900 dark:text-white">Proof of payment</h2>
+					<p class="mt-1 text-sm text-slate-600 dark:text-slate-200">
+						If you paid via bank transfer or offline, upload your proof of payment here. An admin will review
+						it and update your payment status.
+					</p>
+					{#if proofError}
+						<div class="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">
+							{proofError}
+						</div>
+					{/if}
+					<form
+						class="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] items-start"
+						onsubmit={(event) => {
+							event.preventDefault();
+							const form = event.currentTarget as HTMLFormElement;
+							const input = form.querySelector('#pop-file') as HTMLInputElement | null;
+							const noteInput = form.querySelector('#pop-note') as HTMLInputElement | null;
+							if (!input || !input.files || input.files.length === 0) {
+								proofError = 'Please choose a file to upload.';
+								return;
+							}
+							(async () => {
+								const f = input.files![0];
+								proofError = '';
+								uploadingProof = true;
+								try {
+									const proof = await auth.uploadPaymentProof(f, noteInput?.value || undefined);
+									paymentProofs = [...paymentProofs, proof];
+									input.value = '';
+									if (noteInput) noteInput.value = '';
+								} catch (e) {
+									proofError =
+										e instanceof Error
+											? e.message
+											: 'Failed to upload proof of payment. Please try again.';
+								} finally {
+									uploadingProof = false;
+								}
+							})();
+						}}
+					>
+						<div class="space-y-3">
+							<div>
+								<label for="pop-file" class="block text-xs font-medium text-slate-700 dark:text-slate-100">
+									Upload file (screenshot, PDF, or image)
+								</label>
+								<input
+									id="pop-file"
+									type="file"
+									accept="image/*,.pdf"
+									class="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 file:mr-3 file:rounded-lg file:border-0 file:bg-pink-50 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-pink-700 hover:file:bg-pink-100 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#252d47] dark:text-white"
+								/>
+							</div>
+							<div>
+								<label for="pop-note" class="block text-xs font-medium text-slate-700 dark:text-slate-100">
+									Optional note
+								</label>
+								<input
+									id="pop-note"
+									type="text"
+									placeholder="e.g. Paid via GTBank transfer on 3rd March"
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#252d47] dark:text-white dark:placeholder-slate-400"
+								/>
+							</div>
+						</div>
+						<div class="flex flex-col gap-3">
+							<button
+								type="submit"
+								class="btn-scale inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-pink-500 to-purple-600 px-4 py-2.5 text-xs font-semibold text-white shadow-lg transition hover:from-pink-600 hover:to-purple-700 disabled:opacity-60"
+								disabled={uploadingProof}
+							>
+								{#if uploadingProof}
+									<span class="h-4 w-4 animate-spin rounded-full border-2 border-white/70 border-t-transparent mr-2"></span>
+									Uploading…
+								{:else}
+									Upload proof
+								{/if}
+							</button>
+							{#if paymentProofs.length}
+								<div class="rounded-xl border border-slate-200/70 bg-slate-50/80 px-3 py-2 text-[11px] text-slate-600 dark:border-white/10 dark:bg-[#252d47] dark:text-slate-100">
+									<p class="font-semibold text-slate-700 dark:text-slate-100">Recent uploads</p>
+									<ul class="mt-1 space-y-1">
+										{#each paymentProofs
+											.slice()
+											.sort((a, b) => (a.uploaded_at < b.uploaded_at ? 1 : -1))
+											.slice(0, 3) as proof}
+											<li class="flex items-center justify-between gap-2">
+												<span class="truncate">
+													{new Date(proof.uploaded_at).toLocaleString(undefined, {
+														month: 'short',
+														day: 'numeric',
+														hour: '2-digit',
+														minute: '2-digit'
+													})}
+												</span>
+												<span
+													class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold
+														{proof.status === 'approved'
+															? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+															: proof.status === 'rejected'
+															? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+															: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'}"
+												>
+													{proof.status === 'approved'
+														? 'Approved'
+														: proof.status === 'rejected'
+															? 'Rejected'
+															: 'Pending'}
+												</span>
+											</li>
+										{/each}
+									</ul>
+								</div>
+							{/if}
+						</div>
+					</form>
 				</div>
 
 				<!-- Logout -->

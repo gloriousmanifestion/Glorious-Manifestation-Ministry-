@@ -5,7 +5,7 @@
 
 import { writable, get } from 'svelte/store';
 import * as api from '$lib/auth-api';
-import { toUser } from '$lib/auth-api';
+import { toUser, type PaymentProof } from '$lib/auth-api';
 import type { UserRole } from '$lib/auth-api';
 
 const TOKEN_KEY = 'pms_token';
@@ -34,6 +34,8 @@ export interface Course {
 	name: string;
 	duration: string;
 }
+
+export type { PaymentProof };
 
 /** Fetch courses from backend - use this instead of hardcoded list */
 export async function fetchCourses(): Promise<Course[]> {
@@ -162,6 +164,13 @@ function createAuthStore() {
 			const user = toUser(r);
 			userStore.set(user);
 			saveUser(user);
+		},
+		async uploadPaymentProof(file: File, note?: string) {
+			const proof = await api.uploadPaymentProof(file, note);
+			return proof;
+		},
+		async getMyPaymentProofs() {
+			return api.getMyPaymentProofs();
 		},
 		async selectCourse(courseId: string | null) {
 			if (!courseId) return;
