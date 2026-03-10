@@ -22,8 +22,9 @@ test.describe('Password reset flow (UI)', () => {
 		await page.goto('/reset-password?token=dummy-token');
 
 		await expect(page.getByRole('heading', { name: 'Reset your password' })).toBeVisible();
-		await expect(page.getByLabel('New password')).toBeVisible();
-		await expect(page.getByLabel('Confirm new password')).toBeVisible();
+		await expect(page.getByLabel('New password', { exact: true }).first()).toBeVisible();
+		await expect(
+			page.getByLabel('Confirm new password', { exact: true }).first()
+		).toBeVisible();
 	});
 });
-

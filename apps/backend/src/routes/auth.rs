@@ -586,14 +586,8 @@ async fn forgot_password(
                 token
             );
 
-            if let Err(e) =
-                send_password_reset_email(&user.email, &user.name, &reset_link).await
-            {
-                tracing::error!(
-                    "Password reset email error for {}: {}",
-                    user.email,
-                    e
-                );
+            if let Err(e) = send_password_reset_email(&user.email, &user.name, &reset_link).await {
+                tracing::error!("Password reset email error for {}: {}", user.email, e);
             }
         }
     }
@@ -659,9 +653,7 @@ async fn reset_password(
     let new_hash = hash_password(&req.password).map_err(|_| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(
-                serde_json::json!({"error": "hash_failed", "message": "Could not hash password"}),
-            ),
+            Json(serde_json::json!({"error": "hash_failed", "message": "Could not hash password"})),
         )
     })?;
 
@@ -944,8 +936,8 @@ async fn upload_payment_proof(
                 )
             })?;
 
-            let upload_dir =
-                std::env::var("PAYMENT_PROOFS_DIR").unwrap_or_else(|_| "uploads/payment_proofs".into());
+            let upload_dir = std::env::var("PAYMENT_PROOFS_DIR")
+                .unwrap_or_else(|_| "uploads/payment_proofs".into());
             tokio::fs::create_dir_all(&upload_dir).await.map_err(|e| {
                 tracing::error!("Create upload dir error: {:?}", e);
                 (
@@ -988,7 +980,9 @@ async fn upload_payment_proof(
         None => {
             return Err((
                 StatusCode::BAD_REQUEST,
-                Json(serde_json::json!({"error": "file_required", "message": "Please upload a file"})),
+                Json(
+                    serde_json::json!({"error": "file_required", "message": "Please upload a file"}),
+                ),
             ))
         }
     };
