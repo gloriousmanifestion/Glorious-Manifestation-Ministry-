@@ -23,8 +23,6 @@ test.describe('Password reset flow (UI)', () => {
 
 		await expect(page.getByRole('heading', { name: 'Reset your password' })).toBeVisible();
 		await expect(page.getByLabel('New password', { exact: true }).first()).toBeVisible();
-		await expect(
-			page.getByLabel('Confirm new password', { exact: true }).first()
-		).toBeVisible();
+		await expect(page.getByLabel('Confirm new password', { exact: true }).first()).toBeVisible();
 	});
 });
