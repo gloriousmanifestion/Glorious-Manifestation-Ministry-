@@ -812,6 +812,37 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Validate required secrets (email + invites)
+        env:
+          APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
+          BOOTSTRAP_INVITE_TOKEN: ${{ secrets.BOOTSTRAP_INVITE_TOKEN }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          WANGAMAIL_FROM_USER: ${{ secrets.WANGAMAIL_FROM_USER }}
+        run: |
+          set -euo pipefail
+          missing=0
+          req() {
+            local name="$1"
+            local val="${!name:-}"
+            if [ -z "$val" ]; then
+              echo "ERROR: Required secret '$name' is missing or empty." >&2
+              missing=1
+            fi
+          }
+          req APP_BASE_URL
+          req BOOTSTRAP_INVITE_TOKEN
+          req AZURE_TENANT_ID
+          req AZURE_CLIENT_ID
+          req AZURE_CLIENT_SECRET
+          req WANGAMAIL_FROM_USER
+          if [ "$missing" -ne 0 ]; then
+            echo "" >&2
+            echo "Add these as repository secrets (Settings → Secrets and variables → Actions → Repository secrets)." >&2
+            exit 1
+          fi
+
       - name: Install PostgreSQL client (for wipe)
         if: vars.WIPE_DB == 'true'
         run: |
