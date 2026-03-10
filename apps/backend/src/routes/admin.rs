@@ -734,6 +734,145 @@ async fn create_invite(
     }))
 }
 
+// ---------- Payment proofs (POP) ----------
+
+#[derive(Debug, Serialize, sqlx::FromRow)]
+struct AdminPaymentProofRow {
+    id: String,
+    user_id: String,
+    file_url: String,
+    status: String,
+    note: Option<String>,
+    uploaded_at: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PaymentProofQuery {
+    pub status: Option<String>, // pending | approved | rejected
+    pub limit: Option<u32>,
+}
+
+async fn list_payment_proofs(
+    State(pool): State<AnyPool>,
+    AdminUser(_user_id, _role): AdminUser,
+    Query(q): Query<PaymentProofQuery>,
+) -> Result<Json<Vec<serde_json::Value>>, (StatusCode, Json<serde_json::Value>)> {
+    let status = q.status.unwrap_or_else(|| "pending".to_string());
+    let limit = q.limit.unwrap_or(20).clamp(1, 100);
+
+    let rows: Vec<AdminPaymentProofRow> = if db::is_postgres() {
+        sqlx::query_as(
+            "SELECT id, user_id, file_url, status, note, uploaded_at \
+             FROM payment_proofs WHERE status = $1 ORDER BY uploaded_at DESC LIMIT $2",
+        )
+        .bind(&status)
+        .bind(limit as i64)
+        .fetch_all(&pool)
+        .await
+    } else {
+        sqlx::query_as(
+            "SELECT id, user_id, file_url, status, note, uploaded_at \
+             FROM payment_proofs WHERE status = ? ORDER BY uploaded_at DESC LIMIT ?",
+        )
+        .bind(&status)
+        .bind(limit as i64)
+        .fetch_all(&pool)
+        .await
+    }
+    .map_err(|e| {
+        tracing::error!("Admin list payment proofs error: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"message": "Failed to load payment proofs"})),
+        )
+    })?;
+
+    if rows.is_empty() {
+        return Ok(Json(Vec::new()));
+    }
+
+    // Join with users for name/email/phone
+    let mut result = Vec::with_capacity(rows.len());
+    for row in rows {
+        let user_sql = if db::is_postgres() {
+            "SELECT name, email, phone FROM users WHERE id = $1"
+        } else {
+            "SELECT name, email, phone FROM users WHERE id = ?"
+        };
+        let user_row: Option<(String, String, String)> = sqlx::query_as(user_sql)
+            .bind(&row.user_id)
+            .fetch_optional(&pool)
+            .await
+            .unwrap_or(None);
+        let (name, email, phone) = user_row
+            .map(|(n, e, p)| (n, e, p))
+            .unwrap_or_else(|| ("Unknown".to_string(), "".to_string(), "".to_string()));
+
+        result.push(serde_json::json!({
+            "id": row.id,
+            "userId": row.user_id,
+            "userName": name,
+            "userEmail": email,
+            "userPhone": if phone.is_empty() { serde_json::Value::Null } else { serde_json::Value::String(phone) },
+            "uploadedAt": row.uploaded_at,
+            "status": row.status,
+            "fileUrl": row.file_url,
+            "note": row.note,
+        }));
+    }
+
+    Ok(Json(result))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ReviewPaymentProofBody {
+    pub status: String, // approved | rejected
+    pub comment: Option<String>,
+}
+
+async fn review_payment_proof(
+    State(pool): State<AnyPool>,
+    AdminUser(user_id, role): AdminUser,
+    Path(id): Path<String>,
+    axum::Json(body): axum::Json<ReviewPaymentProofBody>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    if role != "admin" && role != "super_admin" {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(serde_json::json!({"message": "Only admin can review payment proofs"})),
+        ));
+    }
+    let new_status = body.status.trim();
+    if new_status != "approved" && new_status != "rejected" {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"message": "status must be approved or rejected"})),
+        ));
+    }
+
+    let now = chrono::Utc::now().to_rfc3339();
+    let sql = if db::is_postgres() {
+        "UPDATE payment_proofs SET status = $1, reviewed_at = $2, reviewed_by = $3, comment = COALESCE($4, comment) WHERE id = $5"
+    } else {
+        "UPDATE payment_proofs SET status = ?, reviewed_at = ?, reviewed_by = ?, comment = COALESCE(?, comment) WHERE id = ?"
+    };
+    sqlx::query(sql)
+        .bind(new_status)
+        .bind(&now)
+        .bind(&user_id)
+        .bind(body.comment.as_deref().unwrap_or(""))
+        .bind(&id)
+        .execute(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Admin review payment proof error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"message": "Failed to update payment proof"})),
+            )
+        })?;
+    Ok(Json(serde_json::json!({"ok": true})))
+}
 pub fn admin_routes(pool: AnyPool) -> Router {
     Router::new()
         .route("/admin/metrics", get(metrics))
