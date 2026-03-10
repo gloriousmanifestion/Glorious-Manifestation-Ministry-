@@ -116,7 +116,7 @@
 								type="button"
 								onclick={handleVerify}
 								disabled={verifyLoading}
-								class="btn-scale shrink-0 rounded-xl bg-amber-500 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-600 disabled:opacity-60"
+								class="btn-scale w-full sm:w-auto rounded-xl bg-amber-500 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-600 disabled:opacity-60"
 							>
 								{verifyLoading ? 'Verifying…' : 'Verify now'}
 							</button>
