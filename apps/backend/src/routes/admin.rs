@@ -435,18 +435,32 @@ async fn list_learning_plans(
     State(pool): State<AnyPool>,
     AdminUser(_user_id, _role): AdminUser,
 ) -> Result<Json<Vec<serde_json::Value>>, (StatusCode, Json<serde_json::Value>)> {
-    let rows: Vec<LearningPlanRow> = sqlx::query_as(
+    let rows_res: Result<Vec<LearningPlanRow>, sqlx::Error> = sqlx::query_as(
         "SELECT id, name, description, price, currency, duration, course_ids, active, created_at FROM learning_plans",
     )
     .fetch_all(&pool)
-    .await
-    .map_err(|e| {
-        tracing::error!("Admin list learning plans error: {:?}", e);
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(serde_json::json!({"message": "Failed to load learning plans"})),
-        )
-    })?;
+    .await;
+
+    let rows = match rows_res {
+        Ok(rows) => rows,
+        Err(e) => {
+            // If the table doesn't exist yet (older DB without migration 003), treat as no plans
+            if let sqlx::Error::Database(db) = &e {
+                let msg = db.message().to_lowercase();
+                if msg.contains("no such table: learning_plans")
+                    || msg.contains("relation \"learning_plans\" does not exist")
+                {
+                    tracing::warn!("learning_plans table missing; returning empty list");
+                    return Ok(Json(Vec::new()));
+                }
+            }
+            tracing::error!("Admin list learning plans error: {:?}", e);
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"message": "Failed to load learning plans"})),
+            ));
+        }
+    };
     let list: Vec<serde_json::Value> = rows
         .into_iter()
         .map(|r| {

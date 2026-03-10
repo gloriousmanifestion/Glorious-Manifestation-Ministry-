@@ -175,27 +175,27 @@
 				<!-- Dashboard cards -->
 				<div class="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
 					<!-- Profile card -->
-					<div class="rounded-2xl border border-pink-200/50 card-premium bg-white p-4 sm:p-6 shadow-sm dark:bg-[#1e2642]">
+					<div class="rounded-2xl border border-slate-200/80 section-separator card-premium bg-white/95 p-4 sm:p-6 shadow-sm dark:bg-[#1e2642]">
 						<h2 class="text-lg font-semibold text-slate-900 dark:text-white">Your profile</h2>
 						<dl class="mt-4 space-y-3">
 							<div>
-								<dt class="text-sm font-medium text-slate-500 dark:text-slate-300">Name</dt>
+								<dt class="text-sm font-medium text-slate-600 dark:text-slate-200">Name</dt>
 								<dd class="mt-0.5 font-medium text-slate-900 dark:text-white">{user.name}</dd>
 							</div>
 							<div>
-								<dt class="text-sm font-medium text-slate-500 dark:text-slate-300">Email</dt>
+								<dt class="text-sm font-medium text-slate-600 dark:text-slate-200">Email</dt>
 								<dd class="mt-0.5 font-medium text-slate-900 dark:text-white">{user.email}</dd>
 							</div>
 							<div>
-								<dt class="text-sm font-medium text-slate-500 dark:text-slate-300">Phone</dt>
+								<dt class="text-sm font-medium text-slate-600 dark:text-slate-200">Phone</dt>
 								<dd class="mt-0.5 font-medium text-slate-900 dark:text-white">{user.phone}</dd>
 							</div>
 							<div>
-								<dt class="text-sm font-medium text-slate-500 dark:text-slate-300">Church</dt>
+								<dt class="text-sm font-medium text-slate-600 dark:text-slate-200">Church</dt>
 								<dd class="mt-0.5 font-medium text-slate-900 dark:text-white">{user.churchName}</dd>
 							</div>
 							<div>
-								<dt class="text-sm font-medium text-slate-500 dark:text-slate-300">Status</dt>
+								<dt class="text-sm font-medium text-slate-600 dark:text-slate-200">Status</dt>
 								<dd class="mt-0.5 flex items-center gap-2">
 									<span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {user.verified ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300'}">
 										{user.verified ? 'Verified' : 'Pending verification'}
@@ -209,7 +209,7 @@
 					</div>
 
 					<!-- Enrollment card -->
-					<div class="rounded-2xl border border-pink-200/50 card-premium bg-white p-4 sm:p-6 shadow-sm dark:bg-[#1e2642]">
+					<div class="rounded-2xl border border-slate-200/80 section-separator card-premium bg-white/95 p-4 sm:p-6 shadow-sm dark:bg-[#1e2642]">
 						<h2 class="text-lg font-semibold text-slate-900 dark:text-white">Enrollment</h2>
 						{#if selectedCourse}
 							<div class="mt-4 rounded-xl border border-pink-200/50 card-premium bg-pink-50/30 p-4 dark:bg-pink-900/20">
@@ -246,7 +246,7 @@
 								</a>
 							{/if}
 						{:else}
-							<p class="mt-4 text-slate-600 dark:text-slate-200">No course selected yet.</p>
+							<p class="mt-4 text-slate-700 dark:text-slate-100">No course selected yet.</p>
 							<select
 								class="mt-4 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#252d47] dark:text-white"
 								onchange={(e) => handleSelectCourse((e.target as HTMLSelectElement).value)}
@@ -261,19 +261,19 @@
 				</div>
 
 				<!-- Program info -->
-				<div class="mt-6 sm:mt-8 rounded-2xl border border-pink-200/50 card-premium bg-white p-4 sm:p-6 shadow-sm dark:bg-[#1e2642]">
+				<div class="mt-6 sm:mt-8 rounded-2xl border border-slate-200/80 section-separator card-premium bg-white/95 p-4 sm:p-6 shadow-sm dark:bg-[#1e2642]">
 					<h2 class="text-lg font-semibold text-slate-900 dark:text-white">Program details</h2>
 					<div class="mt-4 grid gap-4 grid-cols-1 sm:grid-cols-3">
 						<div>
-							<p class="text-sm font-medium text-slate-500 dark:text-slate-300">Duration</p>
+							<p class="text-sm font-medium text-slate-600 dark:text-slate-200">Duration</p>
 							<p class="font-medium text-slate-900 dark:text-white">{SITE.duration}</p>
 						</div>
 						<div>
-							<p class="text-sm font-medium text-slate-500 dark:text-slate-300">Schedule</p>
+							<p class="text-sm font-medium text-slate-600 dark:text-slate-200">Schedule</p>
 							<p class="font-medium text-slate-900 dark:text-white">{SITE.schedule}</p>
 						</div>
 						<div>
-							<p class="text-sm font-medium text-slate-500 dark:text-slate-300">Location</p>
+							<p class="text-sm font-medium text-slate-600 dark:text-slate-200">Location</p>
 							<p class="font-medium text-slate-900 dark:text-white">{SITE.location}</p>
 						</div>
 					</div>
