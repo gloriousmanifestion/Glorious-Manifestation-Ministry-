@@ -75,10 +75,10 @@
 	<div class="min-h-screen flex flex-col bg-slate-50 dark:bg-[#252d47]">
 		<Nav />
 
-		<main class="flex-1 pt-20 sm:pt-24 pb-12 sm:pb-16">
+		<main class="flex-1 pt-16 sm:pt-24 pb-12 sm:pb-16">
 			<div class="mx-auto max-w-6xl px-4 sm:px-6">
 				<!-- Welcome header -->
-				<div class="mb-6 sm:mb-8">
+				<div class="mb-4 sm:mb-8">
 					<h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
 						Welcome back, {user.name.split(' ')[0]}
 					</h1>
@@ -88,13 +88,13 @@
 				</div>
 
 				{#if actionError}
-					<div class="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">
+					<div class="mb-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">
 						{actionError}
 					</div>
 				{/if}
 
 				<!-- Pending actions banners -->
-				<div class="mb-8 space-y-4">
+				<div class="mb-6 sm:mb-8 space-y-3 sm:space-y-4">
 					{#if showVerifyBanner}
 						<div
 							class="flex flex-col gap-4 rounded-2xl border-2 border-amber-200 card-premium bg-amber-50/80 p-4 sm:p-6 shadow-sm dark:border-amber-800/40 dark:bg-amber-900/20 sm:flex-row sm:items-center sm:justify-between"
