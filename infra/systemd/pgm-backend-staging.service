@@ -1,12 +1,17 @@
-# PGM backend API (staging). Port 5800.
+# Example systemd unit for backend (staging).
+# IMPORTANT: Create a service file named: pgm-backend-staging.service
+# (e.g., solo-template-backend-staging.service) in infra/systemd/ before deploying.
+# The CI/CD workflow expects this file to exist.
 # Copy to /etc/systemd/system/pgm-backend-staging.service on the VM.
 # Path: /opt/pgm/backend/backend
-# Set PORT=5800 in /etc/default/pgm-backend-staging (or here).
+# Set APP_NAME via VM_APP_NAME secret or use pgm.
 
 [Unit]
-Description=PGM Backend API (staging)
+Description=Prophetic Glorious Manifestation Backend API (staging)
 After=network-online.target
 Wants=network-online.target
+# Do not start until deploy has placed the backend binary (avoids CHDIR loop and empty-dir start)
+ConditionPathExists=/opt/pgm/backend/backend
 
 [Service]
 Type=simple
@@ -14,8 +19,8 @@ ExecStart=/opt/pgm/backend/backend
 Restart=on-failure
 RestartSec=5
 WorkingDirectory=/opt/pgm/backend
-EnvironmentFile=-/etc/default/pgm-backend-staging
-Environment=PORT=5800
+# Same .env written by deploy (DATABASE_URL, PORT=5668, VAULT_*, etc.)
+EnvironmentFile=-/opt/pgm/backend/.env
 
 [Install]
 WantedBy=multi-user.target

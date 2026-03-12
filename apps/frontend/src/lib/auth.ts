@@ -5,11 +5,13 @@
 
 import { writable, get } from 'svelte/store';
 import * as api from '$lib/auth-api';
-import { toUser } from '$lib/auth-api';
-import type { UserResponse } from '$lib/auth-api';
+import { toUser, type PaymentProof } from '$lib/auth-api';
+import type { UserRole } from '$lib/auth-api';
 
 const TOKEN_KEY = 'pms_token';
 const USER_KEY = 'pms_user';
+
+export type { UserRole };
 
 export interface User {
 	id: string;
@@ -23,6 +25,8 @@ export interface User {
 	verified: boolean;
 	paymentComplete: boolean;
 	createdAt: string;
+	/** student (default) | admin | super_admin. Only admin/super_admin can access /admin. */
+	role: UserRole;
 }
 
 export interface Course {
@@ -30,6 +34,8 @@ export interface Course {
 	name: string;
 	duration: string;
 }
+
+export type { PaymentProof };
 
 /** Fetch courses from backend - use this instead of hardcoded list */
 export async function fetchCourses(): Promise<Course[]> {
@@ -41,7 +47,9 @@ function loadUser(): User | null {
 	try {
 		const raw = localStorage.getItem(USER_KEY);
 		if (!raw) return null;
-		return JSON.parse(raw) as User;
+		const u = JSON.parse(raw) as User;
+		if (!u.role) u.role = 'student';
+		return u;
 	} catch {
 		return null;
 	}
@@ -105,7 +113,21 @@ function createAuthStore() {
 			const u = get(userStore);
 			return u !== null && !u.paymentComplete;
 		},
-		async register(data: Omit<User, 'id' | 'verified' | 'paymentComplete' | 'createdAt'> & { password: string }) {
+		/** True if user can access /admin (admin or super_admin). */
+		get canAccessAdmin() {
+			const u = get(userStore);
+			return u !== null && (u.role === 'admin' || u.role === 'super_admin');
+		},
+		get isSuperAdmin() {
+			const u = get(userStore);
+			return u !== null && u.role === 'super_admin';
+		},
+		async register(
+			data: Omit<User, 'id' | 'verified' | 'paymentComplete' | 'createdAt' | 'role'> & {
+				password: string;
+				inviteToken?: string;
+			}
+		) {
 			const res = await api.register({
 				name: data.name,
 				email: data.email,
@@ -114,7 +136,8 @@ function createAuthStore() {
 				ministry_role: data.ministryRole,
 				church_name: data.churchName,
 				calling: data.calling,
-				selected_course_id: data.selectedCourseId
+				selected_course_id: data.selectedCourseId,
+				invite_token: data.inviteToken
 			});
 			localStorage.setItem(TOKEN_KEY, res.token);
 			const user = toUser(res.user);
@@ -130,6 +153,12 @@ function createAuthStore() {
 			saveUser(user);
 			return user;
 		},
+		async requestPasswordReset(email: string) {
+			await api.requestPasswordReset(email);
+		},
+		async resetPassword(token: string, password: string) {
+			await api.resetPassword(token, password);
+		},
 		async verifyAccount() {
 			const r = await api.verifyAccount();
 			const user = toUser(r);
@@ -141,6 +170,13 @@ function createAuthStore() {
 			const user = toUser(r);
 			userStore.set(user);
 			saveUser(user);
+		},
+		async uploadPaymentProof(file: File, note?: string) {
+			const proof = await api.uploadPaymentProof(file, note);
+			return proof;
+		},
+		async getMyPaymentProofs() {
+			return api.getMyPaymentProofs();
 		},
 		async selectCourse(courseId: string | null) {
 			if (!courseId) return;

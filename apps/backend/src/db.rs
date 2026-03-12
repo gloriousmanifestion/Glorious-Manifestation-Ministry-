@@ -1,11 +1,18 @@
-use sqlx::sqlite::SqlitePoolOptions;
-use sqlx::SqlitePool;
+use sqlx::any::{AnyConnectOptions, AnyPoolOptions};
+use sqlx::AnyPool;
 use std::env;
 use std::path::Path;
+use std::str::FromStr;
+
+/// True when DATABASE_URL is Postgres; use $1, $2, ... in raw SQL. Otherwise SQLite: use ?.
+pub fn is_postgres() -> bool {
+    env::var("DATABASE_URL")
+        .map(|u| u.starts_with("postgres://") || u.starts_with("postgresql://"))
+        .unwrap_or(false)
+}
 
 /// Ensures the SQLite database file and its parent directory exist before connecting.
-/// sqlx does not auto-create the file like rusqlite.
-fn ensure_database_exists(db_url: &str) -> Result<(), std::io::Error> {
+fn ensure_sqlite_database_exists(db_url: &str) -> Result<(), std::io::Error> {
     let path_str = db_url
         .strip_prefix("sqlite://")
         .or_else(|| db_url.strip_prefix("sqlite:"))
@@ -21,16 +28,26 @@ fn ensure_database_exists(db_url: &str) -> Result<(), std::io::Error> {
     Ok(())
 }
 
-pub async fn init_db() -> Result<SqlitePool, sqlx::Error> {
+pub async fn init_db() -> Result<AnyPool, sqlx::Error> {
+    // Required when using sqlx::any: install compiled-in drivers (sqlite, postgres) so
+    // AnyConnectOptions::from_str() can connect. Safe to call multiple times.
+    sqlx::any::install_default_drivers();
+
     let db_url = env::var("DATABASE_URL").unwrap_or_else(|_| {
         let data_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("data");
         format!("sqlite://{}/pms.db", data_dir.display())
     });
-    ensure_database_exists(&db_url).map_err(|e| sqlx::Error::Io(e.into()))?;
-    let pool = SqlitePoolOptions::new()
+
+    if db_url.starts_with("sqlite:") {
+        ensure_sqlite_database_exists(&db_url).map_err(sqlx::Error::Io)?;
+    }
+
+    let options = AnyConnectOptions::from_str(&db_url)?;
+    let pool = AnyPoolOptions::new()
         .max_connections(5)
-        .connect(&db_url)
+        .connect_with(options)
         .await?;
+
     sqlx::migrate!("./migrations").run(&pool).await?;
     Ok(pool)
 }

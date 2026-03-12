@@ -49,17 +49,17 @@
 	/>
 </svelte:head>
 
-<div class="min-h-screen flex flex-col bg-white">
+<div class="min-h-screen flex flex-col bg-white dark:bg-[#252d47]">
 	<Nav />
 
 	<main class="flex-1">
 		<!-- Hero -->
 		<section class="px-4 sm:px-6 pt-24 sm:pt-32 pb-16 sm:pb-24">
 			<div class="mx-auto max-w-2xl text-center">
-				<h1 class="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
+				<h1 class="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl dark:text-white">
 					Contact the Pastoral School
 				</h1>
-				<p class="mt-4 text-slate-600">
+				<p class="mt-4 text-slate-600 dark:text-slate-100">
 					We're here to help with admissions, course enquiries, and visits. Reach out at your convenience.
 				</p>
 			</div>
@@ -69,63 +69,63 @@
 		<section class="px-4 sm:px-6 pb-20 sm:pb-28">
 			<div class="mx-auto max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
 				<AnimateOnView animation="fade-up">
-					<form onsubmit={handleSubmit} class="space-y-4 rounded-2xl border border-slate-200/80 bg-slate-50/50 p-6 sm:p-8">
-						<h2 class="text-lg font-semibold text-slate-900">Send us a message</h2>
+					<form onsubmit={handleSubmit} class="space-y-4 rounded-2xl border border-slate-200/80 card-premium bg-slate-50/50 p-6 sm:p-8 dark:bg-[#2d3659]/60">
+						<h2 class="text-lg font-semibold text-slate-900 dark:text-white">Send us a message</h2>
 						{#if success}
-							<div class="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-700">
+							<div class="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-700 dark:border-green-800 dark:bg-green-900/30 dark:text-green-300">
 								Thank you for your message. We'll get back to you soon.
 							</div>
 						{:else}
 							{#if error}
-								<div class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>
+								<div class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300">{error}</div>
 							{/if}
 							<div>
-								<label for="contact-name" class="block text-sm font-medium text-slate-700">Name</label>
+								<label for="contact-name" class="block text-sm font-medium text-slate-700 dark:text-slate-100">Name</label>
 								<input
 									id="contact-name"
 									type="text"
 									bind:value={name}
 									required
-									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#252d47] dark:text-white dark:placeholder-slate-300"
 									placeholder="Your name"
 								/>
 							</div>
 							<div>
-								<label for="contact-email" class="block text-sm font-medium text-slate-700">Email</label>
+								<label for="contact-email" class="block text-sm font-medium text-slate-700 dark:text-slate-100">Email</label>
 								<input
 									id="contact-email"
 									type="email"
 									bind:value={email}
 									required
-									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#252d47] dark:text-white dark:placeholder-slate-300"
 									placeholder="your@email.com"
 								/>
 							</div>
 							<div>
-								<label for="contact-subject" class="block text-sm font-medium text-slate-700">Subject (optional)</label>
+								<label for="contact-subject" class="block text-sm font-medium text-slate-700 dark:text-slate-100">Subject (optional)</label>
 								<input
 									id="contact-subject"
 									type="text"
 									bind:value={subject}
-									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#252d47] dark:text-white dark:placeholder-slate-300"
 									placeholder="e.g. Course enquiry"
 								/>
 							</div>
 							<div>
-								<label for="contact-message" class="block text-sm font-medium text-slate-700">Message</label>
+								<label for="contact-message" class="block text-sm font-medium text-slate-700 dark:text-slate-100">Message</label>
 								<textarea
 									id="contact-message"
 									bind:value={message}
 									required
 									rows="4"
-									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
+									class="mt-1 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#252d47] dark:text-white dark:placeholder-slate-300"
 									placeholder="Your message..."
 								></textarea>
 							</div>
 							<button
 								type="submit"
 								disabled={loading}
-								class="w-full rounded-xl bg-slate-900 px-6 py-3.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60"
+								class="w-full rounded-xl bg-slate-900 px-6 py-3.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
 							>
 								{loading ? 'Sending…' : 'Send message'}
 							</button>
@@ -135,53 +135,53 @@
 
 				<AnimateOnView animation="fade-up" stagger={1}>
 					<div class="space-y-8">
-						<div class="border-b border-slate-200/80 pb-8">
-							<p class="text-xs font-medium uppercase tracking-wider text-slate-400">Email</p>
+						<div class="border-b border-slate-200/80 pb-8 section-separator">
+							<p class="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-slate-200">Email</p>
 							<a
 								href="mailto:{SITE.infoEmail}"
-								class="mt-1 block text-lg text-slate-900 hover:text-pink-600 transition break-all"
+								class="mt-1 block text-lg text-slate-900 hover:text-pink-600 transition break-all dark:text-white dark:hover:text-pink-400"
 							>
 								{SITE.infoEmail}
 							</a>
 						</div>
 
-						<div class="border-b border-slate-200/80 pb-8">
-							<p class="text-xs font-medium uppercase tracking-wider text-slate-400">Phone</p>
+						<div class="border-b border-slate-200/80 pb-8 section-separator">
+							<p class="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-slate-200">Phone</p>
 							<a
 								href={whatsappUrl}
 								target="_blank"
 								rel="noopener noreferrer"
-								class="mt-1 block text-lg text-slate-900 hover:text-pink-600 transition"
+								class="mt-1 block text-lg text-slate-900 hover:text-pink-600 transition dark:text-white dark:hover:text-pink-400"
 							>
 								{SITE.whatsapp}
 							</a>
 						</div>
 
-						<div class="border-b border-slate-200/80 pb-8">
-							<p class="text-xs font-medium uppercase tracking-wider text-slate-400">Address</p>
-							<p class="mt-1 text-slate-900 leading-relaxed">{SITE.address}</p>
-							<p class="mt-0.5 text-slate-500">{SITE.location}</p>
+						<div class="border-b border-slate-200/80 pb-8 section-separator">
+							<p class="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-slate-200">Address</p>
+							<p class="mt-1 text-slate-900 leading-relaxed dark:text-white">{SITE.address}</p>
+							<p class="mt-0.5 text-slate-500 dark:text-slate-200">{SITE.location}</p>
 							<a
 								href={mapUrl}
 								target="_blank"
 								rel="noopener noreferrer"
-								class="mt-3 inline-block text-sm font-medium text-pink-600 hover:text-pink-700"
+								class="mt-3 inline-block text-sm font-medium text-pink-600 hover:text-pink-700 dark:text-pink-400 dark:hover:text-pink-300"
 							>
 								Get directions →
 							</a>
 						</div>
 
 						<div>
-							<p class="text-xs font-medium uppercase tracking-wider text-slate-400">Hours</p>
-							<p class="mt-1 text-slate-900">{SITE.schedule}</p>
-							<p class="text-slate-500">{SITE.duration}</p>
+							<p class="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-slate-200">Hours</p>
+							<p class="mt-1 text-slate-900 dark:text-white">{SITE.schedule}</p>
+							<p class="text-slate-500 dark:text-slate-200">{SITE.duration}</p>
 						</div>
 					</div>
 
 					<div class="mt-16 text-center lg:text-left">
 						<a
 							href="/register"
-							class="inline-block rounded-full bg-slate-900 px-8 py-3.5 text-sm font-medium text-white transition hover:bg-slate-800"
+							class="inline-block rounded-full bg-slate-900 px-8 py-3.5 text-sm font-medium text-white transition hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
 						>
 							Register now
 						</a>

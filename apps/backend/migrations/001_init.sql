@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
     selected_course_id TEXT,
     verified INTEGER NOT NULL DEFAULT 0,
     payment_complete INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
@@ -23,10 +23,11 @@ CREATE TABLE IF NOT EXISTS courses (
     duration TEXT NOT NULL
 );
 
-INSERT OR IGNORE INTO courses (id, name, duration) VALUES
+INSERT INTO courses (id, name, duration) VALUES
     ('pastoral-leadership', 'Pastoral Leadership', '6 months'),
     ('prophetic-ministry', 'Prophetic Ministry', '6 months'),
     ('ministerial-training', 'Ministerial Training', '6 months'),
     ('biblical-studies', 'Biblical Studies', '6 months'),
     ('worship-praise', 'Worship & Praise', '6 months'),
-    ('evangelism-outreach', 'Evangelism & Outreach', '6 months');
+    ('evangelism-outreach', 'Evangelism & Outreach', '6 months')
+ON CONFLICT(id) DO NOTHING;

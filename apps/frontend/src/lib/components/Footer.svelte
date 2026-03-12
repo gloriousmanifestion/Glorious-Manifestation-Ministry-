@@ -15,7 +15,7 @@
 	];
 </script>
 
-<footer class="border-t border-slate-200/80 bg-slate-50">
+<footer class="border-t border-slate-200/80 section-separator bg-slate-50 dark:bg-[#1e2642]">
 	<div class="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
 		<div class="grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
 			<!-- Brand -->
@@ -28,24 +28,24 @@
 						P
 					</div>
 					<div>
-						<span class="block font-semibold text-slate-900">{SITE.schoolName}</span>
-						<span class="block text-xs text-slate-500">{SITE.name}</span>
+						<span class="block font-semibold text-slate-900 dark:text-white">{SITE.schoolName}</span>
+						<span class="block text-xs text-slate-500 dark:text-slate-200">{SITE.name}</span>
 					</div>
 				</a>
-				<p class="mt-4 max-w-xs text-sm leading-relaxed text-slate-600">
+				<p class="mt-4 max-w-xs text-sm leading-relaxed text-slate-600 dark:text-slate-100">
 					Equipping pastors, ministers and prophets for effective ministry. {SITE.duration}, {SITE.schedule}.
 				</p>
 			</div>
 
 			<!-- Quick links -->
 			<div class="min-w-0">
-				<h3 class="text-sm font-semibold uppercase tracking-wider text-slate-900">Quick links</h3>
+				<h3 class="text-sm font-semibold uppercase tracking-wider text-slate-900 dark:text-white">Quick links</h3>
 				<ul class="mt-4 space-y-3">
 					{#each quickLinks as link}
 						<li>
 							<a
 								href={link.href}
-								class="text-sm text-slate-600 transition hover:text-pink-600"
+								class="text-sm text-slate-600 transition hover:text-pink-600 dark:text-slate-100 dark:hover:text-pink-400"
 							>
 								{link.label}
 							</a>
@@ -56,16 +56,16 @@
 
 			<!-- Contact -->
 			<div class="min-w-0">
-				<h3 class="text-sm font-semibold uppercase tracking-wider text-slate-900">Contact</h3>
+				<h3 class="text-sm font-semibold uppercase tracking-wider text-slate-900 dark:text-white">Contact</h3>
 				<address class="mt-4 not-italic">
-					<p class="text-sm text-slate-600 break-words">{SITE.address}</p>
-					<p class="mt-1 text-sm text-slate-500">{SITE.location}</p>
+					<p class="text-sm text-slate-600 break-words dark:text-slate-100">{SITE.address}</p>
+					<p class="mt-1 text-sm text-slate-500 dark:text-slate-200">{SITE.location}</p>
 					<div class="mt-4 space-y-2">
 						<a
 							href={`https://wa.me/${SITE.whatsappFull.replace('+', '')}`}
 							target="_blank"
 							rel="noopener noreferrer"
-							class="flex items-center gap-2 text-sm text-slate-600 transition hover:text-[#25d366]"
+							class="flex items-center gap-2 text-sm text-slate-600 transition hover:text-[#25d366] dark:text-slate-100"
 						>
 							<svg class="h-4 w-4 shrink-0" fill="currentColor" viewBox="0 0 24 24">
 								<path
@@ -76,7 +76,7 @@
 						</a>
 						<a
 							href="mailto:{SITE.infoEmail}"
-							class="block text-sm text-slate-600 transition hover:text-pink-600 break-words"
+							class="block text-sm text-slate-600 transition hover:text-pink-600 break-words dark:text-slate-100 dark:hover:text-pink-400"
 						>
 							{SITE.infoEmail}
 						</a>
@@ -87,26 +87,26 @@
 
 		<!-- Bottom bar -->
 		<div
-			class="mt-12 flex flex-col items-center justify-between gap-4 border-t border-slate-200/80 pt-8 sm:flex-row"
+			class="mt-12 flex flex-col items-center justify-between gap-4 border-t border-slate-200/80 section-separator pt-8 sm:flex-row"
 		>
-			<p class="text-sm text-slate-500">
+			<p class="text-sm text-slate-500 dark:text-slate-200">
 				© {new Date().getFullYear()} {SITE.legalName}. All rights reserved.
 			</p>
 			<div class="flex flex-wrap items-center justify-center gap-6 text-sm">
 				{#each legalLinks as link}
-					<a href={link.href} class="text-slate-500 transition hover:text-slate-700">
+					<a href={link.href} class="text-slate-500 transition hover:text-slate-700 dark:text-slate-200 dark:hover:text-white">
 						{link.label}
 					</a>
 				{/each}
 			</div>
 		</div>
-		<p class="mt-4 text-center text-xs text-slate-400 pb-[max(2rem,calc(2rem+env(safe-area-inset-bottom)))]">
+		<p class="mt-4 text-center text-xs text-slate-400 pb-[max(2rem,calc(2rem+env(safe-area-inset-bottom)))] dark:text-slate-200">
 			Powered by
 			<a
 				href="https://www.1nga.com"
 				target="_blank"
 				rel="noopener noreferrer"
-				class="text-slate-500 transition hover:text-slate-700"
+				class="text-slate-500 transition hover:text-slate-700 dark:text-slate-200 dark:hover:text-white"
 			>
 				1nga Solutions
 			</a>

@@ -1,13 +1,9 @@
-use axum::{
-    extract::State,
-    http::StatusCode,
-    response::Json,
-    routing::post,
-    Router,
-};
+use axum::{extract::State, http::StatusCode, response::Json, routing::post, Router};
 use serde::Deserialize;
-use sqlx::SqlitePool;
+use sqlx::AnyPool;
 use uuid::Uuid;
+
+use crate::db;
 
 #[derive(Debug, Deserialize)]
 pub struct ContactRequest {
@@ -17,14 +13,14 @@ pub struct ContactRequest {
     pub message: String,
 }
 
-pub fn contact_routes(pool: SqlitePool) -> Router {
+pub fn contact_routes(pool: AnyPool) -> Router {
     Router::new()
         .route("/contact", post(submit_contact))
         .with_state(pool)
 }
 
 async fn submit_contact(
-    State(pool): State<SqlitePool>,
+    State(pool): State<AnyPool>,
     axum::Json(req): axum::Json<ContactRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if req.name.trim().is_empty() {
@@ -58,30 +54,33 @@ async fn submit_contact(
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().to_rfc3339();
 
-    sqlx::query(
-        r#"
-        INSERT INTO contact_submissions (id, name, email, subject, message, created_at)
-        VALUES (?, ?, ?, ?, ?, ?)
-        "#,
-    )
-    .bind(&id)
-    .bind(req.name.trim())
-    .bind(req.email.trim())
-    .bind(req.subject.as_deref())
-    .bind(req.message.trim())
-    .bind(&now)
-    .execute(&pool)
-    .await
-    .map_err(|e| {
-        tracing::error!("Contact submit error: {:?}", e);
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(serde_json::json!({
-                "error": "submit_failed",
-                "message": "Could not submit your message"
-            })),
-        )
-    })?;
+    let query_sql = if db::is_postgres() {
+        r#"INSERT INTO contact_submissions (id, name, email, subject, message, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6)"#
+    } else {
+        r#"INSERT INTO contact_submissions (id, name, email, subject, message, created_at)
+           VALUES (?, ?, ?, ?, ?, ?)"#
+    };
+
+    sqlx::query(query_sql)
+        .bind(&id)
+        .bind(req.name.trim())
+        .bind(req.email.trim())
+        .bind(req.subject.as_deref())
+        .bind(req.message.trim())
+        .bind(&now)
+        .execute(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Contact submit error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "submit_failed",
+                    "message": "Could not submit your message"
+                })),
+            )
+        })?;
 
     Ok(Json(serde_json::json!({
         "success": true,

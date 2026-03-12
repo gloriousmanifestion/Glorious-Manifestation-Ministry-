@@ -88,8 +88,8 @@
 		<section class="px-4 pt-24 sm:pt-28 pb-8 sm:px-6">
 			<div class="mx-auto max-w-5xl">
 				<div class="mb-6 text-center">
-					<p class="text-sm font-medium uppercase tracking-[0.2em] text-pink-600">{SITE.name}</p>
-					<h1 class="mt-2 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+					<p class="text-sm font-medium uppercase tracking-[0.2em] text-pink-600 dark:text-pink-400">{SITE.name}</p>
+					<h1 class="mt-2 text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
 						{SITE.schoolName}
 					</h1>
 				</div>
@@ -98,14 +98,14 @@
 		</section>
 
 		<!-- About & mission -->
-		<section class="border-t border-pink-200/50 bg-white/60 py-12 sm:py-16 px-4 sm:px-6">
+		<section class="border-t border-pink-200/50 bg-white/60 py-12 sm:py-16 px-4 sm:px-6 section-separator dark:bg-[#252d47]/80">
 			<div class="mx-auto max-w-4xl">
 				<AnimateOnView animation="fade-up">
-					<h2 class="text-2xl font-bold tracking-tight text-slate-900">Our mission</h2>
-					<p class="mt-6 text-slate-600 leading-relaxed">
+					<h2 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Our mission</h2>
+					<p class="mt-6 text-slate-600 dark:text-slate-100 leading-relaxed">
 						Under the umbrella of Prophetic Glorious Manifestation, our Pastoral School exists to equip and empower pastors, ministers, and prophets for effective ministry. We are committed to raising a generation of spiritual leaders who are grounded in the Word, led by the Spirit, and equipped to serve their communities.
 					</p>
-					<p class="mt-4 text-slate-600 leading-relaxed">
+					<p class="mt-4 text-slate-600 dark:text-slate-100 leading-relaxed">
 						Located in {SITE.location}, we offer a structured program running {SITE.duration}, {SITE.schedule}. Our curriculum combines theological education with practical ministry skills for those called to pastoral ministry, prophetic ministry, or general ministerial service.
 					</p>
 				</AnimateOnView>
@@ -113,17 +113,17 @@
 		</section>
 
 		<!-- Program highlights -->
-		<section class="border-t border-pink-200/50 bg-gradient-to-b from-pink-50/50 to-purple-50/30 py-12 sm:py-16 px-4 sm:px-6">
+		<section class="border-t border-pink-200/50 bg-gradient-to-b from-pink-50/50 to-purple-50/30 py-12 sm:py-16 px-4 sm:px-6 section-separator dark:from-[#252d47]/60 dark:to-[#1e2642]/60">
 			<div class="mx-auto max-w-4xl">
 				<AnimateOnView animation="fade-up">
-					<h2 class="text-center text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">Program details</h2>
+					<h2 class="text-center text-xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-2xl">Program details</h2>
 				</AnimateOnView>
 				<div class="mt-8 grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-3">
 					{#each highlights as item, i}
 						<AnimateOnView animation="fade-up" stagger={i} duration={500}>
-							<div class="hover-lift rounded-2xl border border-pink-200/60 bg-white p-6 text-center shadow-sm hover:border-pink-300 hover:shadow-lg">
-								<p class="text-sm font-medium uppercase tracking-wider text-pink-600">{item.label}</p>
-								<p class="mt-2 text-lg font-semibold text-slate-900">{item.value}</p>
+							<div class="hover-lift rounded-2xl border border-pink-200/60 card-premium bg-white p-6 text-center shadow-sm hover:border-pink-300 hover:shadow-lg dark:bg-[#1e2642] dark:hover:border-pink-500/50">
+								<p class="text-sm font-medium uppercase tracking-wider text-pink-600 dark:text-pink-400">{item.label}</p>
+								<p class="mt-2 text-lg font-semibold text-slate-900 dark:text-white">{item.value}</p>
 							</div>
 						</AnimateOnView>
 					{/each}
@@ -132,17 +132,17 @@
 		</section>
 
 		<!-- Our values -->
-		<section class="border-t border-pink-200/50 bg-white/60 py-12 sm:py-16 px-4 sm:px-6">
+		<section class="border-t border-pink-200/50 bg-white/60 py-12 sm:py-16 px-4 sm:px-6 section-separator dark:bg-[#252d47]/80">
 			<div class="mx-auto max-w-6xl">
 				<AnimateOnView animation="fade-up">
-					<h2 class="text-center text-xl font-bold tracking-tight text-slate-900 sm:text-2xl md:text-3xl">Our values</h2>
+					<h2 class="text-center text-xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-2xl md:text-3xl">Our values</h2>
 				</AnimateOnView>
 				<div class="mt-8 sm:mt-12 grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
 					{#each values as value, i}
 						<AnimateOnView animation="fade-up" stagger={i}>
-							<div class="hover-lift rounded-2xl border border-pink-200/50 bg-white p-6 shadow-sm">
-								<h3 class="text-lg font-semibold text-slate-900">{value.title}</h3>
-								<p class="mt-2 text-sm text-slate-600">{value.description}</p>
+							<div class="hover-lift rounded-2xl border border-pink-200/50 card-premium bg-white p-6 shadow-sm dark:bg-[#1e2642]">
+								<h3 class="text-lg font-semibold text-slate-900 dark:text-white">{value.title}</h3>
+								<p class="mt-2 text-sm text-slate-600 dark:text-slate-200">{value.description}</p>
 							</div>
 						</AnimateOnView>
 					{/each}
@@ -151,34 +151,34 @@
 		</section>
 
 		<!-- Courses -->
-		<section id="courses" class="border-t border-pink-200/50 bg-gradient-to-b from-pink-50/50 to-purple-50/30 py-12 sm:py-16 px-4 sm:px-6">
+		<section id="courses" class="border-t border-pink-200/50 bg-gradient-to-b from-pink-50/50 to-purple-50/30 py-12 sm:py-16 px-4 sm:px-6 section-separator dark:from-[#252d47]/60 dark:to-[#1e2642]/60">
 			<div class="mx-auto max-w-4xl">
 				<AnimateOnView animation="fade-up">
-					<h2 class="text-center text-xl font-bold tracking-tight text-slate-900 sm:text-2xl mb-8 sm:mb-12">All courses</h2>
+					<h2 class="text-center text-xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-2xl mb-8 sm:mb-12">All courses</h2>
 				</AnimateOnView>
 				<div class="space-y-8 sm:space-y-12">
 				{#each COURSE_CATALOG as course, i}
 					<AnimateOnView animation="slide-left" stagger={i} duration={500}>
 						<article
-							class="hover-lift rounded-2xl border border-pink-200/50 bg-white p-4 sm:p-8 shadow-sm hover:border-pink-300 hover:shadow-xl"
+							class="hover-lift rounded-2xl border border-pink-200/50 card-premium bg-white p-4 sm:p-8 shadow-sm hover:border-pink-300 hover:shadow-xl dark:bg-[#1e2642] dark:hover:border-pink-500/50"
 						>
 							<a href="/courses/{course.id}" class="flex flex-col sm:flex-row items-start gap-4 group">
 								<span
-									class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-pink-100 to-purple-100 text-2xl"
+									class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-pink-100 to-purple-100 text-2xl dark:from-pink-900/50 dark:to-purple-900/50"
 								>
 									{course.icon}
 								</span>
 								<div class="flex-1">
-									<h2 class="text-xl font-bold text-slate-900 group-hover:text-pink-600 transition-colors">{course.name}</h2>
-									<p class="mt-3 text-slate-600">{course.description}</p>
+									<h2 class="text-xl font-bold text-slate-900 group-hover:text-pink-600 transition-colors dark:text-white dark:group-hover:text-pink-400">{course.name}</h2>
+									<p class="mt-3 text-slate-600 dark:text-slate-200">{course.description}</p>
 									<ul class="mt-4 flex flex-wrap gap-2">
 										{#each course.topics as topic}
-											<li class="rounded-full bg-pink-50 px-3 py-1 text-sm text-pink-700">
+											<li class="rounded-full bg-pink-50 px-3 py-1 text-sm text-pink-700 dark:bg-pink-900/40 dark:text-pink-300">
 												{topic}
 											</li>
 										{/each}
 									</ul>
-									<span class="mt-4 inline-flex items-center gap-1 text-sm font-medium text-pink-600">
+									<span class="mt-4 inline-flex items-center gap-1 text-sm font-medium text-pink-600 dark:text-pink-400">
 										View full details and schedule
 										<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
@@ -194,17 +194,19 @@
 		</section>
 
 		<!-- FAQ / Helpful info -->
-		<section class="border-t border-pink-200/50 bg-white/60 py-12 sm:py-16 px-4 sm:px-6">
+		<section class="border-t border-pink-200/50 bg-white/60 py-12 sm:py-16 px-4 sm:px-6 section-separator dark:bg-[#252d47]/80">
 			<div class="mx-auto max-w-3xl">
 				<AnimateOnView animation="fade-up">
-					<h2 class="text-2xl font-bold tracking-tight text-slate-900">Frequently asked questions</h2>
+					<h2 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Frequently asked questions</h2>
 				</AnimateOnView>
 				<div class="mt-8 space-y-6">
 					{#each faqs as faq, i}
 						<AnimateOnView animation="fade-up" stagger={i}>
-							<div class="rounded-2xl border border-pink-200/50 bg-white p-6 shadow-sm">
-								<h3 class="font-semibold text-slate-900">{faq.q}</h3>
-								<p class="mt-2 text-sm text-slate-600 leading-relaxed">{@html faq.a}</p>
+							<div class="rounded-2xl border border-pink-200/50 card-premium bg-white p-6 shadow-sm dark:bg-[#1e2642]">
+								<h3 class="font-semibold text-slate-900 dark:text-white">{faq.q}</h3>
+								<!-- The answer content is authored by us and does not include user input. -->
+								<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+								<p class="mt-2 text-sm text-slate-600 dark:text-slate-200 leading-relaxed">{@html faq.a}</p>
 							</div>
 						</AnimateOnView>
 					{/each}
@@ -213,11 +215,11 @@
 		</section>
 
 		<!-- CTA -->
-		<section class="border-t border-pink-200/50 bg-gradient-to-r from-pink-500/10 to-purple-500/10 py-12 sm:py-16 px-4 sm:px-6">
+		<section class="border-t border-pink-200/50 bg-gradient-to-r from-pink-500/10 to-purple-500/10 py-12 sm:py-16 px-4 sm:px-6 section-separator dark:from-pink-500/20 dark:to-purple-500/20">
 			<AnimateOnView animation="scale">
 				<div class="mx-auto max-w-2xl text-center">
-					<h2 class="text-2xl font-bold tracking-tight text-slate-900">Ready to answer the call?</h2>
-					<p class="mt-4 text-slate-600">Create your account to register, or contact us for more details.</p>
+					<h2 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Ready to answer the call?</h2>
+					<p class="mt-4 text-slate-600 dark:text-slate-200">Create your account to register, or contact us for more details.</p>
 					<div class="mt-6 flex justify-center">
 						<a
 							href="/register"

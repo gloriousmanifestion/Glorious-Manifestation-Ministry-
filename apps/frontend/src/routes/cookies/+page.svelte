@@ -12,12 +12,12 @@
 	/>
 </svelte:head>
 
-<div class="min-h-screen flex flex-col bg-white">
+<div class="min-h-screen flex flex-col bg-white dark:bg-[#252d47]">
 	<Nav />
 	<main class="flex-1 w-full max-w-3xl mx-auto px-4 sm:px-6 pt-24 sm:pt-28 pb-12 sm:pb-16">
 		<a
 			href="/"
-			class="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900 mb-8 transition"
+			class="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900 mb-8 transition dark:text-slate-200 dark:hover:text-white"
 		>
 			<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
 				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
@@ -25,12 +25,12 @@
 			Back to home
 		</a>
 		<div class="text-center">
-			<h1 class="text-2xl font-bold text-slate-900 mb-2">Cookie Policy</h1>
-			<p class="text-sm text-slate-500 mb-8">Last updated: February 2025</p>
+			<h1 class="text-2xl font-bold text-slate-900 dark:text-white mb-2">Cookie Policy</h1>
+			<p class="text-sm text-slate-500 dark:text-slate-200 mb-8">Last updated: February 2025</p>
 		</div>
-		<div class="prose prose-slate max-w-none text-slate-600 space-y-6 text-left">
+		<div class="prose prose-slate max-w-none text-slate-600 dark:text-slate-100 space-y-6 text-left dark:prose-invert">
 					<section>
-						<h2 class="text-lg font-semibold text-slate-900 mt-8 mb-3">1. What are cookies?</h2>
+						<h2 class="text-lg font-semibold text-slate-900 dark:text-white mt-8 mb-3">1. What are cookies?</h2>
 						<p>
 							Cookies are small text files that websites place on your device (computer, tablet, or
 							phone) when you visit them. They are widely used to make sites work properly, remember
@@ -39,7 +39,7 @@
 					</section>
 
 					<section>
-						<h2 class="text-lg font-semibold text-slate-900 mt-8 mb-3">2. Why we use cookies</h2>
+						<h2 class="text-lg font-semibold text-slate-900 dark:text-white mt-8 mb-3">2. Why we use cookies</h2>
 						<p>We use cookies and similar technologies to:</p>
 						<ul class="list-disc pl-6 space-y-1">
 							<li>
@@ -61,19 +61,19 @@
 					</section>
 
 					<section>
-						<h2 class="text-lg font-semibold text-slate-900 mt-8 mb-3">3. Types of cookies we use</h2>
-						<h3 class="text-base font-semibold text-slate-800 mt-6 mb-2">Strictly necessary cookies</h3>
+						<h2 class="text-lg font-semibold text-slate-900 dark:text-white mt-8 mb-3">3. Types of cookies we use</h2>
+						<h3 class="text-base font-semibold text-slate-800 dark:text-slate-100 mt-6 mb-2">Strictly necessary cookies</h3>
 						<p>
 							These are required for our website to work. They enable sign-in, session management, and
 							security. You cannot turn these off if you want to use the registration or student portal.
 						</p>
-						<h3 class="text-base font-semibold text-slate-800 mt-6 mb-2">Functional cookies</h3>
+						<h3 class="text-base font-semibold text-slate-800 dark:text-slate-100 mt-6 mb-2">Functional cookies</h3>
 						<p>
 							These remember choices you make (e.g. preferences) so we can provide a more
 							personalised experience. They are not strictly necessary but improve how the site
 							works for you.
 						</p>
-						<h3 class="text-base font-semibold text-slate-800 mt-6 mb-2">Analytics and performance cookies</h3>
+						<h3 class="text-base font-semibold text-slate-800 dark:text-slate-100 mt-6 mb-2">Analytics and performance cookies</h3>
 						<p>
 							These help us see how the site is used (e.g. number of visitors, pages viewed,
 							errors). The data is typically aggregated and used to improve the site. Where we
@@ -83,7 +83,7 @@
 					</section>
 
 					<section>
-						<h2 class="text-lg font-semibold text-slate-900 mt-8 mb-3">4. How long cookies last</h2>
+						<h2 class="text-lg font-semibold text-slate-900 dark:text-white mt-8 mb-3">4. How long cookies last</h2>
 						<p>
 							<strong>Session cookies</strong> are deleted when you close your browser.
 							<strong>Persistent cookies</strong> stay on your device for a set period (e.g. until they
@@ -93,7 +93,7 @@
 					</section>
 
 					<section>
-						<h2 class="text-lg font-semibold text-slate-900 mt-8 mb-3">5. Third-party cookies</h2>
+						<h2 class="text-lg font-semibold text-slate-900 dark:text-white mt-8 mb-3">5. Third-party cookies</h2>
 						<p>
 							When you use our site, some third-party services (e.g. payment processors, embedded content)
 							may set their own cookies. Their use is governed by their respective privacy and cookie
@@ -103,7 +103,7 @@
 					</section>
 
 					<section>
-						<h2 class="text-lg font-semibold text-slate-900 mt-8 mb-3">6. Your choices</h2>
+						<h2 class="text-lg font-semibold text-slate-900 dark:text-white mt-8 mb-3">6. Your choices</h2>
 						<p>You can control cookies in several ways:</p>
 						<ul class="list-disc pl-6 space-y-1">
 							<li>
@@ -124,7 +124,7 @@
 					</section>
 
 					<section>
-						<h2 class="text-lg font-semibold text-slate-900 mt-8 mb-3">7. Similar technologies</h2>
+						<h2 class="text-lg font-semibold text-slate-900 dark:text-white mt-8 mb-3">7. Similar technologies</h2>
 						<p>
 							We may use technologies similar to cookies, such as local storage or session storage,
 							for the same purposes (e.g. storing session data or preferences). This policy applies
@@ -134,17 +134,17 @@
 					</section>
 
 					<section>
-						<h2 class="text-lg font-semibold text-slate-900 mt-8 mb-3">8. More information</h2>
+						<h2 class="text-lg font-semibold text-slate-900 dark:text-white mt-8 mb-3">8. More information</h2>
 						<p>
 							For how we use your personal data, including data collected via cookies, see our
-							<a href="/privacy" class="text-pink-600 underline hover:no-underline">Privacy Policy</a>.
+							<a href="/privacy" class="text-pink-600 underline hover:no-underline dark:text-pink-400 dark:hover:text-pink-300">Privacy Policy</a>.
 							For the rules that govern your use of our service, see our
-							<a href="/terms" class="text-pink-600 underline hover:no-underline">Terms of Service</a>.
+							<a href="/terms" class="text-pink-600 underline hover:no-underline dark:text-pink-400 dark:hover:text-pink-300">Terms of Service</a>.
 						</p>
 					</section>
 
 					<section>
-						<h2 class="text-lg font-semibold text-slate-900 mt-8 mb-3">9. Changes</h2>
+						<h2 class="text-lg font-semibold text-slate-900 dark:text-white mt-8 mb-3">9. Changes</h2>
 						<p>
 							We may update this Cookie Policy from time to time to reflect changes in our practices
 							or the law. We will post the revised policy here and update the “Last updated” date.
@@ -153,10 +153,10 @@
 					</section>
 
 					<section>
-						<h2 class="text-lg font-semibold text-slate-900 mt-8 mb-3">10. Contact</h2>
+						<h2 class="text-lg font-semibold text-slate-900 dark:text-white mt-8 mb-3">10. Contact</h2>
 						<p>
 							For questions about our use of cookies, contact {SITE.name} at
-							<a href="/contact" class="text-pink-600 underline hover:no-underline">our contact page</a>
+							<a href="/contact" class="text-pink-600 underline hover:no-underline dark:text-pink-400 dark:hover:text-pink-300">our contact page</a>
 							or email {SITE.contactEmail}.
 						</p>
 					</section>

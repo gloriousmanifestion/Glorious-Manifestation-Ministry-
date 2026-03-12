@@ -29,7 +29,7 @@ async fn main() {
         .with_env_filter("backend=debug,tower_http=debug")
         .init();
 
-    let pool = db::init_db().await.expect("Failed to init database");
+    let pool: sqlx::AnyPool = db::init_db().await.expect("Failed to init database");
 
     let app = Router::new()
         .route("/", get(root))
@@ -38,6 +38,7 @@ async fn main() {
         .nest(
             "/api/v1",
             routes::auth_routes(pool.clone())
+                .merge(routes::admin_routes(pool.clone()))
                 .merge(routes::events_routes(pool.clone()))
                 .merge(routes::contact_routes(pool)),
         )

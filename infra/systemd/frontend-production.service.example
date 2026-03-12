@@ -1,23 +1,23 @@
 # Example systemd unit for frontend (production).
-# IMPORTANT: Create a service file named: __TEMPLATE_FRONTEND_PRODUCTION_SERVICE_FILE__
+# IMPORTANT: Create a service file named: pgm-frontend-production.service
 # (e.g., solo-template-frontend-production.service) in infra/systemd/ before deploying.
 # The CI/CD workflow expects this file to exist.
-# Copy to /etc/systemd/system/__TEMPLATE_SYSTEMD_FRONTEND_PRODUCTION__.service on the VM.
-# Serves from /opt/__TEMPLATE_DEPLOY_APP_NAME__/frontend/production (e.g. SvelteKit adapter-node build).
+# Copy to /etc/systemd/system/pgm-frontend-production.service on the VM.
+# Serves from /opt/pgm/frontend/production (e.g. SvelteKit adapter-node build).
 
 [Unit]
-Description=__TEMPLATE_APP_NAME__ Frontend (production)
+Description=Prophetic Glorious Manifestation Frontend (production)
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=/opt/__TEMPLATE_DEPLOY_APP_NAME__/frontend/production
+WorkingDirectory=/opt/pgm/frontend/production
 ExecStart=/usr/bin/node serve.mjs
 Restart=on-failure
 RestartSec=5
-EnvironmentFile=-/etc/default/__TEMPLATE_SYSTEMD_FRONTEND_PRODUCTION__
-Environment=PORT=__TEMPLATE_FRONTEND_PRODUCTION_PORT__
+EnvironmentFile=-/etc/default/pgm-frontend-production
+Environment=PORT=6400
 
 [Install]
 WantedBy=multi-user.target

@@ -1,15 +1,16 @@
 use axum::{
-    extract::State,
+    extract::{Path, State},
     http::StatusCode,
     response::Json,
-    routing::{get, patch, post},
+    routing::{get, post},
     Router,
 };
 use serde::{Deserialize, Serialize};
-use sqlx::SqlitePool;
+use sqlx::AnyPool;
 use uuid::Uuid;
 
 use crate::auth::{create_token, AuthUser};
+use crate::db;
 use crate::models::{User, UserResponse};
 
 use argon2::{
@@ -17,6 +18,7 @@ use argon2::{
     Argon2,
 };
 use rand_core::OsRng;
+use wangamail_rs::{BodyType, GraphMailClient, Message, MessageBody, Recipient, SendMailRequest};
 
 #[derive(Debug, Deserialize)]
 pub struct RegisterRequest {
@@ -28,11 +30,24 @@ pub struct RegisterRequest {
     pub church_name: String,
     pub calling: String,
     pub selected_course_id: Option<String>,
+    /// When set (e.g. from /invite/[token]), validates invite and sets user role to invite role.
+    pub invite_token: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct LoginRequest {
     pub email: String,
+    pub password: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ForgotPasswordRequest {
+    pub email: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ResetPasswordRequest {
+    pub token: String,
     pub password: String,
 }
 
@@ -62,19 +77,234 @@ fn verify_password(password: &str, hash: &str) -> Result<bool, String> {
         .is_ok())
 }
 
-pub fn auth_routes(pool: SqlitePool) -> Router {
+async fn send_registration_email(to: &str, name: &str) -> Result<(), String> {
+    let tenant_id =
+        std::env::var("AZURE_TENANT_ID").map_err(|_| "AZURE_TENANT_ID is not set".to_string())?;
+    let client_id =
+        std::env::var("AZURE_CLIENT_ID").map_err(|_| "AZURE_CLIENT_ID is not set".to_string())?;
+    let client_secret = std::env::var("AZURE_CLIENT_SECRET")
+        .map_err(|_| "AZURE_CLIENT_SECRET is not set".to_string())?;
+    let from_user = std::env::var("WANGAMAIL_FROM_USER")
+        .map_err(|_| "WANGAMAIL_FROM_USER is not set".to_string())?;
+
+    let client = GraphMailClient::builder()
+        .tenant_id(tenant_id)
+        .client_id(client_id)
+        .client_secret(client_secret)
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let subject = "Welcome to Prophetic Ministry Manifestation Pastoral School";
+    let body_text = format!(
+        "Hi {name},\n\n\
+Thank you for registering for the Prophetic Ministry Manifestation Pastoral School.\n\n\
+Your account has been created successfully.\n\
+Please log in with your email and password to complete your profile and verification.\n\n\
+If you did not create this account, please ignore this email.\n\n\
+Blessings,\n\
+Prophetic Ministry Manifestation Pastoral School"
+    );
+
+    let message = Message {
+        subject: subject.to_string(),
+        body: MessageBody {
+            content_type: BodyType::Text,
+            content: body_text,
+        },
+        to_recipients: vec![Recipient::new(to)],
+        ..Default::default()
+    };
+
+    let request = SendMailRequest::new(message);
+
+    client
+        .send_mail(&from_user, request)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[derive(Debug, Serialize)]
+pub struct InviteInfoResponse {
+    pub valid: bool,
+    pub role: Option<String>,
+    pub email: Option<String>,
+    pub expires_at: Option<String>,
+    pub message: Option<String>,
+}
+
+#[derive(Debug, sqlx::FromRow)]
+struct InviteRow {
+    #[allow(dead_code)]
+    id: String,
+    role: String,
+    email: Option<String>,
+    expires_at: String,
+}
+
+pub fn auth_routes(pool: AnyPool) -> Router {
     Router::new()
         .route("/auth/register", post(register))
         .route("/auth/login", post(login))
+        .route("/auth/forgot-password", post(forgot_password))
+        .route("/auth/reset-password", post(reset_password))
         .route("/auth/me", get(me).patch(update_me))
         .route("/auth/verify", post(verify))
         .route("/auth/complete-payment", post(complete_payment))
         .route("/auth/courses", get(list_courses))
+        .route("/auth/invite/:token", get(get_invite))
+        .route("/payments/proofs", post(upload_payment_proof))
+        .route("/payments/proofs/me", get(list_my_payment_proofs))
         .with_state(pool)
 }
 
+async fn get_invite(
+    State(pool): State<AnyPool>,
+    Path(token): Path<String>,
+) -> Json<InviteInfoResponse> {
+    let bootstrap =
+        std::env::var("BOOTSTRAP_INVITE_TOKEN").unwrap_or_else(|_| "bootstrap".to_string());
+    if token == bootstrap {
+        let has_super: bool =
+            sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM users WHERE role = 'super_admin'")
+                .fetch_one(&pool)
+                .await
+                .unwrap_or(1)
+                > 0;
+        return Json(InviteInfoResponse {
+            valid: !has_super,
+            role: Some("super_admin".to_string()),
+            email: None,
+            expires_at: None,
+            message: if has_super {
+                Some("Bootstrap already used".to_string())
+            } else {
+                None
+            },
+        });
+    }
+    let now = chrono::Utc::now().to_rfc3339();
+    let row: Option<InviteRow> = if db::is_postgres() {
+        sqlx::query_as(
+            "SELECT id, role, email, expires_at FROM invites WHERE token = $1 AND used_at IS NULL AND expires_at > $2",
+        )
+        .bind(&token)
+        .bind(&now)
+        .fetch_optional(&pool)
+        .await
+        .ok()
+        .flatten()
+    } else {
+        sqlx::query_as(
+            "SELECT id, role, email, expires_at FROM invites WHERE token = ? AND used_at IS NULL AND expires_at > ?",
+        )
+        .bind(&token)
+        .bind(&now)
+        .fetch_optional(&pool)
+        .await
+        .ok()
+        .flatten()
+    };
+    match row {
+        Some(r) => Json(InviteInfoResponse {
+            valid: true,
+            role: Some(r.role),
+            email: r.email,
+            expires_at: Some(r.expires_at),
+            message: None,
+        }),
+        None => Json(InviteInfoResponse {
+            valid: false,
+            role: None,
+            email: None,
+            expires_at: None,
+            message: Some("Invalid or expired invite".to_string()),
+        }),
+    }
+}
+
+/// Resolve role for registration: (role, invite_id to mark used if any).
+async fn resolve_register_role(
+    pool: &AnyPool,
+    invite_token: Option<&str>,
+) -> Result<(String, Option<String>), (StatusCode, Json<serde_json::Value>)> {
+    let Some(tok) = invite_token else {
+        return Ok(("student".to_string(), None));
+    };
+    let bootstrap =
+        std::env::var("BOOTSTRAP_INVITE_TOKEN").unwrap_or_else(|_| "bootstrap".to_string());
+    if tok == bootstrap {
+        let has_super: bool =
+            sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM users WHERE role = 'super_admin'")
+                .fetch_one(pool)
+                .await
+                .map_err(|e| {
+                    tracing::error!("Bootstrap check error: {:?}", e);
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(serde_json::json!({"error": "bootstrap_check_failed", "message": "Could not check bootstrap"})),
+                    )
+                })?
+                > 0;
+        if has_super {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(
+                    serde_json::json!({"error": "bootstrap_used", "message": "Bootstrap invite already used"}),
+                ),
+            ));
+        }
+        return Ok(("super_admin".to_string(), None));
+    }
+    let now = chrono::Utc::now().to_rfc3339();
+    #[derive(Debug, sqlx::FromRow)]
+    struct InviteIdRole {
+        id: String,
+        role: String,
+    }
+    let row: Option<InviteIdRole> = if db::is_postgres() {
+        sqlx::query_as(
+            "SELECT id, role FROM invites WHERE token = $1 AND used_at IS NULL AND expires_at > $2",
+        )
+        .bind(tok)
+        .bind(&now)
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Invite lookup error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "invite_lookup_failed", "message": "Could not validate invite"})),
+            )
+        })?
+    } else {
+        sqlx::query_as(
+            "SELECT id, role FROM invites WHERE token = ? AND used_at IS NULL AND expires_at > ?",
+        )
+        .bind(tok)
+        .bind(&now)
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Invite lookup error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "invite_lookup_failed", "message": "Could not validate invite"})),
+            )
+        })?
+    };
+    match row {
+        Some(r) => Ok((r.role, Some(r.id))),
+        None => Err((
+            StatusCode::BAD_REQUEST,
+            Json(
+                serde_json::json!({"error": "invalid_invite", "message": "Invalid or expired invite"}),
+            ),
+        )),
+    }
+}
+
 async fn register(
-    State(pool): State<SqlitePool>,
+    State(pool): State<AnyPool>,
     axum::Json(req): axum::Json<RegisterRequest>,
 ) -> Result<Json<AuthResponse>, (StatusCode, Json<serde_json::Value>)> {
     if req.name.trim().is_empty() {
@@ -92,7 +322,9 @@ async fn register(
     if req.password.len() < 8 {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({"error": "password_too_short", "message": "Password must be at least 8 characters"})),
+            Json(
+                serde_json::json!({"error": "password_too_short", "message": "Password must be at least 8 characters"}),
+            ),
         ));
     }
 
@@ -103,26 +335,33 @@ async fn register(
         )
     })?;
 
+    let (role, invite_id_to_use) =
+        resolve_register_role(&pool, req.invite_token.as_deref()).await?;
+
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().to_rfc3339();
 
-    sqlx::query(
-        r#"
-        INSERT INTO users (id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)
-        "#,
-    )
-    .bind(&id)
-    .bind(&req.email)
-    .bind(&password_hash)
-    .bind(&req.name)
-    .bind(&req.phone)
-    .bind(&req.ministry_role)
-    .bind(&req.church_name)
-    .bind(&req.calling)
-    .bind(&req.selected_course_id)
-    .bind(&now)
-    .execute(&pool)
+    let insert_sql = if db::is_postgres() {
+        r#"INSERT INTO users (id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 0, 0, $10, $11)"#
+    } else {
+        r#"INSERT INTO users (id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?)"#
+    };
+
+    sqlx::query(insert_sql)
+        .bind(&id)
+        .bind(&req.email)
+        .bind(&password_hash)
+        .bind(&req.name)
+        .bind(&req.phone)
+        .bind(&req.ministry_role)
+        .bind(&req.church_name)
+        .bind(&req.calling)
+        .bind(&req.selected_course_id)
+        .bind(&role)
+        .bind(&now)
+        .execute(&pool)
     .await
     .map_err(|e| {
         if let sqlx::Error::Database(db) = &e {
@@ -140,6 +379,20 @@ async fn register(
         )
     })?;
 
+    if let Some(invite_id) = invite_id_to_use {
+        let update_invite_sql = if db::is_postgres() {
+            "UPDATE invites SET used_at = $1, used_by = $2 WHERE id = $3"
+        } else {
+            "UPDATE invites SET used_at = ?, used_by = ? WHERE id = ?"
+        };
+        let _ = sqlx::query(update_invite_sql)
+            .bind(&now)
+            .bind(&id)
+            .bind(&invite_id)
+            .execute(&pool)
+            .await;
+    }
+
     let user = User {
         id: id.clone(),
         email: req.email,
@@ -152,10 +405,17 @@ async fn register(
         selected_course_id: req.selected_course_id,
         verified: false,
         payment_complete: false,
+        role: role.clone(),
         created_at: now,
     };
 
-    let token = create_token(&id).map_err(|_| {
+    // Fire-and-forget registration email via Microsoft Graph using wangamail-rs.
+    // Failing to send email must not block registration.
+    if let Err(e) = send_registration_email(&user.email, &user.name).await {
+        tracing::error!("Registration email error for {}: {}", user.email, e);
+    }
+
+    let token = create_token(&id, &role).map_err(|_| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({"error": "token_failed", "message": "Could not create token"})),
@@ -169,22 +429,25 @@ async fn register(
 }
 
 async fn login(
-    State(pool): State<SqlitePool>,
+    State(pool): State<AnyPool>,
     axum::Json(req): axum::Json<LoginRequest>,
 ) -> Result<Json<AuthResponse>, (StatusCode, Json<serde_json::Value>)> {
-    let user: Option<User> = sqlx::query_as(
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, created_at FROM users WHERE email = ?",
-    )
-    .bind(&req.email)
-    .fetch_optional(&pool)
-    .await
-    .map_err(|e| {
-        tracing::error!("Login query error: {:?}", e);
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(serde_json::json!({"error": "login_failed", "message": "Login failed"})),
-        )
-    })?;
+    let login_sql = if db::is_postgres() {
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE email = $1"
+    } else {
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE email = ?"
+    };
+    let user: Option<User> = sqlx::query_as(login_sql)
+        .bind(&req.email)
+        .fetch_optional(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Login query error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "login_failed", "message": "Login failed"})),
+            )
+        })?;
 
     let user = user.ok_or((
         StatusCode::UNAUTHORIZED,
@@ -194,11 +457,13 @@ async fn login(
     if !verify_password(&req.password, &user.password_hash).unwrap_or(false) {
         return Err((
             StatusCode::UNAUTHORIZED,
-            Json(serde_json::json!({"error": "invalid_credentials", "message": "Invalid email or password"})),
+            Json(
+                serde_json::json!({"error": "invalid_credentials", "message": "Invalid email or password"}),
+            ),
         ));
     }
 
-    let token = create_token(&user.id).map_err(|_| {
+    let token = create_token(&user.id, &user.role).map_err(|_| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({"error": "token_failed", "message": "Could not create token"})),
@@ -211,23 +476,253 @@ async fn login(
     }))
 }
 
-async fn me(
-    State(pool): State<SqlitePool>,
-    AuthUser(user_id): AuthUser,
-) -> Result<Json<UserResponse>, (StatusCode, Json<serde_json::Value>)> {
-    let user: Option<User> = sqlx::query_as(
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, created_at FROM users WHERE id = ?",
-    )
-    .bind(&user_id)
-    .fetch_optional(&pool)
-    .await
-    .map_err(|e| {
-        tracing::error!("Me query error: {:?}", e);
+async fn send_password_reset_email(to: &str, name: &str, reset_link: &str) -> Result<(), String> {
+    let tenant_id =
+        std::env::var("AZURE_TENANT_ID").map_err(|_| "AZURE_TENANT_ID is not set".to_string())?;
+    let client_id =
+        std::env::var("AZURE_CLIENT_ID").map_err(|_| "AZURE_CLIENT_ID is not set".to_string())?;
+    let client_secret = std::env::var("AZURE_CLIENT_SECRET")
+        .map_err(|_| "AZURE_CLIENT_SECRET is not set".to_string())?;
+    let from_user = std::env::var("WANGAMAIL_FROM_USER")
+        .map_err(|_| "WANGAMAIL_FROM_USER is not set".to_string())?;
+
+    let client = GraphMailClient::builder()
+        .tenant_id(tenant_id)
+        .client_id(client_id)
+        .client_secret(client_secret)
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let subject = "Reset your Prophetic Ministry Manifestation Pastoral School password";
+    let body_text = format!(
+        "Hi {name},\n\n\
+We received a request to reset your password for the Prophetic Ministry Manifestation Pastoral School.\n\n\
+You can reset your password using the link below:\n\
+{reset_link}\n\n\
+If you did not request a password reset, you can safely ignore this email.\n\n\
+Blessings,\n\
+Prophetic Ministry Manifestation Pastoral School"
+    );
+
+    let message = Message {
+        subject: subject.to_string(),
+        body: MessageBody {
+            content_type: BodyType::Text,
+            content: body_text,
+        },
+        to_recipients: vec![Recipient::new(to)],
+        ..Default::default()
+    };
+
+    let request = SendMailRequest::new(message);
+
+    client
+        .send_mail(&from_user, request)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+async fn forgot_password(
+    State(pool): State<AnyPool>,
+    axum::Json(req): axum::Json<ForgotPasswordRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    let email = req.email.trim();
+    if email.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "error": "email_required",
+                "message": "Email is required"
+            })),
+        ));
+    }
+
+    let user_sql = if db::is_postgres() {
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE email = $1"
+    } else {
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE email = ?"
+    };
+
+    let user: Option<User> = sqlx::query_as(user_sql)
+        .bind(email)
+        .fetch_optional(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Forgot password query error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(
+                    serde_json::json!({"error": "forgot_password_failed", "message": "Could not process request"}),
+                ),
+            )
+        })?;
+
+    if let Some(user) = user {
+        let token = Uuid::new_v4().to_string();
+        let id = Uuid::new_v4().to_string();
+        let expires_at = (chrono::Utc::now() + chrono::Duration::hours(1)).to_rfc3339();
+
+        let insert_sql = if db::is_postgres() {
+            "INSERT INTO password_reset_tokens (id, user_id, token, expires_at) VALUES ($1, $2, $3, $4)"
+        } else {
+            "INSERT INTO password_reset_tokens (id, user_id, token, expires_at) VALUES (?, ?, ?, ?)"
+        };
+
+        if let Err(e) = sqlx::query(insert_sql)
+            .bind(&id)
+            .bind(&user.id)
+            .bind(&token)
+            .bind(&expires_at)
+            .execute(&pool)
+            .await
+        {
+            tracing::error!("Insert password reset token error: {:?}", e);
+        } else {
+            let base_url = std::env::var("APP_BASE_URL")
+                .unwrap_or_else(|_| "http://localhost:5173".to_string());
+            let reset_link = format!(
+                "{}/reset-password?token={}",
+                base_url.trim_end_matches('/'),
+                token
+            );
+
+            if let Err(e) = send_password_reset_email(&user.email, &user.name, &reset_link).await {
+                tracing::error!("Password reset email error for {}: {}", user.email, e);
+            }
+        }
+    }
+
+    // Always return success to avoid leaking which emails exist.
+    Ok(Json(serde_json::json!({
+        "status": "ok",
+        "message": "If an account exists for that email, a reset link has been sent."
+    })))
+}
+
+#[derive(Debug, sqlx::FromRow)]
+struct PasswordResetRow {
+    id: String,
+    user_id: String,
+    #[allow(dead_code)]
+    expires_at: String,
+    #[allow(dead_code)]
+    used_at: Option<String>,
+}
+
+async fn reset_password(
+    State(pool): State<AnyPool>,
+    axum::Json(req): axum::Json<ResetPasswordRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    if req.password.len() < 8 {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(
+                serde_json::json!({"error": "password_too_short", "message": "Password must be at least 8 characters"}),
+            ),
+        ));
+    }
+
+    let now = chrono::Utc::now().to_rfc3339();
+
+    let select_sql = if db::is_postgres() {
+        "SELECT id, user_id, expires_at, used_at FROM password_reset_tokens WHERE token = $1 AND used_at IS NULL AND expires_at > $2"
+    } else {
+        "SELECT id, user_id, expires_at, used_at FROM password_reset_tokens WHERE token = ? AND used_at IS NULL AND expires_at > ?"
+    };
+
+    let row: Option<PasswordResetRow> = sqlx::query_as(select_sql)
+        .bind(&req.token)
+        .bind(&now)
+        .fetch_optional(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Reset password token lookup error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(
+                    serde_json::json!({"error": "reset_password_failed", "message": "Could not process request"}),
+                ),
+            )
+        })?;
+
+    let row = row.ok_or((
+        StatusCode::BAD_REQUEST,
+        Json(
+            serde_json::json!({"error": "invalid_token", "message": "Invalid or expired reset token"}),
+        ),
+    ))?;
+
+    let new_hash = hash_password(&req.password).map_err(|_| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(serde_json::json!({"error": "fetch_failed", "message": "Could not fetch user"})),
+            Json(serde_json::json!({"error": "hash_failed", "message": "Could not hash password"})),
         )
     })?;
+
+    let update_user_sql = if db::is_postgres() {
+        "UPDATE users SET password_hash = $1 WHERE id = $2"
+    } else {
+        "UPDATE users SET password_hash = ? WHERE id = ?"
+    };
+
+    sqlx::query(update_user_sql)
+        .bind(&new_hash)
+        .bind(&row.user_id)
+        .execute(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Reset password user update error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(
+                    serde_json::json!({"error": "reset_password_failed", "message": "Could not update password"}),
+                ),
+            )
+        })?;
+
+    let update_token_sql = if db::is_postgres() {
+        "UPDATE password_reset_tokens SET used_at = $1 WHERE id = $2"
+    } else {
+        "UPDATE password_reset_tokens SET used_at = ? WHERE id = ?"
+    };
+
+    if let Err(e) = sqlx::query(update_token_sql)
+        .bind(&now)
+        .bind(&row.id)
+        .execute(&pool)
+        .await
+    {
+        tracing::error!("Reset password token mark used error: {:?}", e);
+    }
+
+    Ok(Json(serde_json::json!({
+        "status": "ok",
+        "message": "Password has been reset successfully."
+    })))
+}
+
+async fn me(
+    State(pool): State<AnyPool>,
+    AuthUser(user_id): AuthUser,
+) -> Result<Json<UserResponse>, (StatusCode, Json<serde_json::Value>)> {
+    let me_sql = if db::is_postgres() {
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE id = $1"
+    } else {
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE id = ?"
+    };
+    let user: Option<User> = sqlx::query_as(me_sql)
+        .bind(&user_id)
+        .fetch_optional(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Me query error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(
+                    serde_json::json!({"error": "fetch_failed", "message": "Could not fetch user"}),
+                ),
+            )
+        })?;
 
     let user = user.ok_or((
         StatusCode::NOT_FOUND,
@@ -238,11 +733,16 @@ async fn me(
 }
 
 async fn update_me(
-    State(pool): State<SqlitePool>,
+    State(pool): State<AnyPool>,
     AuthUser(user_id): AuthUser,
     axum::Json(req): axum::Json<SelectCourseRequest>,
 ) -> Result<Json<UserResponse>, (StatusCode, Json<serde_json::Value>)> {
-    sqlx::query("UPDATE users SET selected_course_id = ? WHERE id = ?")
+    let update_course_sql = if db::is_postgres() {
+        "UPDATE users SET selected_course_id = $1 WHERE id = $2"
+    } else {
+        "UPDATE users SET selected_course_id = ? WHERE id = ?"
+    };
+    sqlx::query(update_course_sql)
         .bind(&req.selected_course_id)
         .bind(&user_id)
         .execute(&pool)
@@ -255,27 +755,37 @@ async fn update_me(
             )
         })?;
 
-    let user: Option<User> = sqlx::query_as(
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, created_at FROM users WHERE id = ?",
-    )
-    .bind(&user_id)
-    .fetch_optional(&pool)
-    .await
-    .map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(serde_json::json!({"error": "fetch_failed", "message": "Could not fetch user"})),
-        )
-    })?;
+    let me_sql2 = if db::is_postgres() {
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE id = $1"
+    } else {
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE id = ?"
+    };
+    let user: Option<User> = sqlx::query_as(me_sql2)
+        .bind(&user_id)
+        .fetch_optional(&pool)
+        .await
+        .map_err(|_e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(
+                    serde_json::json!({"error": "fetch_failed", "message": "Could not fetch user"}),
+                ),
+            )
+        })?;
 
     Ok(Json(user.unwrap().to_response()))
 }
 
 async fn verify(
-    State(pool): State<SqlitePool>,
+    State(pool): State<AnyPool>,
     AuthUser(user_id): AuthUser,
 ) -> Result<Json<UserResponse>, (StatusCode, Json<serde_json::Value>)> {
-    sqlx::query("UPDATE users SET verified = 1 WHERE id = ?")
+    let verify_sql = if db::is_postgres() {
+        "UPDATE users SET verified = 1 WHERE id = $1"
+    } else {
+        "UPDATE users SET verified = 1 WHERE id = ?"
+    };
+    sqlx::query(verify_sql)
         .bind(&user_id)
         .execute(&pool)
         .await
@@ -287,27 +797,37 @@ async fn verify(
             )
         })?;
 
-    let user: Option<User> = sqlx::query_as(
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, created_at FROM users WHERE id = ?",
-    )
-    .bind(&user_id)
-    .fetch_optional(&pool)
-    .await
-    .map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(serde_json::json!({"error": "fetch_failed", "message": "Could not fetch user"})),
-        )
-    })?;
+    let verify_select_sql = if db::is_postgres() {
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE id = $1"
+    } else {
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE id = ?"
+    };
+    let user: Option<User> = sqlx::query_as(verify_select_sql)
+        .bind(&user_id)
+        .fetch_optional(&pool)
+        .await
+        .map_err(|_e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(
+                    serde_json::json!({"error": "fetch_failed", "message": "Could not fetch user"}),
+                ),
+            )
+        })?;
 
     Ok(Json(user.unwrap().to_response()))
 }
 
 async fn complete_payment(
-    State(pool): State<SqlitePool>,
+    State(pool): State<AnyPool>,
     AuthUser(user_id): AuthUser,
 ) -> Result<Json<UserResponse>, (StatusCode, Json<serde_json::Value>)> {
-    sqlx::query("UPDATE users SET payment_complete = 1 WHERE id = ?")
+    let payment_sql = if db::is_postgres() {
+        "UPDATE users SET payment_complete = 1 WHERE id = $1"
+    } else {
+        "UPDATE users SET payment_complete = 1 WHERE id = ?"
+    };
+    sqlx::query(payment_sql)
         .bind(&user_id)
         .execute(&pool)
         .await
@@ -319,18 +839,23 @@ async fn complete_payment(
             )
         })?;
 
-    let user: Option<User> = sqlx::query_as(
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, created_at FROM users WHERE id = ?",
-    )
-    .bind(&user_id)
-    .fetch_optional(&pool)
-    .await
-    .map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(serde_json::json!({"error": "fetch_failed", "message": "Could not fetch user"})),
-        )
-    })?;
+    let payment_select_sql = if db::is_postgres() {
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE id = $1"
+    } else {
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE id = ?"
+    };
+    let user: Option<User> = sqlx::query_as(payment_select_sql)
+        .bind(&user_id)
+        .fetch_optional(&pool)
+        .await
+        .map_err(|_e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(
+                    serde_json::json!({"error": "fetch_failed", "message": "Could not fetch user"}),
+                ),
+            )
+        })?;
 
     Ok(Json(user.unwrap().to_response()))
 }
@@ -343,7 +868,7 @@ struct CourseRow {
 }
 
 async fn list_courses(
-    State(pool): State<SqlitePool>,
+    State(pool): State<AnyPool>,
 ) -> Result<Json<Vec<CourseRow>>, (StatusCode, Json<serde_json::Value>)> {
     let courses: Vec<CourseRow> = sqlx::query_as("SELECT id, name, duration FROM courses")
         .fetch_all(&pool)
@@ -356,4 +881,187 @@ async fn list_courses(
             )
         })?;
     Ok(Json(courses))
+}
+
+// ---------- Payment proofs (POP upload + listing for student) ----------
+
+#[derive(Debug, Serialize, sqlx::FromRow)]
+struct PaymentProofRow {
+    id: String,
+    user_id: String,
+    file_url: String,
+    status: String,
+    note: Option<String>,
+    uploaded_at: String,
+    reviewed_at: Option<String>,
+    reviewed_by: Option<String>,
+    comment: Option<String>,
+}
+
+use axum::extract::Multipart;
+
+async fn upload_payment_proof(
+    State(pool): State<AnyPool>,
+    AuthUser(user_id): AuthUser,
+    mut multipart: Multipart,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    use tokio::io::AsyncWriteExt;
+
+    let mut file_path: Option<String> = None;
+    let mut note: Option<String> = None;
+
+    while let Some(field) = multipart.next_field().await.map_err(|e| {
+        tracing::error!("Multipart error: {:?}", e);
+        (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"error": "invalid_multipart", "message": "Invalid upload"})),
+        )
+    })? {
+        let name = field.name().unwrap_or("").to_string();
+        if name == "file" {
+            let file_name = field
+                .file_name()
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| format!("pop-{}.bin", Uuid::new_v4()));
+            let bytes = field.bytes().await.map_err(|e| {
+                tracing::error!("Read upload error: {:?}", e);
+                (
+                    StatusCode::BAD_REQUEST,
+                    Json(
+                        serde_json::json!({"error": "upload_failed", "message": "Could not read uploaded file"}),
+                    ),
+                )
+            })?;
+
+            let upload_dir = std::env::var("PAYMENT_PROOFS_DIR")
+                .unwrap_or_else(|_| "uploads/payment_proofs".into());
+            tokio::fs::create_dir_all(&upload_dir).await.map_err(|e| {
+                tracing::error!("Create upload dir error: {:?}", e);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(
+                        serde_json::json!({"error": "upload_failed", "message": "Could not prepare upload directory"}),
+                    ),
+                )
+            })?;
+            let path = format!("{}/{}", upload_dir.trim_end_matches('/'), file_name);
+            let mut file = tokio::fs::File::create(&path).await.map_err(|e| {
+                tracing::error!("Create upload file error: {:?}", e);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(
+                        serde_json::json!({"error": "upload_failed", "message": "Could not save uploaded file"}),
+                    ),
+                )
+            })?;
+            file.write_all(&bytes).await.map_err(|e| {
+                tracing::error!("Write upload file error: {:?}", e);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(
+                        serde_json::json!({"error": "upload_failed", "message": "Could not save uploaded file"}),
+                    ),
+                )
+            })?;
+            file_path = Some(path);
+        } else if name == "note" {
+            let text = field.text().await.unwrap_or_default();
+            if !text.trim().is_empty() {
+                note = Some(text.trim().to_string());
+            }
+        }
+    }
+
+    let file_path = match file_path {
+        Some(p) => p,
+        None => {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(
+                    serde_json::json!({"error": "file_required", "message": "Please upload a file"}),
+                ),
+            ))
+        }
+    };
+
+    let id = Uuid::new_v4().to_string();
+    let now = chrono::Utc::now().to_rfc3339();
+    let status = "pending".to_string();
+
+    let insert_sql = if db::is_postgres() {
+        "INSERT INTO payment_proofs (id, user_id, file_url, status, note, uploaded_at) VALUES ($1, $2, $3, $4, $5, $6)"
+    } else {
+        "INSERT INTO payment_proofs (id, user_id, file_url, status, note, uploaded_at) VALUES (?, ?, ?, ?, ?, ?)"
+    };
+    sqlx::query(insert_sql)
+        .bind(&id)
+        .bind(&user_id)
+        .bind(&file_path)
+        .bind(&status)
+        .bind(&note)
+        .bind(&now)
+        .execute(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Insert payment proof error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(
+                    serde_json::json!({"error": "upload_failed", "message": "Could not save payment proof"}),
+                ),
+            )
+        })?;
+
+    Ok(Json(serde_json::json!({
+        "id": id,
+        "file_url": file_path,
+        "status": status,
+        "note": note,
+        "uploaded_at": now,
+        "reviewed_at": null,
+        "reviewed_by": null,
+        "comment": null
+    })))
+}
+
+async fn list_my_payment_proofs(
+    State(pool): State<AnyPool>,
+    AuthUser(user_id): AuthUser,
+) -> Result<Json<Vec<serde_json::Value>>, (StatusCode, Json<serde_json::Value>)> {
+    let sql = if db::is_postgres() {
+        "SELECT id, user_id, file_url, status, note, uploaded_at, reviewed_at, reviewed_by, comment \
+         FROM payment_proofs WHERE user_id = $1 ORDER BY uploaded_at DESC"
+    } else {
+        "SELECT id, user_id, file_url, status, note, uploaded_at, reviewed_at, reviewed_by, comment \
+         FROM payment_proofs WHERE user_id = ? ORDER BY uploaded_at DESC"
+    };
+    let rows: Vec<PaymentProofRow> = sqlx::query_as(sql)
+        .bind(&user_id)
+        .fetch_all(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("List my payment proofs error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(
+                    serde_json::json!({"error": "fetch_failed", "message": "Could not load payment proofs"}),
+                ),
+            )
+        })?;
+    let list: Vec<serde_json::Value> = rows
+        .into_iter()
+        .map(|r| {
+            serde_json::json!({
+                "id": r.id,
+                "file_url": r.file_url,
+                "status": r.status,
+                "note": r.note,
+                "uploaded_at": r.uploaded_at,
+                "reviewed_at": r.reviewed_at,
+                "reviewed_by": r.reviewed_by,
+                "comment": r.comment,
+            })
+        })
+        .collect();
+    Ok(Json(list))
 }

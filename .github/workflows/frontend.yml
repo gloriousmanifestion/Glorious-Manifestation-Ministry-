@@ -3,6 +3,10 @@ name: Frontend CI/CD
 on:
   pull_request:
     types: [opened, synchronize, closed]
+    branches:
+      - main
+      - uat
+      - prod
     paths:
       - 'apps/frontend/**'
       - '.github/workflows/frontend.yml'
@@ -23,8 +27,9 @@ jobs:
     name: Format
     runs-on: self-hosted
     if: |
-      github.event.pull_request.merged == false &&
-      (github.event.pull_request.base.ref == 'main' || github.event.pull_request.base.ref == 'uat' || github.event.pull_request.base.ref == 'prod')
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged == false &&
+       (github.event.pull_request.base.ref == 'main' || github.event.pull_request.base.ref == 'uat' || github.event.pull_request.base.ref == 'prod'))
     steps:
       - uses: actions/checkout@v4
         with:
@@ -81,8 +86,9 @@ jobs:
     runs-on: self-hosted
     needs: format
     if: |
-      github.event.pull_request.merged == false &&
-      (github.event.pull_request.base.ref == 'main' || github.event.pull_request.base.ref == 'uat' || github.event.pull_request.base.ref == 'prod')
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged == false &&
+       (github.event.pull_request.base.ref == 'main' || github.event.pull_request.base.ref == 'uat' || github.event.pull_request.base.ref == 'prod'))
     steps:
       - uses: actions/checkout@v4
         with:
@@ -140,8 +146,9 @@ jobs:
     runs-on: self-hosted
     needs: [lint]
     if: |
-      github.event.pull_request.merged == false &&
-      (github.event.pull_request.base.ref == 'main' || github.event.pull_request.base.ref == 'uat' || github.event.pull_request.base.ref == 'prod')
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged == false &&
+       (github.event.pull_request.base.ref == 'main' || github.event.pull_request.base.ref == 'uat' || github.event.pull_request.base.ref == 'prod'))
     steps:
       - uses: actions/checkout@v4
         with:
@@ -192,7 +199,9 @@ jobs:
     name: Test
     runs-on: self-hosted
     needs: [check]
-    if: github.event.pull_request.merged == false
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.event.pull_request.merged == false
     steps:
       - uses: actions/checkout@v4
         with:
@@ -219,7 +228,7 @@ jobs:
         run: pnpm install
 
       - name: Install Playwright browsers
-        run: pnpm --filter frontend exec playwright install --with-deps chromium
+        run: pnpm frontend exec playwright install --with-deps chromium
 
       - name: Build frontend (for test server)
         working-directory: apps/frontend
@@ -227,7 +236,10 @@ jobs:
 
       - name: Set test port
         id: test-port
-        run: echo "port=$(( 30000 + (${{ github.run_id }} % 10000) ))" >> $GITHUB_OUTPUT
+        run: |
+          PORT=$(node -e "const net=require('net'); const s=net.createServer(); s.listen(0,'127.0.0.1',()=>{console.log(s.address().port); s.close();});")
+          echo "port=$PORT" >> $GITHUB_OUTPUT
+          echo "Using port $PORT for Playwright webServer"
 
       - name: Run tests
         env:
@@ -481,7 +493,7 @@ jobs:
         id: env
         run: |
           BRANCH="${{ github.event.pull_request.base.ref }}"
-          APP_NAME="pgm"
+          APP_NAME="${{ secrets.VM_APP_NAME || 'pgm' }}"
           if [ "$BRANCH" = "prod" ]; then
             echo "environment=production" >> $GITHUB_OUTPUT
             echo "service_file=pgm-frontend-production.service" >> $GITHUB_OUTPUT
@@ -588,12 +600,12 @@ jobs:
     name: Deploy (systemd)
     runs-on: self-hosted
     needs: [get-version, build]
-    environment: ${{ github.event.pull_request.base.ref == 'prod' && 'production' || 'staging' }}
+    environment: ${{ (github.event.pull_request.base.ref == 'prod' || github.event.pull_request.base.ref == 'production') && 'pgmm-production' || 'pgmm-staging' }}
     if: |
       github.event_name == 'pull_request' &&
       github.event.action == 'closed' &&
       github.event.pull_request.merged == true &&
-      (github.event.pull_request.base.ref == 'main' || github.event.pull_request.base.ref == 'prod')
+      (github.event.pull_request.base.ref == 'main' || github.event.pull_request.base.ref == 'prod' || github.event.pull_request.base.ref == 'production')
     permissions:
       contents: read
     steps:
@@ -601,62 +613,70 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Download frontend artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-deploy-v${{ needs.get-version.outputs.version }}
-          merge-multiple: false
-
-      # Deploy uses frontend-deploy.tar.gz from the build job (not apps/frontend/out).
-      - name: Verify deploy artifact
+      - name: Pull latest changes
         run: |
-          TAR=""
-          if [ -f "frontend-deploy.tar.gz" ]; then
-            TAR="frontend-deploy.tar.gz"
-          else
-            TAR=$(find . -name "frontend-deploy.tar.gz" -type f 2>/dev/null | head -1)
-            if [ -n "$TAR" ]; then
-              cp "$TAR" frontend-deploy.tar.gz
-              TAR="frontend-deploy.tar.gz"
-            fi
-          fi
-          if [ -z "$TAR" ] || [ ! -f "$TAR" ]; then
-            echo "Error: frontend-deploy.tar.gz was not downloaded (deploy expects the deploy tarball, not apps/frontend/out)."
-            echo "Contents of workspace:"
-            ls -la
-            find . -maxdepth 3 -type f -name "*.tar.gz" 2>/dev/null || true
-            exit 1
-          fi
-          echo "Deploy artifact OK:"
-          ls -lh frontend-deploy.tar.gz
-          tar -tzf frontend-deploy.tar.gz | head -15
+          git fetch origin ${{ github.event.pull_request.base.ref }}
+          git checkout ${{ github.event.pull_request.base.ref }}
+          git pull origin ${{ github.event.pull_request.base.ref }} --rebase || git pull origin ${{ github.event.pull_request.base.ref }} --no-rebase
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Enable pnpm via Corepack
+        run: corepack enable && corepack prepare pnpm@10 --activate
+
+      - name: Install dependencies
+        run: pnpm install
 
       - name: Determine deployment environment (deploy step)
         id: deploy_env
         run: |
           BRANCH="${{ github.event.pull_request.base.ref }}"
           APP_NAME="${{ secrets.VM_APP_NAME || 'pgm' }}"
-          if [ "$BRANCH" = "prod" ]; then
+          if [ "$BRANCH" = "prod" ] || [ "$BRANCH" = "production" ]; then
             echo "environment=production" >> $GITHUB_OUTPUT
             echo "deploy_dir=/opt/${APP_NAME}/frontend/production" >> $GITHUB_OUTPUT
-            echo "port=5801" >> $GITHUB_OUTPUT
+            echo "port=6200" >> $GITHUB_OUTPUT
             echo "api_port=5800" >> $GITHUB_OUTPUT
             echo "service_name=pgm-frontend-production" >> $GITHUB_OUTPUT
+            echo "service_file=pgm-frontend-production.service" >> $GITHUB_OUTPUT
           else
             echo "environment=staging" >> $GITHUB_OUTPUT
             echo "deploy_dir=/opt/${APP_NAME}/frontend/staging" >> $GITHUB_OUTPUT
-            echo "port=5801" >> $GITHUB_OUTPUT
-            echo "api_port=5800" >> $GITHUB_OUTPUT
+            echo "port=5667" >> $GITHUB_OUTPUT
+            echo "api_port=5668" >> $GITHUB_OUTPUT
             echo "service_name=pgm-frontend-staging" >> $GITHUB_OUTPUT
+            echo "service_file=pgm-frontend-staging.service" >> $GITHUB_OUTPUT
           fi
+
+      - name: Build frontend with env-aware API URL
+        env:
+          PUBLIC_API_URL: ${{ secrets.PUBLIC_API_URL }}
+        run: pnpm frontend build
+
+      - name: Package frontend for VM deploy
+        run: |
+          mkdir -p deploy/frontend
+          cp -r apps/frontend/build deploy/frontend/build
+          cp apps/frontend/package.json deploy/frontend/
+          cp apps/frontend/serve.mjs deploy/frontend/
+          cp infra/systemd/${{ steps.deploy_env.outputs.service_file }} deploy/frontend/frontend.service
+          tar -czvf frontend-deploy.tar.gz -C deploy frontend
+          echo "Deploy tarball:"
+          ls -lh frontend-deploy.tar.gz
+          tar -tzf frontend-deploy.tar.gz | head -15
 
       - name: Create frontend .env for VM
         run: |
           API_URL="${{ secrets.PUBLIC_API_URL }}"
           if [ -z "$API_URL" ]; then
-            API_URL="http://127.0.0.1:5800"
+            API_PORT="${{ steps.deploy_env.outputs.api_port }}"
+            API_URL="http://127.0.0.1:${API_PORT}"
           fi
           printf 'PUBLIC_API_URL=%s\n' "$API_URL" > frontend.env
+          printf 'BACKEND_URL=%s\n' "$API_URL" >> frontend.env
 
       - name: Copy frontend to VM
         uses: appleboy/scp-action@v1
@@ -669,7 +689,7 @@ jobs:
           target: "/tmp/pgm-deploy/"
 
       - name: Install and restart frontend systemd service
-        uses: appleboy/ssh-action@v1.0.0
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.VM_IP }}
           username: ${{ secrets.VM_USER }}
@@ -681,21 +701,21 @@ jobs:
             SERVICE_NAME="${{ steps.deploy_env.outputs.service_name }}"
             ENV_NAME="${{ steps.deploy_env.outputs.environment }}"
             
-            echo "=== Deploying to $ENV_NAME environment ==="
+            echo "=== Deploying frontend to $ENV_NAME environment ==="
             echo "Deploy directory: $DEPLOY_DIR"
             echo "Service name: $SERVICE_NAME"
             
-            echo "=== Stopping frontend service (prevents restart loop during deploy) ==="
+            echo "=== Stopping frontend service ==="
             sudo systemctl stop "$SERVICE_NAME" || true
             
             sudo mkdir -p "$DEPLOY_DIR"
-            cd /tmp/__TEMPLATE_DEPLOY_APP_NAME__-deploy && tar -xzf frontend-deploy.tar.gz
+            cd /tmp/pgm-deploy && tar -xzf frontend-deploy.tar.gz
             sudo rm -rf "$DEPLOY_DIR/build"
-            sudo cp -r /tmp/__TEMPLATE_DEPLOY_APP_NAME__-deploy/frontend/build "$DEPLOY_DIR/"
-            sudo install -m 644 /tmp/__TEMPLATE_DEPLOY_APP_NAME__-deploy/frontend/package.json "$DEPLOY_DIR/"
-            sudo install -m 755 /tmp/__TEMPLATE_DEPLOY_APP_NAME__-deploy/frontend/serve.mjs "$DEPLOY_DIR/"
+            sudo cp -r /tmp/pgm-deploy/frontend/build "$DEPLOY_DIR/"
+            sudo install -m 644 /tmp/pgm-deploy/frontend/package.json "$DEPLOY_DIR/"
+            sudo install -m 755 /tmp/pgm-deploy/frontend/serve.mjs "$DEPLOY_DIR/"
             sudo chown -R www-data:www-data "$DEPLOY_DIR"
-            sudo cp /tmp/__TEMPLATE_DEPLOY_APP_NAME__-deploy/frontend.env "$DEPLOY_DIR/.env"
+            sudo cp /tmp/pgm-deploy/frontend.env "$DEPLOY_DIR/.env"
             sudo chown www-data:www-data "$DEPLOY_DIR/.env"
             sudo chmod 600 "$DEPLOY_DIR/.env"
             sudo install -m 644 /tmp/pgm-deploy/frontend/frontend.service "/etc/systemd/system/$SERVICE_NAME.service"
@@ -703,6 +723,8 @@ jobs:
             sudo systemctl enable "$SERVICE_NAME.service"
             sudo systemctl restart "$SERVICE_NAME.service"
             sudo systemctl status "$SERVICE_NAME.service" --no-pager || true
+            echo "=== Cleaning deploy staging on VM ==="
+            rm -rf /tmp/pgm-deploy
 
       - name: Deployment Summary
         if: always()
@@ -721,7 +743,7 @@ jobs:
           echo "**Port:** $PORT" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Steps" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Download frontend artifact" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Build and package frontend" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ Copy to VM" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ Install and restart \`${{ steps.deploy_env.outputs.service_name }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -742,15 +764,9 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-deploy-v${{ needs.get-version.outputs.version }}
-          merge-multiple: false
-
       - name: Create GitHub Release
         run: |
-          echo "Release placeholder – attach frontend-deploy.tar.gz or use softprops/action-gh-release if needed"
+          echo "Release placeholder – attach frontend-deploy.tar.gz via softprops/action-gh-release when needed."
 
       - name: Write job summary
         if: always()
@@ -766,6 +782,38 @@ jobs:
           echo "- **Tag:** frontend-v${{ needs.get-version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Completed at:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+
+  clean-artifacts:
+    name: Clean Workflow Artifacts
+    runs-on: self-hosted
+    if: |
+      github.event_name == 'pull_request' &&
+      github.event.action == 'closed' &&
+      github.event.pull_request.merged == true &&
+      (github.event.pull_request.base.ref == 'main' || github.event.pull_request.base.ref == 'prod')
+    needs: [release]
+    permissions:
+      actions: write
+    steps:
+      - name: Delete run artifacts to free GitHub storage
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { data: artifacts } = await github.rest.actions.listWorkflowRunArtifacts({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: context.runId
+            });
+            for (const art of artifacts.artifacts || []) {
+              await github.rest.actions.deleteArtifact({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                artifact_id: art.id
+              });
+              console.log(`Deleted artifact: ${art.name} (id: ${art.id})`);
+            }
+            console.log(`Cleaned ${(artifacts.artifacts || []).length} artifact(s)`);
 
   monitor-failures:
     name: Monitor Failed Jobs

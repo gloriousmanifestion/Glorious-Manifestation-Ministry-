@@ -1,20 +1,26 @@
-# PGM frontend (production). Port 5801.
+# Example systemd unit for frontend (production).
+# IMPORTANT: Create a service file named: pgm-frontend-production.service
+# (e.g., solo-template-frontend-production.service) in infra/systemd/ before deploying.
+# The CI/CD workflow expects this file to exist.
 # Copy to /etc/systemd/system/pgm-frontend-production.service on the VM.
-# Serves from /opt/pgm/frontend/production (SvelteKit adapter-node build).
+# Serves from /opt/pgm/frontend/production (e.g. SvelteKit adapter-node build).
 
 [Unit]
-Description=PGM Frontend (production)
+Description=Prophetic Glorious Manifestation Frontend (production)
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
 WorkingDirectory=/opt/pgm/frontend/production
+ExecStartPre=/bin/mkdir -p /opt/pgm/frontend/production
 ExecStart=/usr/bin/node serve.mjs
 Restart=on-failure
 RestartSec=5
+EnvironmentFile=-/opt/pgmm/frontend/production/.env
 EnvironmentFile=-/etc/default/pgm-frontend-production
-Environment=PORT=5801
+Environment=PORT=6400
+Environment=HOST=0.0.0.0
 
 [Install]
 WantedBy=multi-user.target
