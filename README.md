@@ -1,168 +1,258 @@
-# Prophetic Glorious Manifestation
+# Prophetic Glorious Manifestation — Pastoral School Platform
 
-Pastoral School for pastors, ministers and prophets. Owerri, Imo State.
+Pastoral School for pastors, ministers and prophets (Owerri, Imo State), built as a monorepo with:
 
-## 📋 Using this template (customize your new repo)
+- A **SvelteKit frontend** for students and admins
+- A **Rust (Axum) backend** for auth, registration, courses, payments and admin APIs
+- A **Docusaurus docs site** for public/docs content
 
-When you create a repo from this template, customize it in one go with a **config file**:
+This README describes **this app**, not the original template, and links to the individual app READMEs.
 
-1. **Copy the example config** and edit it with your app details:
-   ```bash
-   cp template.config.example.yaml template.config.yaml
-   # Edit template.config.yaml: app name, description, SEO, logo, repo, deployment (systemd names, env paths)
-   ```
+---
 
-2. **Apply the config** across the repo (package.json, frontend, docs, systemd, CI/CD):
-   ```bash
-   pnpm install   # for the apply-template script
-   pnpm run apply-template
-   ```
+## 📚 Table of Contents
 
-3. **Optional**: Add your logo under `apps/frontend/static/` and `apps/docs/static/img/` (paths set in config: `branding.logoPath`, `seo.favicon`, `seo.ogImage`).
+1. [Overview](#overview)
+2. [Monorepo Structure](#monorepo-structure)
+3. [Apps & Services](#apps--services)
+   - [Frontend (`apps/frontend`)](#frontend-appsfrontend)
+   - [Backend (`apps/backend`)](#backend-appsbackend)
+   - [Docs (`apps/docs`)](#docs-appsdocs)
+   - [Shared & Infra](#shared--infra)
+4. [Core Features](#core-features)
+5. [Local Development](#local-development)
+6. [Testing](#testing)
+7. [Environments & Secrets](#environments--secrets)
+8. [CI/CD](#cicd)
+9. [Contributing](#contributing)
+10. [License](#license)
 
-The config drives:
+---
 
-- **App identity**: name, short name, description, slug
-- **SEO**: title, description, keywords, favicon, OG image
-- **Branding**: logo path and alt text
-- **Repo**: GitHub org/repo for links and edit URLs
-- **Deployment**: `appName` for `/opt/<name>/...`, systemd service names (staging/production)
+## Overview
 
-See `template.config.example.yaml` for every option. After applying, commit the changes and set up GitHub Environments and secrets as in `infra/systemd/README.md`.
+This repo powers the **Prophetic Glorious Manifestation Pastoral School** platform:
 
-## 🚀 Features
+- Pastors and ministers can **register**, select courses and manage their profile.
+- Admins and super admins can:
+  - Monitor registrations, verification and payments via the **admin dashboard**.
+  - Manage courses and learning plans.
+  - Invite additional admins / super admins via secure invite links.
+- The backend sends **transactional emails** (e.g. registration and password reset) using `wangamail-rs` (Microsoft Graph / app registration).
 
-- **Backend**: Rust-based API server with base endpoints
-- **Frontend**: SvelteKit application with SSR
-- **Documentation**: Docusaurus documentation site
-- **Shared Modules**: Reusable services and utilities
-- **Monorepo**: Managed with pnpm workspaces
-- **CI/CD**: GitHub Actions workflows ready (staging/production environments)
-- **Development**: Makefile commands for quick development
+Everything lives in a **pnpm monorepo** with shared scripts, infra and CI/CD.
 
-## 📁 Structure
+---
 
-```
+## Monorepo Structure
+
+```bash
 .
 ├── apps/
-│   ├── backend/          # Rust backend API
-│   ├── frontend/         # SvelteKit frontend
-│   └── docs/             # Docusaurus documentation
-├── shared/               # Shared services and utilities
-├── infra/                # Infrastructure configuration
-└── .github/workflows/    # CI/CD workflows
+│   ├── backend/          # Rust Axum API (auth, courses, admin)
+│   ├── frontend/         # SvelteKit frontend (students + admin)
+│   └── docs/             # Docusaurus documentation site
+├── envs/                 # Local env files + secrets helper          (see envs/README.md)
+├── infra/                # Systemd units, scripts, deployment glue   (see infra/systemd/README.md)
+├── shared/               # Shared utilities (e.g. shared/utils)      (see shared/utils/README.md)
+└── .github/workflows/    # CI/CD for backend + frontend
 ```
 
-## 🛠️ Technology Stack
+---
 
-- **Package Manager**: pnpm
-- **Backend**: Rust (Axum)
-- **Frontend**: SvelteKit with Tailwind CSS v4
-- **Documentation**: Docusaurus
-- **Containerization**: Docker & Docker Compose
-
-## 🚦 Quick Start
-
-### Prerequisites
-
-- Node.js >= 20.0.0
-- pnpm >= 10.0.0
-- Rust (for backend development)
-- Docker & Docker Compose (for infrastructure)
-
-### Installation
-
-```bash
-# Install dependencies
-pnpm install
-
-# Start all services in development mode
-make up
-
-# Or start individual services
-make frontend-dev
-make backend-dev
-make docs-dev
-```
-
-### Development
-
-```bash
-# Frontend development
-pnpm frontend dev
-
-# Backend development
-pnpm backend dev
-
-# Documentation development
-pnpm docs dev
-```
-
-## 📝 Available Commands
-
-### Makefile Commands
-
-- `make up` - Start all services
-- `make down` - Stop all services
-- `make frontend-dev` - Start frontend in dev mode
-- `make backend-dev` - Start backend in dev mode
-- `make docs-dev` - Start docs in dev mode
-- `make build` - Build all services
-- `make test` - Run all tests
-
-### pnpm Commands
-
-- `pnpm frontend dev` - Run frontend development server
-- `pnpm backend dev` - Run backend development server
-- `pnpm docs dev` - Run documentation development server
-- `pnpm frontend build` - Build frontend for production
-- `pnpm backend build` - Build backend for production
-
-## 🏗️ Project Structure Details
-
-### Backend (`apps/backend`)
-
-Rust-based API server with base endpoints:
-- Health check endpoint
-- API versioning
-- CORS configuration
-- Error handling
+## Apps & Services
 
 ### Frontend (`apps/frontend`)
 
-SvelteKit application with:
-- Server-side rendering (SSR)
-- Tailwind CSS v4 for styling
-- Responsive design
-- SEO optimization
+- SvelteKit + Tailwind CSS v4.
+- Public pages: landing, programs, admissions, events, contact, legal pages.
+- Auth flows:
+  - Login, register, forgot password, reset password (token-based).
+  - Invite-based signup (`/invite/[token]`) for admin / super admin.
+- Student dashboard: course selection and progress entry point.
+- Admin area:
+  - `/admin` overview (metrics, charts).
+  - `/admin/users` — registration list and filters.
+  - `/admin/courses` — manage courses (name, duration, pricing, active flag).
+  - `/admin/learning-plans` — manage learning plans (bundled courses + pricing).
+  - `/admin/team` — create invite links for new admins / super admins.
 
-### Documentation (`apps/docs`)
+> There is no separate frontend README yet – see the code under `apps/frontend/` for now.
 
-Docusaurus documentation site with:
-- Getting started guides
-- API documentation
-- Architecture overview
-- Deployment guides
+### Backend (`apps/backend`)
 
-### Shared (`shared/`)
+Rust Axum API for all server-side concerns:
 
-Reusable services and utilities:
-- Sample shared service module
-- Common utilities
-- Shared types and interfaces
+- Auth:
+  - `POST /api/v1/auth/register` — student and invite-based admin signup (roles: `student`, `admin`, `super_admin`).
+  - `POST /api/v1/auth/login`
+  - `GET /api/v1/auth/me`, `POST /api/v1/auth/verify`, `POST /api/v1/auth/complete-payment`
+  - Password reset: request + `POST /api/v1/auth/reset-password`.
+- Courses & events:
+  - `GET /api/v1/auth/courses`
+  - `GET /api/v1/events`
+- Contact form:
+  - `POST /api/v1/contact`
+- Admin API (protected by JWT + role from token):
+  - `GET /api/v1/admin/metrics`
+  - `GET /api/v1/admin/users`
+  - `GET/POST/PATCH /api/v1/admin/courses`
+  - `GET/POST/PATCH /api/v1/admin/learning-plans`
+  - `POST /api/v1/admin/invites` (super_admin only)
+- Email:
+  - Registration emails sent via `wangamail-rs` + Microsoft Graph (app registration).
 
-## 🤝 Contributing
+Backend details and lower-level notes live in:
 
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
+- [`apps/backend/README.md`](apps/backend/README.md)
 
-## 📄 License
+### Docs (`apps/docs`)
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Docusaurus site that will host:
 
-## 🙏 Acknowledgments
+- Public-facing documentation.
+- API and admin documentation.
+- Deployment and operations guides.
 
-- [SvelteKit](https://kit.svelte.dev/)
-- [Rust](https://www.rust-lang.org/)
-- [Docusaurus](https://docusaurus.io/)
-- [pnpm](https://pnpm.io/)
+See:
+
+- [`apps/docs/README.md`](apps/docs/README.md)
+
+### Shared & Infra
+
+- **Shared utilities**: `shared/utils` (and future shared modules).
+  - See [`shared/utils/README.md`](shared/utils/README.md)
+- **Envs & secrets helper**: how to manage `.env` files and push secrets to GitHub:
+  - See [`envs/README.md`](envs/README.md)
+- **Systemd and deployment**:
+  - See [`infra/systemd/README.md`](infra/systemd/README.md) for service units and deployment flow.
+
+---
+
+## Core Features
+
+- **Student-facing**
+  - Registration form with ministry details and course selection.
+  - Dashboard and course selection.
+  - Password reset and secure login.
+  - Contact form and events listing.
+
+- **Admin / Super Admin**
+  - Metrics dashboard with totals, verification, payments, completion rate.
+  - User management: search, pagination, course selection.
+  - Course CRUD and learning plan management.
+  - Invite system to onboard new admins:
+    - Bootstrap super admin via `/invite/<BOOTSTRAP_INVITE_TOKEN>`.
+    - Generate invite links for admins or additional super admins.
+
+- **Platform**
+  - Rust Axum backend with PostgreSQL (in CI) / SQLite optional in local dev.
+  - Node adapter for SvelteKit frontend.
+  - GitHub Actions CI/CD with systemd-based deploy for backend.
+
+---
+
+## Local Development
+
+### Prerequisites
+
+- Node.js ≥ 20
+- pnpm ≥ 10
+- Rust (stable, recent)
+- PostgreSQL (recommended for backend dev; CI uses Postgres 16)
+
+### Install & bootstrap
+
+```bash
+# From repo root
+pnpm install
+```
+
+Start services using the Makefile (if present) or pnpm scripts; for example:
+
+```bash
+# Frontend dev
+cd apps/frontend
+pnpm dev
+
+# Backend dev
+cd ../backend
+cargo run
+
+# Docs dev
+cd ../docs
+pnpm dev
+```
+
+---
+
+## Testing
+
+### Backend
+
+```bash
+cd apps/backend
+cargo fmt -- --check
+cargo clippy -- -D warnings
+cargo test
+```
+
+### Frontend
+
+```bash
+cd apps/frontend
+pnpm check          # svelte-check / TS
+pnpm lint           # prettier + eslint
+pnpm test           # Playwright e2e
+```
+
+---
+
+## Environments & Secrets
+
+Local env files:
+
+- `envs/env.env` — repo-level/reusable secrets (synced to GitHub repo secrets).
+- `envs/staging.env` — staging environment.
+- `envs/prod.env` — production environment.
+
+How to manage and push them:
+
+- See [`envs/README.md`](envs/README.md) for the `cgs` workflow and exact commands.
+
+Important backend envs (repo / environment secrets):
+
+- `DATABASE_URL`
+- `APP_BASE_URL`
+- `BOOTSTRAP_INVITE_TOKEN`
+- `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`
+- `WANGAMAIL_FROM_USER`
+
+---
+
+## CI/CD
+
+- **Backend**: `.github/workflows/backend.yml`
+  - Format → Lint → Check → Test → Version bump → Build → Deploy (systemd) → Release.
+  - Uses Postgres service container for tests and writes `backend.env` on the VM.
+- **Frontend**: `.github/workflows/frontend.yml`
+  - SvelteKit build, lint, tests.
+
+Failure monitoring jobs open issues under a dedicated **CI/CD Failures** milestone when runs break.
+
+---
+
+## Contributing
+
+Please read [`CONTRIBUTING.md`](CONTRIBUTING.md) for:
+
+- Branch / commit conventions (Conventional Commits).
+- How to run tests and builds before opening a PR.
+- Expectations for documentation and PR descriptions.
+
+---
+
+## License
+
+This project is licensed under the MIT License – see [`LICENSE`](LICENSE) for full details.
 
