@@ -1,7 +1,8 @@
-use axum::{response::Json, routing::get, Router};
+use axum::{response::Json, routing::{get, post}, Router};
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
-use tower_http::cors::CorsLayer;
+use tower_http::cors::{CorsLayer, Any};
+use axum::http::{Method, HeaderValue};
 use tower_http::trace::TraceLayer;
 
 mod auth;
@@ -25,12 +26,23 @@ struct ApiInfo {
 
 #[tokio::main]
 async fn main() {
+    // Enable tracing for debugging
     tracing_subscriber::fmt()
         .with_env_filter("backend=debug,tower_http=debug")
         .init();
 
+    // Initialize database pool
     let pool: sqlx::AnyPool = db::init_db().await.expect("Failed to init database");
 
+    // Configure production-safe CORS
+    let cors = CorsLayer::new()
+        .allow_origin("https://glorious-manifestation-ministry.vercel.app"
+            .parse::<HeaderValue>()
+            .unwrap())
+        .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
+        .allow_headers(Any);
+
+    // Build router
     let app = Router::new()
         .route("/", get(root))
         .route("/health", get(health))
@@ -42,9 +54,10 @@ async fn main() {
                 .merge(routes::events_routes(pool.clone()))
                 .merge(routes::contact_routes(pool)),
         )
-        .layer(CorsLayer::permissive())
+        .layer(cors)                     // ✅ Attach production CORS
         .layer(TraceLayer::new_for_http());
 
+    // Set server port
     let port: u16 = std::env::var("PORT")
         .ok()
         .and_then(|p| p.parse().ok())
@@ -56,6 +69,7 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
+// Root endpoint
 async fn root() -> Json<serde_json::Value> {
     Json(serde_json::json!({
         "name": "Pastoral School Backend",
@@ -76,6 +90,7 @@ async fn root() -> Json<serde_json::Value> {
     }))
 }
 
+// Health endpoint
 async fn health() -> Json<HealthResponse> {
     Json(HealthResponse {
         status: "ok".to_string(),
@@ -84,6 +99,7 @@ async fn health() -> Json<HealthResponse> {
     })
 }
 
+// API info endpoint
 async fn api_info() -> Json<ApiInfo> {
     Json(ApiInfo {
         name: "Pastoral School API".to_string(),
