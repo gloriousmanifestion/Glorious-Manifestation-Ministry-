@@ -235,15 +235,33 @@
 										<p class="text-sm text-slate-500 dark:text-slate-300">{selectedCourse.duration} • {SITE.schedule}</p>
 									</div>
 								</div>
-								<a
-									href="/courses/{selectedCourse.id}"
-									class="mt-3 inline-flex items-center gap-1 text-sm font-medium text-pink-600 hover:text-pink-700 dark:text-pink-400 dark:hover:text-pink-300"
-								>
-									Review full course details & schedule
-									<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-									</svg>
-								</a>
+								<div class="mt-3 flex flex-wrap gap-3">
+									<a
+										href="/courses/{selectedCourse.id}"
+										class="inline-flex items-center gap-1 text-sm font-medium text-pink-600 hover:text-pink-700 dark:text-pink-400 dark:hover:text-pink-300"
+									>
+										Review full course details & schedule
+										<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+										</svg>
+									</a>
+									{#if selectedCourse.teams_class_id}
+										<span class="flex flex-col gap-0.5">
+											<a
+												href="https://teams.microsoft.com/l/team/{selectedCourse.teams_class_id}"
+												target="_blank"
+												rel="noopener noreferrer"
+												class="inline-flex items-center gap-1 text-sm font-medium text-[#6264a7] hover:text-[#464775] dark:text-[#9db2e6] dark:hover:text-[#b4c4ed]"
+											>
+												Open in Teams
+												<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+												</svg>
+											</a>
+											<span class="text-xs text-slate-500 dark:text-slate-400">Works with any email (Gmail, Yahoo, etc.); sign in as guest if prompted.</span>
+										</span>
+									{/if}
+								</div>
 							</div>
 							{#if !user.paymentComplete}
 								<a

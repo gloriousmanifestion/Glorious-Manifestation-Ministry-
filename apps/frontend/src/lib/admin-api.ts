@@ -47,6 +47,8 @@ export interface AdminCourse {
 	description?: string;
 	price?: number;
 	active: boolean;
+	/** Microsoft Teams class/team id for "Open in Teams" on student dashboard */
+	teams_class_id?: string | null;
 }
 
 export interface LearningPlan {
@@ -167,6 +169,7 @@ export async function createCourse(data: {
 	duration: string;
 	description?: string;
 	price?: number;
+	teams_class_id?: string | null;
 }): Promise<AdminCourse> {
 	const res = await fetch(`${API_BASE}/admin/courses`, {
 		method: 'POST',
@@ -186,6 +189,7 @@ export async function updateCourse(
 		description: string;
 		price: number;
 		active: boolean;
+		teams_class_id: string | null;
 	}>
 ): Promise<AdminCourse> {
 	const res = await fetch(`${API_BASE}/admin/courses/${id}`, {

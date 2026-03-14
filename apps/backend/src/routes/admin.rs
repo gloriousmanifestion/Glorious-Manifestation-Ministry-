@@ -227,6 +227,7 @@ pub struct CourseRow {
     pub description: Option<String>,
     pub price: Option<f64>,
     pub active: Option<bool>,
+    pub teams_class_id: Option<String>,
 }
 
 async fn list_courses_admin(
@@ -234,7 +235,7 @@ async fn list_courses_admin(
     AdminUser(_user_id, _role): AdminUser,
 ) -> Result<Json<Vec<serde_json::Value>>, (StatusCode, Json<serde_json::Value>)> {
     let rows: Vec<CourseRow> =
-        sqlx::query_as("SELECT id, name, duration, description, price, active FROM courses")
+        sqlx::query_as("SELECT id, name, duration, description, price, active, teams_class_id FROM courses")
             .fetch_all(&pool)
             .await
             .map_err(|e| {
@@ -254,6 +255,7 @@ async fn list_courses_admin(
                 "description": r.description,
                 "price": r.price.unwrap_or(0.0),
                 "active": r.active.unwrap_or(true),
+                "teams_class_id": r.teams_class_id,
             })
         })
         .collect();
@@ -266,6 +268,8 @@ pub struct CreateCourseBody {
     pub duration: Option<String>,
     pub description: Option<String>,
     pub price: Option<f64>,
+    /// Microsoft Teams class/team id for "Open in Teams" on student dashboard.
+    pub teams_class_id: Option<String>,
 }
 
 async fn create_course(
@@ -278,6 +282,7 @@ async fn create_course(
     let duration = body.duration.as_deref().unwrap_or("").to_string();
     let description = body.description.as_deref().unwrap_or("");
     let price = body.price.unwrap_or(0.0);
+    let teams_class_id = body.teams_class_id.as_deref();
     if name.is_empty() {
         return Err((
             StatusCode::BAD_REQUEST,
@@ -286,24 +291,26 @@ async fn create_course(
     }
     if db::is_postgres() {
         sqlx::query(
-            "INSERT INTO courses (id, name, duration, description, price, active) VALUES ($1, $2, $3, $4, $5, 1)",
+            "INSERT INTO courses (id, name, duration, description, price, active, teams_class_id) VALUES ($1, $2, $3, $4, $5, 1, $6)",
         )
         .bind(&id)
         .bind(name)
         .bind(&duration)
         .bind(description)
         .bind(price)
+        .bind(teams_class_id)
         .execute(&pool)
         .await
     } else {
         sqlx::query(
-            "INSERT INTO courses (id, name, duration, description, price, active) VALUES (?, ?, ?, ?, ?, 1)",
+            "INSERT INTO courses (id, name, duration, description, price, active, teams_class_id) VALUES (?, ?, ?, ?, ?, 1, ?)",
         )
         .bind(&id)
         .bind(name)
         .bind(&duration)
         .bind(description)
         .bind(price)
+        .bind(teams_class_id)
         .execute(&pool)
         .await
     }
@@ -321,6 +328,7 @@ async fn create_course(
         "description": description,
         "price": price,
         "active": true,
+        "teams_class_id": body.teams_class_id,
     })))
 }
 
@@ -331,6 +339,8 @@ pub struct UpdateCourseBody {
     pub description: Option<String>,
     pub price: Option<f64>,
     pub active: Option<bool>,
+    /// Microsoft Teams class/team id for "Open in Teams" on student dashboard.
+    pub teams_class_id: Option<String>,
 }
 
 async fn update_course(
@@ -339,17 +349,17 @@ async fn update_course(
     Path(id): Path<String>,
     axum::Json(body): axum::Json<UpdateCourseBody>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
-    let (name, duration, description, price, active): (String, String, String, f64, i32) =
+    let (name, duration, description, price, active, existing_teams_class_id): (String, String, String, f64, i32, Option<String>) =
         if db::is_postgres() {
             sqlx::query_as(
-                "SELECT name, duration, COALESCE(description,''), COALESCE(price,0), COALESCE(active,1) FROM courses WHERE id = $1",
+                "SELECT name, duration, COALESCE(description,''), COALESCE(price,0), COALESCE(active,1), teams_class_id FROM courses WHERE id = $1",
             )
             .bind(&id)
             .fetch_optional(&pool)
             .await
         } else {
             sqlx::query_as(
-                "SELECT name, duration, COALESCE(description,''), COALESCE(price,0), COALESCE(active,1) FROM courses WHERE id = ?",
+                "SELECT name, duration, COALESCE(description,''), COALESCE(price,0), COALESCE(active,1), teams_class_id FROM courses WHERE id = ?",
             )
             .bind(&id)
             .fetch_optional(&pool)
@@ -375,27 +385,34 @@ async fn update_course(
         .to_string();
     let price = body.price.unwrap_or(price);
     let active = body.active.unwrap_or(active != 0) as i32;
+    let teams_class_id: Option<&str> = match body.teams_class_id.as_deref() {
+        None => existing_teams_class_id.as_deref(),
+        Some("") => None,
+        Some(s) => Some(s),
+    };
     if db::is_postgres() {
         sqlx::query(
-            "UPDATE courses SET name = $1, duration = $2, description = $3, price = $4, active = $5 WHERE id = $6",
+            "UPDATE courses SET name = $1, duration = $2, description = $3, price = $4, active = $5, teams_class_id = $6 WHERE id = $7",
         )
         .bind(&name)
         .bind(&duration)
         .bind(&description)
         .bind(price)
         .bind(active)
+        .bind(teams_class_id)
         .bind(&id)
         .execute(&pool)
         .await
     } else {
         sqlx::query(
-            "UPDATE courses SET name = ?, duration = ?, description = ?, price = ?, active = ? WHERE id = ?",
+            "UPDATE courses SET name = ?, duration = ?, description = ?, price = ?, active = ?, teams_class_id = ? WHERE id = ?",
         )
         .bind(&name)
         .bind(&duration)
         .bind(&description)
         .bind(price)
         .bind(active)
+        .bind(teams_class_id)
         .bind(&id)
         .execute(&pool)
         .await
@@ -414,6 +431,7 @@ async fn update_course(
         "description": description,
         "price": price,
         "active": active != 0,
+        "teams_class_id": teams_class_id,
     })))
 }
 

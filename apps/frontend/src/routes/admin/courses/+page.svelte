@@ -13,7 +13,8 @@
 		name: '',
 		duration: '',
 		description: '',
-		price: '' as string | number
+		price: '' as string | number,
+		teams_class_id: '' as string
 	});
 	let submitLoading = $state(false);
 
@@ -33,7 +34,7 @@
 
 	function openAdd() {
 		editing = null;
-		form = { name: '', duration: '8 weeks', description: '', price: '' };
+		form = { name: '', duration: '8 weeks', description: '', price: '', teams_class_id: '' };
 		modalOpen = true;
 	}
 
@@ -43,7 +44,8 @@
 			name: c.name,
 			duration: c.duration,
 			description: c.description ?? '',
-			price: c.price ?? ''
+			price: c.price ?? '',
+			teams_class_id: c.teams_class_id ?? ''
 		};
 		modalOpen = true;
 	}
@@ -58,19 +60,22 @@
 		error = '';
 		try {
 			const price = form.price === '' ? undefined : Number(form.price);
+			const teams_class_id = form.teams_class_id.trim() || null;
 			if (editing) {
 				await adminApi.updateCourse(editing.id, {
 					name: form.name,
 					duration: form.duration,
 					description: form.description || undefined,
-					price
+					price,
+					teams_class_id
 				});
 			} else {
 				await adminApi.createCourse({
 					name: form.name,
 					duration: form.duration,
 					description: form.description || undefined,
-					price
+					price,
+					teams_class_id
 				});
 			}
 			closeModal();
@@ -222,6 +227,17 @@
 						class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-2.5 text-white focus:border-pink-500 focus:outline-none focus:ring-1 focus:ring-pink-500"
 						placeholder="30000"
 					/>
+				</div>
+				<div>
+					<label for="course-teams-class-id" class="block text-sm font-medium text-slate-400">Teams class ID (optional)</label>
+					<input
+						id="course-teams-class-id"
+						type="text"
+						bind:value={form.teams_class_id}
+						class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-2.5 text-white focus:border-pink-500 focus:outline-none focus:ring-1 focus:ring-pink-500"
+						placeholder="Paste Teams class/team ID for “Open in Teams” link"
+					/>
+					<p class="mt-1 text-xs text-slate-500">Students will see an “Open in Teams” link on their dashboard when set.</p>
 				</div>
 				<div class="flex justify-end gap-3 pt-2">
 					<button

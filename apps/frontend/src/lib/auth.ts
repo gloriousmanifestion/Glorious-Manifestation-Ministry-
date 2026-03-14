@@ -33,6 +33,8 @@ export interface Course {
 	id: string;
 	name: string;
 	duration: string;
+	/** Microsoft Teams class/team id; when set, dashboard shows "Open in Teams". */
+	teams_class_id?: string | null;
 }
 
 export type { PaymentProof };

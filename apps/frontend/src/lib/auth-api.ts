@@ -256,12 +256,15 @@ export async function uploadPaymentProof(file: File, note?: string): Promise<Pay
 	return json as PaymentProof;
 }
 
-export async function getCourses(): Promise<Array<{ id: string; name: string; duration: string }>> {
+export async function getCourses(): Promise<
+	Array<{ id: string; name: string; duration: string; teams_class_id?: string | null }>
+> {
 	const res = await fetch(`${API_BASE}/auth/courses`, {
 		headers: getAuthHeaders()
 	});
 	const json = await safeJson<
-		Array<{ id: string; name: string; duration: string }> | Record<string, unknown>
+		| Array<{ id: string; name: string; duration: string; teams_class_id?: string | null }>
+		| Record<string, unknown>
 	>(res);
 	if (!res.ok) {
 		const err = json as Record<string, unknown>;

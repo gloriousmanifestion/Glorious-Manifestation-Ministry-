@@ -865,12 +865,14 @@ struct CourseRow {
     id: String,
     name: String,
     duration: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    teams_class_id: Option<String>,
 }
 
 async fn list_courses(
     State(pool): State<AnyPool>,
 ) -> Result<Json<Vec<CourseRow>>, (StatusCode, Json<serde_json::Value>)> {
-    let courses: Vec<CourseRow> = sqlx::query_as("SELECT id, name, duration FROM courses")
+    let courses: Vec<CourseRow> = sqlx::query_as("SELECT id, name, duration, teams_class_id FROM courses")
         .fetch_all(&pool)
         .await
         .map_err(|e| {
