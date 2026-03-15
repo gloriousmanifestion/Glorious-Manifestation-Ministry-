@@ -4,6 +4,7 @@
 	import Footer from '$lib/components/Footer.svelte';
 	import { getBlogPosts, type BlogPost } from '$lib/api/blog';
 	import { SITE } from '$lib/config';
+	import EmptySection from '$lib/components/EmptySection.svelte';
 
 	let items = $state<BlogPost[]>([]);
 	let loading = $state(true);
@@ -54,8 +55,8 @@
 					<div class="h-10 w-10 animate-spin rounded-full border-2 border-pink-500 border-t-transparent"></div>
 				</div>
 			{:else if items.length === 0}
-				<div class="mt-12 rounded-2xl border border-slate-200/80 bg-white/95 p-8 text-center text-slate-600 dark:border-white/10 dark:bg-[#1e2642] dark:text-slate-300">
-					No posts yet. Check back later.
+				<div class="mt-12">
+					<EmptySection type="blog" />
 				</div>
 			{:else}
 				<div class="mt-10 space-y-6">

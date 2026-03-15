@@ -10,9 +10,12 @@ export const SITE = {
 	legalName: 'Prophetic Glorious Manifestation Ministries',
 	schoolName: 'Pastoral School',
 	location: 'Owerri, Imo State',
-	address: 'Ezeigodo Avenue, Rochas Backgate Spilbait, Owerri, Imo State',
+	address: 'Ezeigodo Avenue, Rochas Backgate Spilbait',
 	whatsapp: '08026954759',
+	/** E.164 / international format for wa.me links (no + in URL) */
 	whatsappFull: '+2348026954759',
+	/** International display with country code for the UI */
+	whatsappDisplay: '+234 802 695 4759',
 	contactEmail: 'hello@pgmm.church',
 	infoEmail: 'hello@pgmm.church',
 	helloEmail: 'hello@pgmm.church',
@@ -33,7 +36,7 @@ export const SITE = {
 		shortName: 'PGM Ministries',
 		description:
 			'We are a ministry dedicated to raising pastors, ministers, and prophets through the Pastoral School and weekly worship, prayer, and teaching. Our church family gathers to grow in faith and serve our community.',
-		address: 'Ezeigodo Avenue, Rochas Backgate Spilbait, Owerri, Imo State',
+		address: 'Ezeigodo Avenue, Rochas Backgate Spilbait',
 		services: [
 			{
 				name: 'Sunday Worship',
@@ -56,3 +59,38 @@ export const SITE = {
 		]
 	}
 } as const;
+
+export interface DefaultFaqItem {
+	q: string;
+	a: string;
+}
+
+/** Default FAQ entries shown on the public FAQ page when admin has not set any. Admin can override via Dashboard → FAQ. */
+export function getDefaultFaqs(): DefaultFaqItem[] {
+	return [
+		{
+			q: 'Who is this program for?',
+			a: 'Our Pastoral School is designed for pastors, ministers, and prophets who desire to grow in their calling. Whether you are already in ministry or sensing a call, this program will equip you with biblical foundations and practical skills.'
+		},
+		{
+			q: 'What are the admission requirements?',
+			a: 'We look for a genuine call to ministry, commitment to attend classes, and basic literacy. A recommendation from a church or ministry leader is optional but preferred. See our Admissions page for the full process.'
+		},
+		{
+			q: 'How do I register?',
+			a: 'Create an account on our site, verify your email, then select your course and complete payment. You can also contact us via WhatsApp for assistance.'
+		},
+		{
+			q: 'Where are classes held?',
+			a: `Classes are held at our facility in ${SITE.location}. Our address is ${SITE.address}.`
+		},
+		{
+			q: 'What is the program schedule?',
+			a: `The program runs ${SITE.duration}, ${SITE.schedule}. Check the Programs page for course details.`
+		},
+		{
+			q: 'How can I contact the school?',
+			a: `You can reach us by WhatsApp (${SITE.whatsappDisplay}) or email at ${SITE.contactEmail}. We’re happy to answer your questions.`
+		}
+	];
+}

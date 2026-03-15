@@ -6,6 +6,7 @@
 	import { SITE } from '$lib/config';
 	import { getChurchServices, getChurchContent, getChurchVideos, churchImageUrl, churchVideoUrl } from '$lib/api/church';
 	import type { ChurchService, ChurchVideo } from '$lib/api/church';
+	import EmptySection from '$lib/components/EmptySection.svelte';
 
 	const church = SITE.church;
 
@@ -104,7 +105,7 @@
 									rel="noopener noreferrer"
 									class="font-medium text-pink-600 hover:text-pink-700 dark:text-pink-400 dark:hover:text-pink-300"
 								>
-									WhatsApp {SITE.whatsapp}
+									WhatsApp {SITE.whatsappDisplay}
 								</a>
 								<span class="text-slate-500 dark:text-slate-400"> · </span>
 								<a
@@ -169,8 +170,8 @@
 			</div>
 		</section>
 
-		<!-- Video gallery (only when admin has added videos) -->
-		{#if loaded && videos.length > 0}
+		<!-- Video gallery -->
+		{#if loaded}
 		<section class="border-t border-pink-200/50 section-separator bg-gradient-to-b from-slate-50 to-white py-14 sm:py-20 px-4 sm:px-6 dark:from-[#1e2642]/80 dark:to-[#252d47]/80">
 			<div class="mx-auto max-w-5xl">
 				<AnimateOnView animation="fade-up">
@@ -182,34 +183,40 @@
 						</p>
 					</div>
 				</AnimateOnView>
-				<div class="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 lg:gap-8">
-					{#each videos as video, i}
-						<AnimateOnView animation="fade-up" stagger={i}>
-							<a
-								href={videoHref(video)}
-								target="_blank"
-								rel="noopener noreferrer"
-								class="group relative block overflow-hidden rounded-2xl border border-pink-200/50 bg-white/90 shadow-md transition-all duration-300 hover:scale-[1.02] hover:border-pink-400/60 hover:shadow-xl hover:shadow-pink-500/10 dark:border-pink-500/30 dark:bg-[#252d47]/90 dark:hover:border-pink-500/60 dark:hover:shadow-pink-500/10"
-							>
-								<!-- Card aspect ratio -->
-								<div class="relative aspect-video w-full bg-gradient-to-br from-pink-500/20 via-purple-500/20 to-slate-600/20 dark:from-pink-600/30 dark:via-purple-600/30 dark:to-slate-700/30">
-									<!-- Play overlay -->
-									<div class="absolute inset-0 flex items-center justify-center">
-										<div class="flex h-14 w-14 items-center justify-center rounded-full bg-white/95 text-pink-600 shadow-lg ring-4 ring-pink-200/50 transition group-hover:scale-110 group-hover:bg-pink-50 group-hover:text-pink-700 dark:bg-white/90 dark:ring-pink-500/30 dark:group-hover:bg-pink-100/90">
-											<svg class="ml-1 h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-												<path d="M8 5v14l11-7L8 5z" />
-											</svg>
+				{#if videos.length > 0}
+					<div class="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 lg:gap-8">
+						{#each videos as video, i}
+							<AnimateOnView animation="fade-up" stagger={i}>
+								<a
+									href={videoHref(video)}
+									target="_blank"
+									rel="noopener noreferrer"
+									class="group relative block overflow-hidden rounded-2xl border border-pink-200/50 bg-white/90 shadow-md transition-all duration-300 hover:scale-[1.02] hover:border-pink-400/60 hover:shadow-xl hover:shadow-pink-500/10 dark:border-pink-500/30 dark:bg-[#252d47]/90 dark:hover:border-pink-500/60 dark:hover:shadow-pink-500/10"
+								>
+									<!-- Card aspect ratio -->
+									<div class="relative aspect-video w-full bg-gradient-to-br from-pink-500/20 via-purple-500/20 to-slate-600/20 dark:from-pink-600/30 dark:via-purple-600/30 dark:to-slate-700/30">
+										<!-- Play overlay -->
+										<div class="absolute inset-0 flex items-center justify-center">
+											<div class="flex h-14 w-14 items-center justify-center rounded-full bg-white/95 text-pink-600 shadow-lg ring-4 ring-pink-200/50 transition group-hover:scale-110 group-hover:bg-pink-50 group-hover:text-pink-700 dark:bg-white/90 dark:ring-pink-500/30 dark:group-hover:bg-pink-100/90">
+												<svg class="ml-1 h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+													<path d="M8 5v14l11-7L8 5z" />
+												</svg>
+											</div>
 										</div>
 									</div>
-								</div>
-								<div class="px-4 py-3 text-center">
-									<span class="text-sm font-medium text-slate-700 dark:text-slate-200 group-hover:text-pink-600 dark:group-hover:text-pink-400">{video.title}</span>
-									<span class="mt-1 block text-xs text-slate-500 dark:text-slate-400">{video.url ? 'Watch video →' : 'Play →'}</span>
-								</div>
-							</a>
-						</AnimateOnView>
-					{/each}
-				</div>
+									<div class="px-4 py-3 text-center">
+										<span class="text-sm font-medium text-slate-700 dark:text-slate-200 group-hover:text-pink-600 dark:group-hover:text-pink-400">{video.title}</span>
+										<span class="mt-1 block text-xs text-slate-500 dark:text-slate-400">{video.url ? 'Watch video →' : 'Play →'}</span>
+									</div>
+								</a>
+							</AnimateOnView>
+						{/each}
+					</div>
+				{:else}
+					<div class="mt-10">
+						<EmptySection type="gallery" />
+					</div>
+				{/if}
 			</div>
 		</section>
 		{/if}

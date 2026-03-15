@@ -3,6 +3,7 @@
 	import Footer from '$lib/components/Footer.svelte';
 	import { SITE } from '$lib/config';
 	import type { Resource } from '$lib/api/resources';
+	import EmptySection from '$lib/components/EmptySection.svelte';
 
 	interface Data {
 		resources: Resource[];
@@ -36,7 +37,9 @@
 			</p>
 
 			{#if data.resources.length === 0}
-				<p class="mt-8 text-slate-500 dark:text-slate-400">No resources yet. Check back later.</p>
+				<div class="mt-12">
+					<EmptySection type="resources" />
+				</div>
 			{:else}
 				<ul class="mt-8 space-y-4" role="list">
 					{#each data.resources as res}

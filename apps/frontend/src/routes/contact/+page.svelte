@@ -125,7 +125,7 @@
 							<button
 								type="submit"
 								disabled={loading}
-								class="w-full rounded-xl bg-slate-900 px-6 py-3.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+								class="w-full rounded-xl bg-gradient-to-r from-pink-500 to-purple-600 px-6 py-3.5 text-sm font-semibold text-white shadow-lg transition hover:from-pink-600 hover:to-purple-700 disabled:opacity-60"
 							>
 								{loading ? 'Sending…' : 'Send message'}
 							</button>
@@ -153,7 +153,7 @@
 								rel="noopener noreferrer"
 								class="mt-1 block text-lg text-slate-900 hover:text-pink-600 transition dark:text-white dark:hover:text-pink-400"
 							>
-								{SITE.whatsapp}
+								{SITE.whatsappDisplay}
 							</a>
 						</div>
 
@@ -181,7 +181,7 @@
 					<div class="mt-16 text-center lg:text-left">
 						<a
 							href="/register"
-							class="inline-block rounded-full bg-slate-900 px-8 py-3.5 text-sm font-medium text-white transition hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+							class="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-pink-500 to-purple-600 px-8 py-3.5 text-sm font-semibold text-white shadow-lg transition hover:from-pink-600 hover:to-purple-700"
 						>
 							Register now
 						</a>

@@ -12,6 +12,7 @@
 	} from '$lib/api/events';
 	import { authReady, userStore } from '$lib/auth';
 	import { SITE } from '$lib/config';
+	import EmptySection from '$lib/components/EmptySection.svelte';
 
 	let events = $state<Event[]>([]);
 	let myRsvpIds = $state<Set<string>>(new Set());
@@ -96,6 +97,8 @@
 					<div class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">
 						{error}
 					</div>
+				{:else if events.length === 0}
+					<EmptySection type="events" />
 				{:else}
 					<div class="space-y-4 sm:space-y-6">
 						{#each events as event, i}
@@ -144,7 +147,7 @@
 				<div class="mx-auto max-w-2xl text-center">
 					<p class="text-slate-600 dark:text-slate-200">For the latest event updates, follow us and contact via WhatsApp.</p>
 					<a
-						href="https://wa.me/2348026954759"
+						href="https://wa.me/{SITE.whatsappFull.replace(/\+/g, '')}"
 						target="_blank"
 						rel="noopener noreferrer"
 						class="btn-scale mt-6 inline-flex items-center gap-2 rounded-full bg-[#25d366] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#20bd5a]"

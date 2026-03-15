@@ -127,7 +127,8 @@
 		</div>
 	{:else if items.length === 0}
 		<div class="rounded-xl border border-slate-700 bg-slate-800/50 p-8 text-center text-slate-400">
-			No FAQ entries yet. Add one to show on the public <a href="/faq" class="text-pink-400 hover:underline">FAQ page</a>.
+			<p>No custom FAQ entries yet. The public <a href="/faq" class="text-pink-400 hover:underline">FAQ page</a> currently shows default questions.</p>
+			<p class="mt-2 text-sm">Add entries here to replace the defaults with your own.</p>
 		</div>
 	{:else}
 		<div class="space-y-3">

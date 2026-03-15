@@ -4,7 +4,8 @@
 	import Footer from '$lib/components/Footer.svelte';
 	import AnimateOnView from '$lib/components/AnimateOnView.svelte';
 	import { getChurchContent } from '$lib/api/church';
-	import { SITE } from '$lib/config';
+	import { SITE, getDefaultFaqs } from '$lib/config';
+	import EmptySection from '$lib/components/EmptySection.svelte';
 
 	interface FaqItem {
 		q: string;
@@ -20,12 +21,15 @@
 			const raw = await getChurchContent('faq');
 			if (raw) {
 				const parsed = JSON.parse(raw) as unknown;
-				items = Array.isArray(parsed)
+				const fromApi = Array.isArray(parsed)
 					? (parsed as FaqItem[]).filter((x) => x && typeof x.q === 'string' && typeof x.a === 'string')
 					: [];
+				items = fromApi.length > 0 ? fromApi : getDefaultFaqs();
+			} else {
+				items = getDefaultFaqs();
 			}
 		} catch {
-			items = [];
+			items = getDefaultFaqs();
 		} finally {
 			loading = false;
 		}
@@ -68,9 +72,7 @@
 					</div>
 				{:else if items.length === 0}
 					<AnimateOnView animation="fade-up">
-						<p class="text-center text-slate-600 dark:text-slate-300">
-							No FAQ entries yet. Check back soon or <a href="/contact" class="font-medium text-pink-600 hover:underline dark:text-pink-400">contact us</a>.
-						</p>
+						<EmptySection type="faq" />
 					</AnimateOnView>
 				{:else}
 					<div class="space-y-2">
