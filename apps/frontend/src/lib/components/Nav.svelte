@@ -309,6 +309,18 @@
 					More
 				</p>
 				<div class="mb-4 flex flex-col gap-1">
+					{#each discoverLinks as link}
+						<a
+							href={link.href}
+							class="rounded-xl px-4 py-3.5 text-base font-medium touch-manipulation {isActive(link.href)
+								? 'bg-pink-50 text-pink-600 dark:bg-white/10 dark:text-pink-400'
+								: 'text-slate-700 hover:bg-pink-50 dark:text-slate-100 dark:hover:bg-white/10'}"
+							aria-current={isActive(link.href) ? 'page' : undefined}
+							onclick={() => (sheetOpen = false)}
+						>
+							{link.label}
+						</a>
+					{/each}
 					<a
 						href="/church"
 						class="rounded-xl px-4 py-3.5 text-base font-medium touch-manipulation {isActive('/church')
