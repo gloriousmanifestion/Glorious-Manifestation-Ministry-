@@ -975,6 +975,262 @@ async fn review_payment_proof(
         })?;
     Ok(Json(serde_json::json!({"ok": true})))
 }
+
+// ---------- Course modules (syllabus) ----------
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct CourseModuleRow {
+    pub id: String,
+    pub course_id: String,
+    pub title: String,
+    pub sort_order: i32,
+    pub link: Option<String>,
+    pub description: Option<String>,
+    pub created_at: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CreateCourseModuleBody {
+    pub title: String,
+    pub sort_order: Option<i32>,
+    pub link: Option<String>,
+    pub description: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateCourseModuleBody {
+    pub title: Option<String>,
+    pub sort_order: Option<i32>,
+    pub link: Option<String>,
+    pub description: Option<String>,
+}
+
+async fn list_course_modules_admin(
+    State(pool): State<AnyPool>,
+    AdminUser(_user_id, _role): AdminUser,
+    Path(course_id): Path<String>,
+) -> Result<Json<Vec<CourseModuleRow>>, (StatusCode, Json<serde_json::Value>)> {
+    let modules: Vec<CourseModuleRow> = if db::is_postgres() {
+        sqlx::query_as(
+            "SELECT id, course_id, title, sort_order, link, description, created_at FROM course_modules \
+             WHERE course_id = $1 ORDER BY sort_order ASC, created_at ASC",
+        )
+        .bind(&course_id)
+        .fetch_all(&pool)
+        .await
+    } else {
+        sqlx::query_as(
+            "SELECT id, course_id, title, sort_order, link, description, created_at FROM course_modules \
+             WHERE course_id = ? ORDER BY sort_order ASC, created_at ASC",
+        )
+        .bind(&course_id)
+        .fetch_all(&pool)
+        .await
+    }
+    .map_err(|e| {
+        tracing::error!("Admin list course modules error: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"message": "Failed to load modules"})),
+        )
+    })?;
+    Ok(Json(modules))
+}
+
+async fn create_course_module(
+    State(pool): State<AnyPool>,
+    AdminUser(_user_id, _role): AdminUser,
+    Path(course_id): Path<String>,
+    axum::Json(body): axum::Json<CreateCourseModuleBody>,
+) -> Result<Json<CourseModuleRow>, (StatusCode, Json<serde_json::Value>)> {
+    let id = Uuid::new_v4().to_string();
+    let title = body.title.trim();
+    if title.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"message": "Title is required"})),
+        ));
+    }
+    let sort_order = body.sort_order.unwrap_or(0);
+    let link = body.link.as_deref().filter(|s| !s.is_empty());
+    let description = body.description.as_deref().filter(|s| !s.is_empty());
+    let now = chrono::Utc::now().to_rfc3339();
+    if db::is_postgres() {
+        sqlx::query(
+            "INSERT INTO course_modules (id, course_id, title, sort_order, link, description, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+        )
+        .bind(&id)
+        .bind(&course_id)
+        .bind(title)
+        .bind(sort_order)
+        .bind(link)
+        .bind(description)
+        .bind(&now)
+        .execute(&pool)
+        .await
+    } else {
+        sqlx::query(
+            "INSERT INTO course_modules (id, course_id, title, sort_order, link, description, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        )
+        .bind(&id)
+        .bind(&course_id)
+        .bind(title)
+        .bind(sort_order)
+        .bind(link)
+        .bind(description)
+        .bind(&now)
+        .execute(&pool)
+        .await
+    }
+    .map_err(|e| {
+        tracing::error!("Admin create course module error: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"message": "Failed to create module"})),
+        )
+    })?;
+    Ok(Json(CourseModuleRow {
+        id: id.clone(),
+        course_id: course_id.clone(),
+        title: title.to_string(),
+        sort_order,
+        link: link.map(String::from),
+        description: description.map(String::from),
+        created_at: now,
+    }))
+}
+
+async fn update_course_module(
+    State(pool): State<AnyPool>,
+    AdminUser(_user_id, _role): AdminUser,
+    Path((course_id, module_id)): Path<(String, String)>,
+    axum::Json(body): axum::Json<UpdateCourseModuleBody>,
+) -> Result<Json<CourseModuleRow>, (StatusCode, Json<serde_json::Value>)> {
+    let title = body
+        .title
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty());
+    let sort_order = body.sort_order;
+    let link = body.link.as_deref().filter(|s| !s.is_empty());
+    let description = body.description.as_deref().filter(|s| !s.is_empty());
+    type ModuleRow = (String, String, String, i32, Option<String>, Option<String>, String);
+    let row: Option<ModuleRow> = if db::is_postgres() {
+        sqlx::query_as(
+            "SELECT id, course_id, title, sort_order, link, description, created_at FROM course_modules WHERE id = $1 AND course_id = $2",
+        )
+        .bind(&module_id)
+        .bind(&course_id)
+        .fetch_optional(&pool)
+        .await
+    } else {
+        sqlx::query_as(
+            "SELECT id, course_id, title, sort_order, link, description, created_at FROM course_modules WHERE id = ? AND course_id = ?",
+        )
+        .bind(&module_id)
+        .bind(&course_id)
+        .fetch_optional(&pool)
+        .await
+    }
+    .map_err(|e| {
+        tracing::error!("Admin update course module fetch error: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"message": "Failed to update module"})),
+        )
+    })?;
+    let mut row = row.ok_or((
+        StatusCode::NOT_FOUND,
+        Json(serde_json::json!({"message": "Module not found"})),
+    ))?;
+    if let Some(t) = title {
+        row.2 = t.to_string();
+    }
+    if let Some(so) = sort_order {
+        row.3 = so;
+    }
+    if body.link.is_some() {
+        row.4 = link.map(String::from);
+    }
+    if body.description.is_some() {
+        row.5 = description.map(String::from);
+    }
+    if db::is_postgres() {
+        sqlx::query(
+            "UPDATE course_modules SET title = $1, sort_order = $2, link = $3, description = $4 WHERE id = $5 AND course_id = $6",
+        )
+        .bind(&row.2)
+        .bind(row.3)
+        .bind(&row.4)
+        .bind(&row.5)
+        .bind(&module_id)
+        .bind(&course_id)
+        .execute(&pool)
+        .await
+    } else {
+        sqlx::query(
+            "UPDATE course_modules SET title = ?, sort_order = ?, link = ?, description = ? WHERE id = ? AND course_id = ?",
+        )
+        .bind(&row.2)
+        .bind(row.3)
+        .bind(&row.4)
+        .bind(&row.5)
+        .bind(&module_id)
+        .bind(&course_id)
+        .execute(&pool)
+        .await
+    }
+    .map_err(|e| {
+        tracing::error!("Admin update course module error: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"message": "Failed to update module"})),
+        )
+    })?;
+    Ok(Json(CourseModuleRow {
+        id: row.0,
+        course_id: row.1,
+        title: row.2,
+        sort_order: row.3,
+        link: row.4,
+        description: row.5,
+        created_at: row.6,
+    }))
+}
+
+async fn delete_course_module(
+    State(pool): State<AnyPool>,
+    AdminUser(_user_id, _role): AdminUser,
+    Path((course_id, module_id)): Path<(String, String)>,
+) -> Result<StatusCode, (StatusCode, Json<serde_json::Value>)> {
+    let result = if db::is_postgres() {
+        sqlx::query("DELETE FROM course_modules WHERE id = $1 AND course_id = $2")
+            .bind(&module_id)
+            .bind(&course_id)
+            .execute(&pool)
+            .await
+    } else {
+        sqlx::query("DELETE FROM course_modules WHERE id = ? AND course_id = ?")
+            .bind(&module_id)
+            .bind(&course_id)
+            .execute(&pool)
+            .await
+    }
+    .map_err(|e| {
+        tracing::error!("Admin delete course module error: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"message": "Failed to delete module"})),
+        )
+    })?;
+    if result.rows_affected() == 0 {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"message": "Module not found"})),
+        ));
+    }
+    Ok(StatusCode::NO_CONTENT)
+}
+
 pub fn admin_routes(pool: AnyPool) -> Router {
     Router::new()
         .route("/admin/metrics", get(metrics))
@@ -985,6 +1241,14 @@ pub fn admin_routes(pool: AnyPool) -> Router {
             get(list_courses_admin).post(create_course),
         )
         .route("/admin/courses/:id", patch(update_course))
+        .route(
+            "/admin/courses/:course_id/modules",
+            get(list_course_modules_admin).post(create_course_module),
+        )
+        .route(
+            "/admin/courses/:course_id/modules/:module_id",
+            patch(update_course_module).delete(delete_course_module),
+        )
         .route(
             "/admin/learning-plans",
             get(list_learning_plans).post(create_learning_plan),

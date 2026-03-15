@@ -6,8 +6,11 @@
 	import { getProgramSchedule } from '$lib/courses';
 	import type { CourseDetail } from '$lib/courses';
 
+	import type { CourseModule } from '$lib/api/course-modules';
+
 	interface Data {
 		course: CourseDetail | null;
+		modules: CourseModule[];
 	}
 
 	let { data }: { data: Data } = $props();
@@ -99,26 +102,63 @@
 				</div>
 			</section>
 
-			<!-- Schedule: what to expect -->
+			<!-- Curriculum / Schedule -->
 			<section class="border-t border-pink-200/50 section-separator bg-gradient-to-b from-white to-pink-50/30 py-12 sm:py-16 px-4 sm:px-6 dark:from-[#252d47] dark:to-[#1e2642]/80">
 				<div class="mx-auto max-w-4xl">
 					<AnimateOnView animation="fade-up">
-						<h2 class="text-xl font-bold text-slate-900 dark:text-white">What to expect</h2>
-						<p class="mt-2 text-slate-600 dark:text-slate-200">A typical schedule for this course over the program period.</p>
+						<h2 class="text-xl font-bold text-slate-900 dark:text-white">
+							{data.modules.length > 0 ? 'Curriculum' : 'What to expect'}
+						</h2>
+						<p class="mt-2 text-slate-600 dark:text-slate-200">
+							{data.modules.length > 0
+								? 'Modules and topics for this course.'
+								: 'A typical schedule for this course over the program period.'}
+						</p>
 					</AnimateOnView>
-					<ul class="mt-8 space-y-6">
-						{#each data.course.schedule as item, i}
-							<AnimateOnView animation="fade-up" stagger={i}>
-								<li class="rounded-2xl border border-pink-200/50 card-premium bg-white p-4 sm:p-6 shadow-sm dark:bg-[#1e2642]">
-									{#if item.week}
-										<p class="text-sm font-semibold uppercase tracking-wider text-pink-600 dark:text-pink-400">{item.week}</p>
-									{/if}
-									<h3 class="mt-2 font-semibold text-slate-900 dark:text-white">{item.title}</h3>
-									<p class="mt-1 text-slate-600 dark:text-slate-200 text-sm">{item.description}</p>
-								</li>
-							</AnimateOnView>
-						{/each}
-					</ul>
+					{#if data.modules.length > 0}
+						<ul class="mt-8 space-y-6">
+							{#each data.modules as mod, i}
+								<AnimateOnView animation="fade-up" delay={i * 50}>
+									<li class="rounded-2xl border border-pink-200/50 card-premium bg-white p-4 sm:p-6 shadow-sm dark:bg-[#1e2642]">
+										<p class="text-sm font-semibold uppercase tracking-wider text-pink-600 dark:text-pink-400">
+											Module {mod.sort_order + 1}
+										</p>
+										<h3 class="mt-2 font-semibold text-slate-900 dark:text-white">{mod.title}</h3>
+										{#if mod.description}
+											<p class="mt-1 text-slate-600 dark:text-slate-200 text-sm">{mod.description}</p>
+										{/if}
+										{#if mod.link}
+											<a
+												href={mod.link}
+												target="_blank"
+												rel="noopener noreferrer"
+												class="mt-2 inline-flex items-center gap-1 text-sm font-medium text-pink-600 hover:text-pink-700 dark:text-pink-400"
+											>
+												View resource
+												<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+												</svg>
+											</a>
+										{/if}
+									</li>
+								</AnimateOnView>
+							{/each}
+						</ul>
+					{:else}
+						<ul class="mt-8 space-y-6">
+							{#each data.course.schedule as item, i}
+								<AnimateOnView animation="fade-up" stagger={i}>
+									<li class="rounded-2xl border border-pink-200/50 card-premium bg-white p-4 sm:p-6 shadow-sm dark:bg-[#1e2642]">
+										{#if item.week}
+											<p class="text-sm font-semibold uppercase tracking-wider text-pink-600 dark:text-pink-400">{item.week}</p>
+										{/if}
+										<h3 class="mt-2 font-semibold text-slate-900 dark:text-white">{item.title}</h3>
+										<p class="mt-1 text-slate-600 dark:text-slate-200 text-sm">{item.description}</p>
+									</li>
+								</AnimateOnView>
+							{/each}
+						</ul>
+					{/if}
 				</div>
 			</section>
 

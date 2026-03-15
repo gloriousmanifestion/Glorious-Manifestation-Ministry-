@@ -200,6 +200,67 @@ export async function createCourse(data: {
 	return json as AdminCourse;
 }
 
+export interface AdminCourseModule {
+	id: string;
+	course_id: string;
+	title: string;
+	sort_order: number;
+	link: string | null;
+	description: string | null;
+	created_at: string;
+}
+
+export async function getCourseModules(courseId: string): Promise<AdminCourseModule[]> {
+	const res = await fetch(`${API_BASE}/admin/courses/${encodeURIComponent(courseId)}/modules`, {
+		headers: getAuthHeaders()
+	});
+	const json = await safeJson<AdminCourseModule[] | { message?: string }>(res);
+	if (!res.ok) throw new Error((json as { message?: string }).message ?? 'Failed to load modules');
+	return Array.isArray(json) ? json : [];
+}
+
+export async function createCourseModule(
+	courseId: string,
+	data: { title: string; sort_order?: number; link?: string | null; description?: string | null }
+): Promise<AdminCourseModule> {
+	const res = await fetch(`${API_BASE}/admin/courses/${encodeURIComponent(courseId)}/modules`, {
+		method: 'POST',
+		headers: getAuthHeaders(),
+		body: JSON.stringify(data)
+	});
+	const json = await safeJson<AdminCourseModule | { message?: string }>(res);
+	if (!res.ok) throw new Error((json as { message?: string }).message ?? 'Failed to create module');
+	return json as AdminCourseModule;
+}
+
+export async function updateCourseModule(
+	courseId: string,
+	moduleId: string,
+	data: Partial<{ title: string; sort_order: number; link: string | null; description: string | null }>
+): Promise<AdminCourseModule> {
+	const res = await fetch(
+		`${API_BASE}/admin/courses/${encodeURIComponent(courseId)}/modules/${encodeURIComponent(moduleId)}`,
+		{
+			method: 'PATCH',
+			headers: getAuthHeaders(),
+			body: JSON.stringify(data)
+		}
+	);
+	const json = await safeJson<AdminCourseModule | { message?: string }>(res);
+	if (!res.ok) throw new Error((json as { message?: string }).message ?? 'Failed to update module');
+	return json as AdminCourseModule;
+}
+
+export async function deleteCourseModule(courseId: string, moduleId: string): Promise<void> {
+	const res = await fetch(
+		`${API_BASE}/admin/courses/${encodeURIComponent(courseId)}/modules/${encodeURIComponent(moduleId)}`,
+		{ method: 'DELETE', headers: getAuthHeaders() }
+	);
+	if (res.status === 204) return;
+	const json = await safeJson<{ message?: string }>(res).catch(() => ({ message: undefined }));
+	throw new Error(json?.message ?? 'Failed to delete module');
+}
+
 export async function updateCourse(
 	id: string,
 	data: Partial<{
