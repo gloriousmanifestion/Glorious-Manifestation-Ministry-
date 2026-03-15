@@ -1,7 +1,7 @@
 use axum::{
     extract::{Path, Query, State},
-    http::StatusCode,
-    response::Json,
+    http::{header, StatusCode},
+    response::{IntoResponse, Json, Response},
     routing::{get, patch, post},
     Router,
 };
@@ -216,6 +216,90 @@ async fn list_users(
         })).collect::<Vec<_>>(),
         "total": total
     })))
+}
+
+// ---------- Reports / Export ----------
+#[derive(Debug, Deserialize)]
+pub struct ExportQuery {
+    pub format: Option<String>,
+}
+
+fn escape_csv_field(s: &str) -> String {
+    if s.contains(',') || s.contains('"') || s.contains('\n') || s.contains('\r') {
+        format!("\"{}\"", s.replace('"', "\"\""))
+    } else {
+        s.to_string()
+    }
+}
+
+async fn export_registrations(
+    State(pool): State<AnyPool>,
+    AdminUser(_user_id, _role): AdminUser,
+    Query(q): Query<ExportQuery>,
+) -> Result<Response, (StatusCode, Json<serde_json::Value>)> {
+    let want_csv = q
+        .format
+        .as_deref()
+        .map(|f| f.eq_ignore_ascii_case("csv"))
+        .unwrap_or(false);
+
+    let users: Vec<AdminUserRow> = sqlx::query_as(
+        "SELECT id, email, name, phone, ministry_role, church_name, verified, payment_complete, selected_course_id, created_at FROM users ORDER BY created_at DESC",
+    )
+    .fetch_all(&pool)
+    .await
+    .map_err(|e| {
+        tracing::error!("Admin export registrations error: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"message": "Failed to export registrations"})),
+        )
+    })?;
+
+    if want_csv {
+        let mut csv = String::from("id,email,name,phone,ministry_role,church_name,verified,payment_complete,selected_course_id,created_at\n");
+        for u in &users {
+            csv.push_str(&escape_csv_field(&u.id));
+            csv.push(',');
+            csv.push_str(&escape_csv_field(&u.email));
+            csv.push(',');
+            csv.push_str(&escape_csv_field(&u.name));
+            csv.push(',');
+            csv.push_str(&escape_csv_field(&u.phone));
+            csv.push(',');
+            csv.push_str(&escape_csv_field(&u.ministry_role));
+            csv.push(',');
+            csv.push_str(&escape_csv_field(&u.church_name));
+            csv.push(',');
+            csv.push_str(if u.verified { "true" } else { "false" });
+            csv.push(',');
+            csv.push_str(if u.payment_complete { "true" } else { "false" });
+            csv.push(',');
+            csv.push_str(&escape_csv_field(
+                u.selected_course_id.as_deref().unwrap_or(""),
+            ));
+            csv.push(',');
+            csv.push_str(&escape_csv_field(&u.created_at));
+            csv.push('\n');
+        }
+        Ok(([(header::CONTENT_TYPE, "text/csv; charset=utf-8")], csv).into_response())
+    } else {
+        Ok(Json(serde_json::json!({
+            "users": users.iter().map(|u| serde_json::json!({
+                "id": u.id,
+                "email": u.email,
+                "name": u.name,
+                "phone": u.phone,
+                "ministryRole": u.ministry_role,
+                "churchName": u.church_name,
+                "verified": u.verified,
+                "paymentComplete": u.payment_complete,
+                "selectedCourseId": u.selected_course_id,
+                "createdAt": u.created_at,
+            })).collect::<Vec<_>>(),
+        }))
+        .into_response())
+    }
 }
 
 // ---------- Courses ----------
@@ -895,6 +979,7 @@ pub fn admin_routes(pool: AnyPool) -> Router {
     Router::new()
         .route("/admin/metrics", get(metrics))
         .route("/admin/users", get(list_users))
+        .route("/admin/reports/registrations", get(export_registrations))
         .route(
             "/admin/courses",
             get(list_courses_admin).post(create_course),

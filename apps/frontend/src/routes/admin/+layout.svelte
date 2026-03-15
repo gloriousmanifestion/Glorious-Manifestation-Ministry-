@@ -22,6 +22,7 @@
 		{ href: '/admin/events', label: 'Events', icon: 'events' as const },
 		{ href: '/admin/testimonials', label: 'Testimonials', icon: 'quote' as const },
 		{ href: '/admin/blog', label: 'Blog', icon: 'blog' as const },
+		{ href: '/admin/reports', label: 'Reports', icon: 'reports' as const },
 		...(user?.role === 'super_admin' ? [{ href: '/admin/team', label: 'Team & invites', icon: 'invite' as const }] : [])
 	]);
 
@@ -70,6 +71,8 @@
 				return 'M7 8h10m-5 8v-4m0-4V8m5 4l3 3m0 0l3-3m-3 3V4';
 			case 'blog':
 				return 'M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z';
+			case 'reports':
+				return 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z';
 			default:
 				return 'M4 6h16M4 12h16M4 18h16';
 		}

@@ -112,6 +112,25 @@ export async function getAdminUsers(params?: {
 	return json as { users: AdminUser[]; total: number };
 }
 
+/** Download registrations as CSV file (admin only). */
+export async function downloadRegistrationsCsv(): Promise<void> {
+	const url = `${API_BASE}/admin/reports/registrations?format=csv`;
+	const res = await fetch(url, { headers: getAuthHeaders() });
+	if (!res.ok) {
+		const json = await safeJson<{ message?: string }>(res).catch(() => ({ message: undefined }));
+		throw new Error(json?.message ?? 'Failed to download export');
+	}
+	const blob = await res.blob();
+	const disposition = res.headers.get('Content-Disposition');
+	const match = disposition?.match(/filename="?([^";\n]+)"?/);
+	const filename = match?.[1] ?? `registrations-${new Date().toISOString().slice(0, 10)}.csv`;
+	const a = document.createElement('a');
+	a.href = URL.createObjectURL(blob);
+	a.download = filename;
+	a.click();
+	URL.revokeObjectURL(a.href);
+}
+
 function getMockUsers(): AdminUser[] {
 	return [
 		{
