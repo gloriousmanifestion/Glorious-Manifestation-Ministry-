@@ -28,6 +28,17 @@
 		...desktopEndLinks
 	];
 	const mobileNavLinks = navLinks.slice(0, 4);
+	const pathname = $derived($page.url.pathname);
+
+	function isActive(href: string): boolean {
+		if (href === '/') return pathname === '/';
+		return pathname === href || pathname.startsWith(href + '/');
+	}
+
+	const isDiscoverActive = $derived(
+		discoverLinks.some((l) => isActive(l.href))
+	);
+
 	let discoverOpen = $state(false);
 	let discoverTimeout: ReturnType<typeof setTimeout> | null = null;
 	function openDiscover() {
@@ -40,21 +51,12 @@
 	function keepDiscoverOpen() {
 		if (discoverTimeout) clearTimeout(discoverTimeout);
 	}
-	const isDiscoverActive = $derived(
-		discoverLinks.some((l) => isActive(l.href))
-	);
 
 	let sheetOpen = $state(false);
 	let scrolled = $state(false);
 	const user = $derived($userStore);
 	const isLoggedIn = $derived(user !== null);
 	const canAccessAdmin = $derived(user !== null && (user.role === 'admin' || user.role === 'super_admin'));
-	const pathname = $derived($page.url.pathname);
-
-	function isActive(href: string): boolean {
-		if (href === '/') return pathname === '/';
-		return pathname === href || pathname.startsWith(href + '/');
-	}
 
 	function iconPath(icon: string): string {
 		switch (icon) {
