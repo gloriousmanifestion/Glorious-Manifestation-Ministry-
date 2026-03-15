@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { SITE } from '$lib/config';
 
+	import { subscribeNewsletter } from '$lib/api/newsletter';
+
 	const quickLinks = [
 		{ href: '/programs', label: 'Programs' },
 		{ href: '/admissions', label: 'Admissions' },
@@ -8,8 +10,31 @@
 		{ href: '/faq', label: 'FAQ' },
 		{ href: '/testimonials', label: 'Testimonials' },
 		{ href: '/blog', label: 'Blog' },
+		{ href: '/newsletter', label: 'Newsletter' },
 		{ href: '/contact', label: 'Contact' }
 	];
+
+	let newsletterEmail = $state('');
+	let newsletterLoading = $state(false);
+	let newsletterSuccess = $state(false);
+	let newsletterError = $state('');
+
+	async function handleNewsletterSubmit(e: Event) {
+		e.preventDefault();
+		if (newsletterLoading || !newsletterEmail.trim()) return;
+		newsletterError = '';
+		newsletterSuccess = false;
+		newsletterLoading = true;
+		try {
+			await subscribeNewsletter(newsletterEmail);
+			newsletterSuccess = true;
+			newsletterEmail = '';
+		} catch (err) {
+			newsletterError = err instanceof Error ? err.message : 'Subscription failed';
+		} finally {
+			newsletterLoading = false;
+		}
+	}
 
 	const legalLinks = [
 		{ href: '/privacy', label: 'Privacy' },
@@ -20,7 +45,7 @@
 
 <footer class="border-t border-slate-200/80 section-separator bg-slate-50 dark:bg-[#1e2642]">
 	<div class="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
-		<div class="grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
+		<div class="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
 			<!-- Brand -->
 			<div class="sm:col-span-2 lg:col-span-1 min-w-0">
 				<a href="/" class="inline-flex items-center gap-3">
@@ -55,6 +80,37 @@
 						</li>
 					{/each}
 				</ul>
+			</div>
+
+			<!-- Newsletter -->
+			<div class="min-w-0">
+				<h3 class="text-sm font-semibold uppercase tracking-wider text-slate-900 dark:text-white">Newsletter</h3>
+				<p class="mt-2 text-sm text-slate-600 dark:text-slate-100">Stay updated with news and events.</p>
+				<form class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center" onsubmit={handleNewsletterSubmit}>
+					<label for="footer-newsletter-email" class="sr-only">Newsletter email</label>
+					<input
+						id="footer-newsletter-email"
+						type="email"
+						placeholder="your@email.com"
+						bind:value={newsletterEmail}
+						disabled={newsletterLoading}
+						class="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-500 focus:border-pink-500 focus:outline-none focus:ring-1 focus:ring-pink-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-400"
+						required
+					/>
+					<button
+						type="submit"
+						disabled={newsletterLoading}
+						class="shrink-0 rounded-lg bg-pink-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-pink-700 disabled:opacity-50 dark:bg-pink-500 dark:hover:bg-pink-600"
+					>
+						{newsletterLoading ? 'Subscribing…' : 'Subscribe'}
+					</button>
+				</form>
+				{#if newsletterSuccess}
+					<p class="mt-2 text-sm text-green-600 dark:text-green-400">Thank you for subscribing.</p>
+				{/if}
+				{#if newsletterError}
+					<p class="mt-2 text-sm text-red-600 dark:text-red-400">{newsletterError}</p>
+				{/if}
 			</div>
 
 			<!-- Contact -->

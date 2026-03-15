@@ -44,6 +44,7 @@ async fn main() {
                 .merge(routes::announcements_routes(pool.clone()))
                 .merge(routes::testimonials_routes(pool.clone()))
                 .merge(routes::blog_routes(pool.clone()))
+                .merge(routes::newsletter_routes(pool.clone()))
                 .merge(routes::contact_routes(pool)),
         )
         .layer(CorsLayer::permissive())
