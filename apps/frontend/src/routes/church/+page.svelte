@@ -133,7 +133,7 @@
 					{#each displayServices as service, i}
 						<AnimateOnView animation="fade-up" stagger={i}>
 							<article
-								class="hover-lift flex flex-col sm:flex-row gap-4 sm:gap-6 rounded-2xl border border-pink-200/50 card-premium bg-white p-4 sm:p-6 shadow-sm hover:border-pink-300 hover:shadow-lg dark:bg-[#252d47] dark:border-pink-500/30 dark:hover:border-pink-500/50"
+								class="hover-lift flex flex-col sm:flex-row gap-4 sm:gap-6 overflow-hidden rounded-2xl border border-pink-200/50 card-premium bg-white p-4 sm:p-6 shadow-sm hover:border-pink-300 hover:shadow-lg dark:bg-[#252d47] dark:border-pink-500/30 dark:hover:border-pink-500/50"
 							>
 								{#if service.image_url}
 									<img
@@ -143,20 +143,21 @@
 									/>
 								{:else}
 									<div
-										class="flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-xl bg-gradient-to-br from-pink-500 to-purple-600 text-center text-white"
+										class="flex h-16 w-16 shrink-0 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-xl bg-gradient-to-br from-pink-500 to-purple-600 px-1 text-center text-white"
+										title="{service.day_of_week} · {service.time}"
 									>
-										<span class="text-xs font-medium uppercase leading-tight">{service.day_of_week}</span>
-										<span class="text-sm font-semibold">{service.time}</span>
+										<span class="max-w-full truncate text-[10px] font-medium uppercase leading-tight sm:text-xs">{service.day_of_week}</span>
+										<span class="max-w-full truncate text-xs font-semibold sm:text-sm">{service.time}</span>
 									</div>
 								{/if}
-								<div class="min-w-0 flex-1">
-									<h3 class="text-lg font-bold text-slate-900 dark:text-white">{service.name}</h3>
+								<div class="min-w-0 flex-1 overflow-hidden">
+									<h3 class="break-words text-lg font-bold text-slate-900 dark:text-white">{service.name}</h3>
 									<p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
 										{service.day_of_week} · {service.time}
 									</p>
-									<p class="mt-2 text-slate-600 dark:text-slate-200">{service.description ?? ''}</p>
+									<p class="mt-2 break-words text-slate-600 dark:text-slate-200">{service.description ?? ''}</p>
 									{#if service.features && service.features.length > 0}
-										<p class="mt-2 text-sm text-slate-500 dark:text-slate-400">
+										<p class="mt-2 break-words text-sm text-slate-500 dark:text-slate-400">
 											{service.features.join(' · ')}
 										</p>
 									{/if}
