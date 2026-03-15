@@ -183,6 +183,47 @@ export async function getAuditLog(params?: {
 	return Array.isArray(json) ? json : [];
 }
 
+/** POST /admin/notifications — create in-app notifications (all students or selected user_ids). */
+export async function createNotifications(body: {
+	title: string;
+	message: string;
+	user_ids?: string[] | null;
+}): Promise<{ created: number }> {
+	const res = await fetch(`${API_BASE}/admin/notifications`, {
+		method: 'POST',
+		headers: getAuthHeaders(),
+		body: JSON.stringify({
+			title: body.title,
+			message: body.message,
+			user_ids: body.user_ids ?? null
+		})
+	});
+	const json = await safeJson<{ created: number } | { message?: string }>(res);
+	if (!res.ok)
+		throw new Error((json as { message?: string }).message ?? 'Failed to create notifications');
+	return json as { created: number };
+}
+
+/** POST /admin/email-students — send email to students (all or selected user_ids). */
+export async function emailStudents(body: {
+	subject: string;
+	body: string;
+	user_ids?: string[] | null;
+}): Promise<{ sent: number; failed: number }> {
+	const res = await fetch(`${API_BASE}/admin/email-students`, {
+		method: 'POST',
+		headers: getAuthHeaders(),
+		body: JSON.stringify({
+			subject: body.subject,
+			body: body.body,
+			user_ids: body.user_ids ?? null
+		})
+	});
+	const json = await safeJson<{ sent: number; failed: number } | { message?: string }>(res);
+	if (!res.ok) throw new Error((json as { message?: string }).message ?? 'Failed to send emails');
+	return json as { sent: number; failed: number };
+}
+
 function getMockUsers(): AdminUser[] {
 	return [
 		{

@@ -372,3 +372,34 @@ export async function getInvite(token: string): Promise<InviteInfo | null> {
 	const info = json as InviteInfo;
 	return info.valid ? info : null;
 }
+
+// --- Notifications (student: list + mark read) ---
+
+export interface Notification {
+	id: string;
+	title: string;
+	message: string;
+	read_at: string | null;
+	created_at: string;
+}
+
+/** GET /me/notifications */
+export async function getNotifications(): Promise<Notification[]> {
+	const res = await fetch(`${API_BASE}/me/notifications`, { headers: getAuthHeaders() });
+	const json = await safeJson<Notification[] | { message?: string }>(res);
+	if (!res.ok)
+		throw new Error((json as { message?: string }).message ?? 'Failed to load notifications');
+	return Array.isArray(json) ? json : [];
+}
+
+/** PATCH /me/notifications/:id/read */
+export async function markNotificationRead(id: string): Promise<void> {
+	const res = await fetch(`${API_BASE}/me/notifications/${encodeURIComponent(id)}/read`, {
+		method: 'PATCH',
+		headers: getAuthHeaders()
+	});
+	if (!res.ok) {
+		const json = await safeJson<{ message?: string }>(res);
+		throw new Error(json?.message ?? 'Failed to mark as read');
+	}
+}

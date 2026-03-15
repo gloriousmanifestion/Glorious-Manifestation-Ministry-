@@ -10,12 +10,18 @@
 	import { getCourseDetailById } from '$lib/courses';
 	import { getAnnouncements, type Announcement } from '$lib/api/announcements';
 	import { getCourseModules, type CourseModule } from '$lib/api/course-modules';
-	import type { ProgressResponse } from '$lib/auth-api';
+	import {
+		getNotifications,
+		markNotificationRead,
+		type Notification,
+		type ProgressResponse
+	} from '$lib/auth-api';
 
 	let mounted = $state(false);
 	let courses = $state<Course[]>([]);
 	let paymentProofs = $state<PaymentProof[]>([]);
 	let announcements = $state<Announcement[]>([]);
+	let notifications = $state<Notification[]>([]);
 	let courseModules = $state<CourseModule[]>([]);
 	let progress = $state<ProgressResponse | null>(null);
 	let uploadingProof = $state(false);
@@ -43,6 +49,11 @@
 				announcements = await getAnnouncements();
 			} catch {
 				announcements = [];
+			}
+			try {
+				notifications = await getNotifications();
+			} catch {
+				notifications = [];
 			}
 			const user = get(userStore);
 			if (user?.selectedCourseId) {
@@ -182,6 +193,54 @@
 						</li>
 					</ul>
 				</div>
+
+				<!-- Notifications -->
+				{#if notifications.length > 0}
+					<div class="mb-6 sm:mb-8 rounded-2xl border border-slate-200/80 section-separator card-premium bg-white/95 p-4 sm:p-6 shadow-sm dark:bg-[#1e2642]">
+						<h2 class="text-lg font-semibold text-slate-900 dark:text-white">Notifications</h2>
+						<ul class="mt-4 space-y-3" role="list">
+							{#each notifications as n}
+								<li
+									class="rounded-xl border border-slate-200/80 p-3 dark:border-slate-700 {n.read_at
+										? 'bg-slate-50/50 dark:bg-slate-800/30'
+										: 'bg-pink-50/50 dark:bg-pink-900/20 border-pink-200/50 dark:border-pink-800/50'}"
+								>
+									<div class="flex items-start justify-between gap-3">
+										<div>
+											<p class="font-medium text-slate-900 dark:text-white">{n.title}</p>
+											<p class="mt-1 text-sm text-slate-600 dark:text-slate-200">{n.message}</p>
+											<p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+												{new Date(n.created_at).toLocaleDateString(undefined, {
+													day: 'numeric',
+													month: 'short',
+													year: 'numeric'
+												})}
+											</p>
+										</div>
+										{#if !n.read_at}
+											<button
+												type="button"
+												onclick={async () => {
+													try {
+														await markNotificationRead(n.id);
+														notifications = notifications.map((x) =>
+															x.id === n.id ? { ...x, read_at: new Date().toISOString() } : x
+														);
+													} catch {
+														// ignore
+													}
+												}}
+												class="shrink-0 rounded-lg bg-pink-600 px-2 py-1 text-xs font-medium text-white hover:bg-pink-500"
+											>
+												Mark read
+											</button>
+										{/if}
+									</div>
+								</li>
+							{/each}
+						</ul>
+					</div>
+				{/if}
 
 				<!-- Course progress (when curriculum exists) -->
 				{#if selectedCourse && (courseModules.length > 0 || (progress && progress.completed_module_ids.length > 0))}

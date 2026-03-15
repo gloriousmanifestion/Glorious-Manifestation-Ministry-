@@ -11,6 +11,7 @@ use uuid::Uuid;
 
 use crate::auth::AdminUser;
 use crate::db;
+use crate::routes::auth::send_email_to;
 
 // ---------- Metrics (camelCase for frontend AdminMetrics) ----------
 #[derive(Debug, Serialize)]
@@ -1723,12 +1724,206 @@ async fn delete_resource(
     Ok(StatusCode::NO_CONTENT)
 }
 
+// ---------- Notifications (admin create; students list via /me/notifications) ----------
+#[derive(Debug, Deserialize)]
+pub struct CreateNotificationsBody {
+    pub title: String,
+    pub message: String,
+    #[serde(default)]
+    pub user_ids: Option<Vec<String>>,
+}
+
+async fn create_notifications(
+    State(pool): State<AnyPool>,
+    AdminUser(admin_id, _role): AdminUser,
+    axum::Json(body): axum::Json<CreateNotificationsBody>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    let title = body.title.trim();
+    let message = body.message.trim();
+    if title.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"message": "Title is required"})),
+        ));
+    }
+    if message.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"message": "Message is required"})),
+        ));
+    }
+
+    let user_ids: Vec<String> = match &body.user_ids {
+        Some(ids) if !ids.is_empty() => ids.clone(),
+        _ => {
+            let rows: Vec<(String,)> =
+                sqlx::query_as("SELECT id FROM users")
+                    .fetch_all(&pool)
+                    .await
+                    .map_err(|e| {
+                        tracing::error!("List users for notifications: {:?}", e);
+                        (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            Json(serde_json::json!({"message": "Could not load users"})),
+                        )
+                    })?;
+            rows.into_iter().map(|r| r.0).collect()
+        }
+    };
+
+    let now = chrono::Utc::now().to_rfc3339();
+    let mut created = 0i64;
+    for uid in &user_ids {
+        let id = Uuid::new_v4().to_string();
+        let r = if db::is_postgres() {
+            sqlx::query(
+                "INSERT INTO notifications (id, user_id, title, message, created_at) VALUES ($1, $2, $3, $4, $5)",
+            )
+            .bind(&id)
+            .bind(uid)
+            .bind(title)
+            .bind(message)
+            .bind(&now)
+            .execute(&pool)
+            .await
+        } else {
+            sqlx::query(
+                "INSERT INTO notifications (id, user_id, title, message, created_at) VALUES (?, ?, ?, ?, ?)",
+            )
+            .bind(&id)
+            .bind(uid)
+            .bind(title)
+            .bind(message)
+            .bind(&now)
+            .execute(&pool)
+            .await
+        };
+        if r.is_ok() && r.as_ref().map(|e| e.rows_affected()).unwrap_or(0) > 0 {
+            created += 1;
+        }
+    }
+
+    let _ = log_audit(
+        &pool,
+        &admin_id,
+        "create_notifications",
+        Some("notifications"),
+        None,
+        Some(&format!("title={}, created={}", title, created)),
+    )
+    .await;
+
+    Ok(Json(serde_json::json!({ "created": created })))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct EmailStudentsBody {
+    pub subject: String,
+    pub body: String,
+    #[serde(default)]
+    pub user_ids: Option<Vec<String>>,
+}
+
+async fn email_students(
+    State(pool): State<AnyPool>,
+    AdminUser(admin_id, _role): AdminUser,
+    axum::Json(body): axum::Json<EmailStudentsBody>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    let subject = body.subject.trim();
+    let body_text = body.body.trim();
+    if subject.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"message": "Subject is required"})),
+        ));
+    }
+    if body_text.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"message": "Body is required"})),
+        ));
+    }
+
+    let recipients: Vec<(String, String)> = match &body.user_ids {
+        Some(ids) if !ids.is_empty() => {
+            let placeholders = if db::is_postgres() {
+                ids.iter()
+                    .enumerate()
+                    .map(|(i, _)| format!("${}", i + 1))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            } else {
+                ids.iter().map(|_| "?").collect::<Vec<_>>().join(", ")
+            };
+            let sql = format!(
+                "SELECT id, email FROM users WHERE id IN ({})",
+                placeholders
+            );
+            let mut q = sqlx::query_as::<_, (String, String)>(&sql);
+            for id in ids {
+                q = q.bind(id);
+            }
+            q.fetch_all(&pool).await.map_err(|e| {
+                tracing::error!("Fetch users for email: {:?}", e);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({"message": "Could not load users"})),
+                )
+            })?
+        }
+        _ => {
+            let rows: Vec<(String, String)> =
+                sqlx::query_as("SELECT id, email FROM users")
+                    .fetch_all(&pool)
+                    .await
+                    .map_err(|e| {
+                        tracing::error!("Fetch users for email: {:?}", e);
+                        (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            Json(serde_json::json!({"message": "Could not load users"})),
+                        )
+                    })?;
+            rows
+        }
+    };
+
+    let mut sent = 0u32;
+    let mut failed = 0u32;
+    for (_id, email) in &recipients {
+        if email.trim().is_empty() {
+            failed += 1;
+            continue;
+        }
+        match send_email_to(email, subject, body_text).await {
+            Ok(()) => sent += 1,
+            Err(e) => {
+                tracing::warn!("Email to {} failed: {}", email, e);
+                failed += 1;
+            }
+        }
+    }
+
+    let _ = log_audit(
+        &pool,
+        &admin_id,
+        "email_students",
+        Some("email"),
+        None,
+        Some(&format!("subject={}, sent={}, failed={}", subject, sent, failed)),
+    )
+    .await;
+
+    Ok(Json(serde_json::json!({ "sent": sent, "failed": failed })))
+}
+
 pub fn admin_routes(pool: AnyPool) -> Router {
     Router::new()
         .route("/admin/metrics", get(metrics))
         .route("/admin/users", get(list_users))
         .route("/admin/users/bulk-verify", post(bulk_verify_users))
         .route("/admin/users/bulk-mark-paid", post(bulk_mark_paid_users))
+        .route("/admin/notifications", post(create_notifications))
+        .route("/admin/email-students", post(email_students))
         .route("/admin/reports/registrations", get(export_registrations))
         .route("/admin/reports/audit-log", get(list_audit_log))
         .route(

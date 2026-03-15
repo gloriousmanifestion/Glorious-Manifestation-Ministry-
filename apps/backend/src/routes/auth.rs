@@ -2,7 +2,7 @@ use axum::{
     extract::{Path, State},
     http::StatusCode,
     response::Json,
-    routing::{get, post},
+    routing::{get, patch, post},
     Router,
 };
 use serde::{Deserialize, Serialize};
@@ -83,7 +83,8 @@ fn verify_password(password: &str, hash: &str) -> Result<bool, String> {
         .is_ok())
 }
 
-async fn send_registration_email(to: &str, name: &str) -> Result<(), String> {
+/// Send a single email via Microsoft Graph (used by registration, password reset, and admin email-students).
+pub async fn send_email_to(to: &str, subject: &str, body: &str) -> Result<(), String> {
     let tenant_id =
         std::env::var("AZURE_TENANT_ID").map_err(|_| "AZURE_TENANT_ID is not set".to_string())?;
     let client_id =
@@ -100,8 +101,26 @@ async fn send_registration_email(to: &str, name: &str) -> Result<(), String> {
         .build()
         .map_err(|e| e.to_string())?;
 
+    let message = Message {
+        subject: subject.to_string(),
+        body: MessageBody {
+            content_type: BodyType::Text,
+            content: body.to_string(),
+        },
+        to_recipients: vec![Recipient::new(to)],
+        ..Default::default()
+    };
+
+    let request = SendMailRequest::new(message);
+    client
+        .send_mail(&from_user, request)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+async fn send_registration_email(to: &str, name: &str) -> Result<(), String> {
     let subject = "Welcome to Prophetic Ministry Manifestation Pastoral School";
-    let body_text = format!(
+    let body = format!(
         "Hi {name},\n\n\
 Thank you for registering for the Prophetic Ministry Manifestation Pastoral School.\n\n\
 Your account has been created successfully.\n\
@@ -110,23 +129,7 @@ If you did not create this account, please ignore this email.\n\n\
 Blessings,\n\
 Prophetic Ministry Manifestation Pastoral School"
     );
-
-    let message = Message {
-        subject: subject.to_string(),
-        body: MessageBody {
-            content_type: BodyType::Text,
-            content: body_text,
-        },
-        to_recipients: vec![Recipient::new(to)],
-        ..Default::default()
-    };
-
-    let request = SendMailRequest::new(message);
-
-    client
-        .send_mail(&from_user, request)
-        .await
-        .map_err(|e| e.to_string())
+    send_email_to(to, subject, &body).await
 }
 
 #[derive(Debug, Serialize)]
@@ -165,7 +168,78 @@ pub fn auth_routes(pool: AnyPool) -> Router {
             "/auth/me/courses/:course_id/modules/:module_id/complete",
             post(mark_module_complete).delete(unmark_module_complete),
         )
+        .route("/me/notifications", get(get_my_notifications))
+        .route("/me/notifications/:id/read", patch(mark_notification_read))
         .with_state(pool)
+}
+
+#[derive(Debug, Serialize, sqlx::FromRow)]
+struct NotificationRow {
+    id: String,
+    title: String,
+    message: String,
+    read_at: Option<String>,
+    created_at: String,
+}
+
+async fn get_my_notifications(
+    State(pool): State<AnyPool>,
+    AuthUser(user_id): AuthUser,
+) -> Result<Json<Vec<NotificationRow>>, (StatusCode, Json<serde_json::Value>)> {
+    let sql = if db::is_postgres() {
+        "SELECT id, title, message, read_at, created_at FROM notifications WHERE user_id = $1 ORDER BY created_at DESC LIMIT 50"
+    } else {
+        "SELECT id, title, message, read_at, created_at FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 50"
+    };
+    let rows = sqlx::query_as::<_, NotificationRow>(sql)
+        .bind(&user_id)
+        .fetch_all(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Get notifications error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"message": "Could not load notifications"})),
+            )
+        })?;
+    Ok(Json(rows))
+}
+
+async fn mark_notification_read(
+    State(pool): State<AnyPool>,
+    AuthUser(user_id): AuthUser,
+    Path(id): Path<String>,
+) -> Result<StatusCode, (StatusCode, Json<serde_json::Value>)> {
+    let now = chrono::Utc::now().to_rfc3339();
+    let result = if db::is_postgres() {
+        sqlx::query("UPDATE notifications SET read_at = $1 WHERE id = $2 AND user_id = $3 AND read_at IS NULL")
+            .bind(&now)
+            .bind(&id)
+            .bind(&user_id)
+            .execute(&pool)
+            .await
+    } else {
+        sqlx::query("UPDATE notifications SET read_at = ? WHERE id = ? AND user_id = ? AND read_at IS NULL")
+            .bind(&now)
+            .bind(&id)
+            .bind(&user_id)
+            .execute(&pool)
+            .await
+    }
+    .map_err(|e| {
+        tracing::error!("Mark notification read error: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"message": "Could not update"})),
+        )
+    })?;
+    if result.rows_affected() == 0 {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"message": "Notification not found"})),
+        ));
+    }
+    Ok(StatusCode::NO_CONTENT)
 }
 
 async fn get_invite(
