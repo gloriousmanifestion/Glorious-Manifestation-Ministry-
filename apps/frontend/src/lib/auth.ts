@@ -180,6 +180,15 @@ function createAuthStore() {
 		async getMyPaymentProofs() {
 			return api.getMyPaymentProofs();
 		},
+		async getMyProgress(courseId: string) {
+			return api.getMyProgress(courseId);
+		},
+		async markModuleComplete(courseId: string, moduleId: string) {
+			await api.markModuleComplete(courseId, moduleId);
+		},
+		async unmarkModuleComplete(courseId: string, moduleId: string) {
+			await api.unmarkModuleComplete(courseId, moduleId);
+		},
 		async selectCourse(courseId: string | null) {
 			if (!courseId) return;
 			const r = await api.selectCourse(courseId);

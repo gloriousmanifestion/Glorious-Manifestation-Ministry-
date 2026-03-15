@@ -300,6 +300,45 @@ export async function getCourses(): Promise<
 	return Array.isArray(json) ? json : [];
 }
 
+// --- Progress (module completions) ---
+
+export interface ProgressResponse {
+	completed_module_ids: string[];
+}
+
+export async function getMyProgress(courseId: string): Promise<ProgressResponse> {
+	const res = await fetch(`${API_BASE}/auth/me/courses/${encodeURIComponent(courseId)}/progress`, {
+		headers: getAuthHeaders()
+	});
+	const json = await safeJson<ProgressResponse | Record<string, unknown>>(res);
+	if (!res.ok) {
+		throw new Error(getErrorMessage(json, 'Failed to load progress'));
+	}
+	return json as ProgressResponse;
+}
+
+export async function markModuleComplete(courseId: string, moduleId: string): Promise<void> {
+	const res = await fetch(
+		`${API_BASE}/auth/me/courses/${encodeURIComponent(courseId)}/modules/${encodeURIComponent(moduleId)}/complete`,
+		{ method: 'POST', headers: getAuthHeaders() }
+	);
+	if (!res.ok) {
+		const json = await safeJson<Record<string, unknown>>(res);
+		throw new Error(getErrorMessage(json, 'Failed to mark module complete'));
+	}
+}
+
+export async function unmarkModuleComplete(courseId: string, moduleId: string): Promise<void> {
+	const res = await fetch(
+		`${API_BASE}/auth/me/courses/${encodeURIComponent(courseId)}/modules/${encodeURIComponent(moduleId)}/complete`,
+		{ method: 'DELETE', headers: getAuthHeaders() }
+	);
+	if (!res.ok) {
+		const json = await safeJson<Record<string, unknown>>(res);
+		throw new Error(getErrorMessage(json, 'Failed to unmark module'));
+	}
+}
+
 // --- Invitations (admin/super_admin signup) ---
 
 /**

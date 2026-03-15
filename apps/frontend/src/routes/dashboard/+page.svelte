@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { get } from 'svelte/store';
 	import { goto } from '$app/navigation';
 	import Nav from '$lib/components/Nav.svelte';
 	import Footer from '$lib/components/Footer.svelte';
@@ -8,11 +9,15 @@
 	import { SITE } from '$lib/config';
 	import { getCourseDetailById } from '$lib/courses';
 	import { getAnnouncements, type Announcement } from '$lib/api/announcements';
+	import { getCourseModules, type CourseModule } from '$lib/api/course-modules';
+	import type { ProgressResponse } from '$lib/auth-api';
 
 	let mounted = $state(false);
 	let courses = $state<Course[]>([]);
 	let paymentProofs = $state<PaymentProof[]>([]);
 	let announcements = $state<Announcement[]>([]);
+	let courseModules = $state<CourseModule[]>([]);
+	let progress = $state<ProgressResponse | null>(null);
 	let uploadingProof = $state(false);
 	let proofError = $state('');
 
@@ -32,13 +37,22 @@
 			try {
 				paymentProofs = await auth.getMyPaymentProofs();
 			} catch {
-				// POP API may not yet be implemented; fail softly.
 				paymentProofs = [];
 			}
 			try {
 				announcements = await getAnnouncements();
 			} catch {
 				announcements = [];
+			}
+			const user = get(userStore);
+			if (user?.selectedCourseId) {
+				try {
+					courseModules = await getCourseModules(user.selectedCourseId);
+					progress = await auth.getMyProgress(user.selectedCourseId);
+				} catch {
+					courseModules = [];
+					progress = null;
+				}
 			}
 		} catch {
 			// Fallback empty - user can still use dashboard
@@ -168,6 +182,23 @@
 						</li>
 					</ul>
 				</div>
+
+				<!-- Course progress (when curriculum exists) -->
+				{#if selectedCourse && (courseModules.length > 0 || (progress && progress.completed_module_ids.length > 0))}
+					<div class="mb-6 sm:mb-8 rounded-2xl border border-slate-200/80 section-separator card-premium bg-white/95 p-4 sm:p-6 shadow-sm dark:bg-[#1e2642]">
+						<h2 class="text-lg font-semibold text-slate-900 dark:text-white">Course progress</h2>
+						<p class="mt-1 text-slate-600 dark:text-slate-200">
+							{progress?.completed_module_ids.length ?? 0} / {courseModules.length} modules completed
+						</p>
+						<a
+							href="/courses/{selectedCourse.id}"
+							class="mt-3 inline-flex items-center gap-2 text-sm font-medium text-pink-600 hover:text-pink-700 dark:text-pink-400"
+						>
+							View curriculum
+							<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+						</a>
+					</div>
+				{/if}
 
 				<!-- Pending actions banners -->
 				<div class="mb-6 sm:mb-8 space-y-3 sm:space-y-4">

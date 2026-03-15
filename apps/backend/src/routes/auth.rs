@@ -160,6 +160,11 @@ pub fn auth_routes(pool: AnyPool) -> Router {
         .route("/auth/invite/:token", get(get_invite))
         .route("/payments/proofs", post(upload_payment_proof))
         .route("/payments/proofs/me", get(list_my_payment_proofs))
+        .route("/auth/me/courses/:course_id/progress", get(get_my_progress))
+        .route(
+            "/auth/me/courses/:course_id/modules/:module_id/complete",
+            post(mark_module_complete).delete(unmark_module_complete),
+        )
         .with_state(pool)
 }
 
@@ -1148,4 +1153,131 @@ async fn list_my_payment_proofs(
         })
         .collect();
     Ok(Json(list))
+}
+
+// ---------- Progress (module completions) ----------
+
+#[derive(Debug, Serialize)]
+struct ProgressResponse {
+    completed_module_ids: Vec<String>,
+}
+
+async fn get_my_progress(
+    State(pool): State<AnyPool>,
+    AuthUser(user_id): AuthUser,
+    Path(course_id): Path<String>,
+) -> Result<Json<ProgressResponse>, (StatusCode, Json<serde_json::Value>)> {
+    let sql = if db::is_postgres() {
+        "SELECT mc.course_module_id FROM module_completions mc
+         INNER JOIN course_modules m ON m.id = mc.course_module_id AND m.course_id = $1
+         WHERE mc.user_id = $2 ORDER BY mc.completed_at"
+    } else {
+        "SELECT mc.course_module_id FROM module_completions mc
+         INNER JOIN course_modules m ON m.id = mc.course_module_id AND m.course_id = ?
+         WHERE mc.user_id = ? ORDER BY mc.completed_at"
+    };
+    let rows: Vec<(String,)> = sqlx::query_as(sql)
+        .bind(&course_id)
+        .bind(&user_id)
+        .fetch_all(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Get my progress error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(
+                    serde_json::json!({"error": "fetch_failed", "message": "Could not load progress"}),
+                ),
+            )
+        })?;
+    let completed_module_ids: Vec<String> = rows.into_iter().map(|r| r.0).collect();
+    Ok(Json(ProgressResponse {
+        completed_module_ids,
+    }))
+}
+
+async fn mark_module_complete(
+    State(pool): State<AnyPool>,
+    AuthUser(user_id): AuthUser,
+    Path((course_id, module_id)): Path<(String, String)>,
+) -> Result<StatusCode, (StatusCode, Json<serde_json::Value>)> {
+    // Ensure module belongs to course
+    let check_sql = if db::is_postgres() {
+        "SELECT id FROM course_modules WHERE id = $1 AND course_id = $2"
+    } else {
+        "SELECT id FROM course_modules WHERE id = ? AND course_id = ?"
+    };
+    let exists: Option<(String,)> = sqlx::query_as(check_sql)
+        .bind(&module_id)
+        .bind(&course_id)
+        .fetch_optional(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Check module error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(
+                    serde_json::json!({"error": "db_error", "message": "Could not verify module"}),
+                ),
+            )
+        })?;
+    if exists.is_none() {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(
+                serde_json::json!({"error": "not_found", "message": "Module not found for this course"}),
+            ),
+        ));
+    }
+    let now = chrono::Utc::now().to_rfc3339();
+    let insert_sql = if db::is_postgres() {
+        "INSERT INTO module_completions (user_id, course_module_id, completed_at) VALUES ($1, $2, $3) ON CONFLICT (user_id, course_module_id) DO NOTHING"
+    } else {
+        "INSERT OR IGNORE INTO module_completions (user_id, course_module_id, completed_at) VALUES (?, ?, ?)"
+    };
+    sqlx::query(insert_sql)
+        .bind(&user_id)
+        .bind(&module_id)
+        .bind(&now)
+        .execute(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Mark complete error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(
+                    serde_json::json!({"error": "update_failed", "message": "Could not mark module complete"}),
+                ),
+            )
+        })?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+async fn unmark_module_complete(
+    State(pool): State<AnyPool>,
+    AuthUser(user_id): AuthUser,
+    Path((course_id, module_id)): Path<(String, String)>,
+) -> Result<StatusCode, (StatusCode, Json<serde_json::Value>)> {
+    // Optional: verify module belongs to course (for consistency)
+    let delete_sql = if db::is_postgres() {
+        "DELETE FROM module_completions WHERE user_id = $1 AND course_module_id = $2 AND course_module_id IN (SELECT id FROM course_modules WHERE course_id = $3)"
+    } else {
+        "DELETE FROM module_completions WHERE user_id = ? AND course_module_id = ? AND course_module_id IN (SELECT id FROM course_modules WHERE course_id = ?)"
+    };
+    let _ = sqlx::query(delete_sql)
+        .bind(&user_id)
+        .bind(&module_id)
+        .bind(&course_id)
+        .execute(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Unmark complete error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(
+                    serde_json::json!({"error": "update_failed", "message": "Could not unmark module"}),
+                ),
+            )
+        })?;
+    Ok(StatusCode::NO_CONTENT)
 }

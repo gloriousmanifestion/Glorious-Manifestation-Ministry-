@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
 	import * as adminApi from '$lib/admin-api';
 	import type { AdminCourseModule } from '$lib/admin-api';
 	import { SITE } from '$lib/config';
@@ -217,7 +216,7 @@
 		aria-modal="true"
 		aria-labelledby="module-modal-title"
 	>
-		<!-- svelte-ignore a11y_no_noninteractive_element_interactions a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 		<div
 			role="document"
 			class="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 shadow-xl"
