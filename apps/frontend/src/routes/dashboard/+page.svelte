@@ -7,10 +7,12 @@
 	import type { Course, PaymentProof } from '$lib/auth';
 	import { SITE } from '$lib/config';
 	import { getCourseDetailById } from '$lib/courses';
+	import { getAnnouncements, type Announcement } from '$lib/api/announcements';
 
 	let mounted = $state(false);
 	let courses = $state<Course[]>([]);
 	let paymentProofs = $state<PaymentProof[]>([]);
+	let announcements = $state<Announcement[]>([]);
 	let uploadingProof = $state(false);
 	let proofError = $state('');
 
@@ -32,6 +34,11 @@
 			} catch {
 				// POP API may not yet be implemented; fail softly.
 				paymentProofs = [];
+			}
+			try {
+				announcements = await getAnnouncements();
+			} catch {
+				announcements = [];
 			}
 		} catch {
 			// Fallback empty - user can still use dashboard
@@ -184,6 +191,24 @@
 						</div>
 					{/if}
 				</div>
+
+				<!-- Announcements (latest 3) -->
+				{#if announcements.length > 0}
+					<div class="mb-6 sm:mb-8">
+						<h2 class="mb-3 text-lg font-semibold text-slate-900 dark:text-white">Announcements</h2>
+						<div class="space-y-3">
+							{#each announcements.slice(0, 3) as ann}
+								<div class="rounded-2xl border border-slate-200/80 section-separator card-premium bg-white/95 p-4 shadow-sm dark:bg-[#1e2642] dark:border-white/[0.08]">
+									<h3 class="font-medium text-slate-900 dark:text-white">{ann.title}</h3>
+									<p class="mt-1 whitespace-pre-wrap text-sm text-slate-600 dark:text-slate-200">{ann.body}</p>
+									<p class="mt-2 text-xs text-slate-500 dark:text-slate-400">
+										{new Date(ann.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+									</p>
+								</div>
+							{/each}
+						</div>
+					</div>
+				{/if}
 
 				<!-- Dashboard cards -->
 				<div class="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
