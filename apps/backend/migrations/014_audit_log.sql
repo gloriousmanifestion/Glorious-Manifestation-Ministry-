@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS audit_log (
     target_type TEXT,
     target_id TEXT,
     details TEXT,
-    created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+    created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
     -- admin_user_id stores who performed the action; no FK so log survives user deletion
 );
 
