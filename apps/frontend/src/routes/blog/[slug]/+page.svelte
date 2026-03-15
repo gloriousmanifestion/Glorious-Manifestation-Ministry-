@@ -3,16 +3,30 @@
 	import { onMount } from 'svelte';
 	import Nav from '$lib/components/Nav.svelte';
 	import Footer from '$lib/components/Footer.svelte';
-	import { getBlogPostBySlug, type BlogPost } from '$lib/api/blog';
+	import {
+		addBlogComment,
+		getBlogComments,
+		getBlogPostBySlug,
+		type BlogComment,
+		type BlogPost
+	} from '$lib/api/blog';
+	import { userStore, authReady } from '$lib/auth';
 	import { SITE } from '$lib/config';
 
 	let post = $state<BlogPost | null>(null);
+	let comments = $state<BlogComment[]>([]);
 	let loading = $state(true);
 	let notFound = $state(false);
+	let commentBody = $state('');
+	let commentSubmitting = $state(false);
+	let commentError = $state('');
 
 	const slug = $derived($page.params.slug);
+	const isLoggedIn = $derived($authReady && $userStore != null);
 
-	onMount(async () => {
+	onMount(load);
+
+	async function load() {
 		if (!slug) {
 			notFound = true;
 			loading = false;
@@ -21,12 +35,34 @@
 		try {
 			post = await getBlogPostBySlug(slug);
 			notFound = !post;
+			if (post) {
+				try {
+					comments = await getBlogComments(slug);
+				} catch {
+					comments = [];
+				}
+			}
 		} catch {
 			notFound = true;
 		} finally {
 			loading = false;
 		}
-	});
+	}
+
+	async function submitComment() {
+		if (!slug || !commentBody.trim() || commentSubmitting || !isLoggedIn) return;
+		commentSubmitting = true;
+		commentError = '';
+		try {
+			const newComment = await addBlogComment(slug, commentBody.trim());
+			comments = [...comments, newComment];
+			commentBody = '';
+		} catch (e) {
+			commentError = e instanceof Error ? e.message : 'Failed to add comment';
+		} finally {
+			commentSubmitting = false;
+		}
+	}
 
 	function formatDate(iso: string | null): string {
 		if (!iso) return '';
@@ -35,6 +71,20 @@
 				month: 'long',
 				day: 'numeric',
 				year: 'numeric'
+			});
+		} catch {
+			return iso;
+		}
+	}
+
+	function formatCommentDate(iso: string): string {
+		try {
+			return new Date(iso).toLocaleString(undefined, {
+				month: 'short',
+				day: 'numeric',
+				year: 'numeric',
+				hour: '2-digit',
+				minute: '2-digit'
 			});
 		} catch {
 			return iso;
@@ -85,6 +135,57 @@
 						{post.body}
 					</div>
 				</article>
+
+				<!-- Comments -->
+				<div class="mt-10 rounded-2xl border border-slate-200/80 bg-white/95 p-6 shadow-sm dark:border-white/[0.08] dark:bg-[#1e2642]">
+					<h2 class="text-lg font-semibold text-slate-900 dark:text-white">
+						Comments {comments.length ? `(${comments.length})` : ''}
+					</h2>
+					{#if isLoggedIn}
+						<form
+							class="mt-4"
+							onsubmit={(e) => {
+								e.preventDefault();
+								submitComment();
+							}}
+						>
+							<textarea
+								bind:value={commentBody}
+								rows="3"
+								placeholder="Write a comment…"
+								class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-900 placeholder-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-400"
+							></textarea>
+							<div class="mt-2 flex items-center gap-3">
+								<button
+									type="submit"
+									disabled={commentSubmitting || !commentBody.trim()}
+									class="rounded-lg bg-pink-600 px-4 py-2 text-sm font-medium text-white hover:bg-pink-500 disabled:opacity-50"
+								>
+									{commentSubmitting ? 'Posting…' : 'Post comment'}
+								</button>
+								{#if commentError}
+									<span class="text-sm text-red-600 dark:text-red-400">{commentError}</span>
+								{/if}
+							</div>
+						</form>
+					{:else}
+						<p class="mt-3 text-sm text-slate-500 dark:text-slate-400">
+							<a href="/login" class="text-pink-600 hover:underline dark:text-pink-400">Log in</a> to leave a comment.
+						</p>
+					{/if}
+					<ul class="mt-6 space-y-4">
+						{#each comments as c}
+							<li class="border-t border-slate-200/80 pt-4 first:border-t-0 first:pt-0 dark:border-slate-700">
+								<p class="font-medium text-slate-900 dark:text-white">{c.author_name}</p>
+								<p class="mt-1 text-sm text-slate-600 dark:text-slate-200">{c.body}</p>
+								<p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{formatCommentDate(c.created_at)}</p>
+							</li>
+						{/each}
+					</ul>
+					{#if comments.length === 0 && !isLoggedIn}
+						<p class="mt-4 text-sm text-slate-500 dark:text-slate-400">No comments yet.</p>
+					{/if}
+				</div>
 			{/if}
 		</div>
 	</main>

@@ -1,6 +1,8 @@
 use axum::{response::Json, routing::get, Router};
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
+use std::sync::Arc;
+use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 
@@ -24,13 +26,23 @@ async fn main() {
 
     let pool: sqlx::AnyPool = db::init_db().await.expect("Failed to init database");
 
+    // Rate limit: 2 req/s per IP, burst 10 (protects login and admin from abuse)
+    let governor_conf = Arc::new(
+        GovernorConfigBuilder::default()
+            .per_second(2)
+            .burst_size(10)
+            .finish()
+            .expect("governor config"),
+    );
+
     let app = Router::new()
         .route("/", get(root))
         .route("/api/v1/info", get(api_info))
         .merge(routes::health_routes(pool.clone()))
         .nest(
             "/api/v1",
-            routes::auth_routes(pool.clone())
+            Router::new()
+                .merge(routes::auth_routes(pool.clone()))
                 .merge(routes::admin_routes(pool.clone()))
                 .merge(routes::course_modules_routes(pool.clone()))
                 .merge(routes::resources_routes(pool.clone()))
@@ -40,7 +52,10 @@ async fn main() {
                 .merge(routes::testimonials_routes(pool.clone()))
                 .merge(routes::blog_routes(pool.clone()))
                 .merge(routes::newsletter_routes(pool.clone()))
-                .merge(routes::contact_routes(pool)),
+                .merge(routes::contact_routes(pool))
+                .layer(GovernorLayer {
+                    config: governor_conf,
+                }),
         )
         .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http());
@@ -53,7 +68,12 @@ async fn main() {
     tracing::info!("🚀 Server starting on http://{}", addr);
 
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .await
+    .unwrap();
 }
 
 async fn root() -> Json<serde_json::Value> {

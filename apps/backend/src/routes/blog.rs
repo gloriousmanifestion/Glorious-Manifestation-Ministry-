@@ -1,17 +1,18 @@
-//! Blog/News: public list + get by slug, admin CRUD.
+//! Blog/News: public list + get by slug, admin CRUD, comments.
 
+#[allow(unused_imports)]
 use axum::{
     extract::{Path, State},
     http::StatusCode,
     response::Json,
-    routing::{get, patch},
+    routing::{get, patch, post},
     Router,
 };
 use serde::Deserialize;
 use sqlx::AnyPool;
 use uuid::Uuid;
 
-use crate::auth::AdminUser;
+use crate::auth::{AdminUser, AuthUser};
 use crate::db;
 
 #[derive(Debug, serde::Serialize, sqlx::FromRow)]
@@ -80,6 +81,175 @@ async fn get_by_slug(
         Json(serde_json::json!({"message": "Post not found"})),
     ))?;
     Ok(Json(post))
+}
+
+// ---------- Comments ----------
+#[derive(Debug, serde::Serialize, sqlx::FromRow)]
+pub struct BlogCommentRow {
+    pub id: String,
+    pub blog_post_id: String,
+    pub user_id: String,
+    pub author_name: String,
+    pub body: String,
+    pub created_at: String,
+}
+
+async fn list_comments(
+    State(pool): State<AnyPool>,
+    Path(slug): Path<String>,
+) -> Result<Json<Vec<BlogCommentRow>>, (StatusCode, Json<serde_json::Value>)> {
+    let post_id: Option<String> = if db::is_postgres() {
+        sqlx::query_scalar("SELECT id FROM blog_posts WHERE slug = $1 AND published_at IS NOT NULL")
+            .bind(&slug)
+            .fetch_optional(&pool)
+            .await
+    } else {
+        sqlx::query_scalar("SELECT id FROM blog_posts WHERE slug = ? AND published_at IS NOT NULL")
+            .bind(&slug)
+            .fetch_optional(&pool)
+            .await
+    }
+    .map_err(|e| {
+        tracing::error!("Resolve slug for comments: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"message": "Could not load comments"})),
+        )
+    })?;
+
+    let post_id = match post_id {
+        Some(id) => id,
+        None => {
+            return Ok(Json(vec![]));
+        }
+    };
+
+    let sql = if db::is_postgres() {
+        "SELECT c.id, c.blog_post_id, c.user_id, COALESCE(u.name, 'User') AS author_name, c.body, c.created_at \
+         FROM blog_comments c LEFT JOIN users u ON u.id = c.user_id \
+         WHERE c.blog_post_id = $1 ORDER BY c.created_at ASC"
+    } else {
+        "SELECT c.id, c.blog_post_id, c.user_id, COALESCE(u.name, 'User') AS author_name, c.body, c.created_at \
+         FROM blog_comments c LEFT JOIN users u ON u.id = c.user_id \
+         WHERE c.blog_post_id = ? ORDER BY c.created_at ASC"
+    };
+    let rows: Vec<BlogCommentRow> = sqlx::query_as(sql)
+        .bind(&post_id)
+        .fetch_all(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("List comments error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"message": "Could not load comments"})),
+            )
+        })?;
+    Ok(Json(rows))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CreateCommentBody {
+    pub body: String,
+}
+
+async fn add_comment(
+    State(pool): State<AnyPool>,
+    AuthUser(user_id): AuthUser,
+    Path(slug): Path<String>,
+    axum::Json(body): axum::Json<CreateCommentBody>,
+) -> Result<Json<BlogCommentRow>, (StatusCode, Json<serde_json::Value>)> {
+    let body_text = body.body.trim();
+    if body_text.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"message": "Comment body is required"})),
+        ));
+    }
+
+    let post_id: Option<String> = if db::is_postgres() {
+        sqlx::query_scalar("SELECT id FROM blog_posts WHERE slug = $1 AND published_at IS NOT NULL")
+            .bind(&slug)
+            .fetch_optional(&pool)
+            .await
+    } else {
+        sqlx::query_scalar("SELECT id FROM blog_posts WHERE slug = ? AND published_at IS NOT NULL")
+            .bind(&slug)
+            .fetch_optional(&pool)
+            .await
+    }
+    .map_err(|e| {
+        tracing::error!("Resolve slug for add comment: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"message": "Could not add comment"})),
+        )
+    })?;
+
+    let post_id = post_id.ok_or((
+        StatusCode::NOT_FOUND,
+        Json(serde_json::json!({"message": "Post not found"})),
+    ))?;
+
+    let id = Uuid::new_v4().to_string();
+    let now = chrono::Utc::now().to_rfc3339();
+
+    if db::is_postgres() {
+        sqlx::query(
+            "INSERT INTO blog_comments (id, blog_post_id, user_id, body, created_at) VALUES ($1, $2, $3, $4, $5)",
+        )
+        .bind(&id)
+        .bind(&post_id)
+        .bind(&user_id)
+        .bind(body_text)
+        .bind(&now)
+        .execute(&pool)
+        .await
+    } else {
+        sqlx::query(
+            "INSERT INTO blog_comments (id, blog_post_id, user_id, body, created_at) VALUES (?, ?, ?, ?, ?)",
+        )
+        .bind(&id)
+        .bind(&post_id)
+        .bind(&user_id)
+        .bind(body_text)
+        .bind(&now)
+        .execute(&pool)
+        .await
+    }
+    .map_err(|e| {
+        tracing::error!("Insert comment error: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"message": "Could not add comment"})),
+        )
+    })?;
+
+    let author_name: String = if db::is_postgres() {
+        sqlx::query_scalar("SELECT name FROM users WHERE id = $1")
+            .bind(&user_id)
+            .fetch_optional(&pool)
+            .await
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| "User".to_string())
+    } else {
+        sqlx::query_scalar("SELECT name FROM users WHERE id = ?")
+            .bind(&user_id)
+            .fetch_optional(&pool)
+            .await
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| "User".to_string())
+    };
+
+    Ok(Json(BlogCommentRow {
+        id,
+        blog_post_id: post_id,
+        user_id,
+        author_name,
+        body: body_text.to_string(),
+        created_at: now,
+    }))
 }
 
 async fn list_admin(
@@ -444,6 +614,7 @@ pub fn blog_routes(pool: AnyPool) -> Router {
     Router::new()
         .route("/blog", get(list_public))
         .route("/blog/:slug", get(get_by_slug))
+        .route("/blog/:slug/comments", get(list_comments).post(add_comment))
         .route("/admin/blog", get(list_admin).post(create))
         .route("/admin/blog/:id", patch(update).delete(delete_one))
         .with_state(pool)

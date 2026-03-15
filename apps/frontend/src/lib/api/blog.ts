@@ -102,3 +102,36 @@ export async function deleteBlogPost(id: string): Promise<void> {
 		throw new Error(json.message ?? 'Failed to delete post');
 	}
 }
+
+// --- Comments (public list, auth to add) ---
+
+export interface BlogComment {
+	id: string;
+	blog_post_id: string;
+	user_id: string;
+	author_name: string;
+	body: string;
+	created_at: string;
+}
+
+export async function getBlogComments(slug: string): Promise<BlogComment[]> {
+	const res = await fetch(`${API_BASE}/blog/${encodeURIComponent(slug)}/comments`);
+	const json = await safeJson<BlogComment[] | { message?: string }>(res);
+	if (!res.ok) {
+		throw new Error((json as { message?: string }).message ?? 'Failed to load comments');
+	}
+	return Array.isArray(json) ? json : [];
+}
+
+export async function addBlogComment(slug: string, body: string): Promise<BlogComment> {
+	const res = await fetch(`${API_BASE}/blog/${encodeURIComponent(slug)}/comments`, {
+		method: 'POST',
+		headers: getAuthHeaders(),
+		body: JSON.stringify({ body })
+	});
+	const json = await safeJson<BlogComment | { message?: string }>(res);
+	if (!res.ok) {
+		throw new Error((json as { message?: string }).message ?? 'Failed to add comment');
+	}
+	return json as BlogComment;
+}
