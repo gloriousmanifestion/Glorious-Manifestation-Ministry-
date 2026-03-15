@@ -218,6 +218,181 @@ async fn list_users(
     })))
 }
 
+// ---------- Audit log ----------
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct AuditLogRow {
+    pub id: String,
+    pub admin_user_id: String,
+    pub action: String,
+    pub target_type: Option<String>,
+    pub target_id: Option<String>,
+    pub details: Option<String>,
+    pub created_at: String,
+}
+
+async fn log_audit(
+    pool: &AnyPool,
+    admin_user_id: &str,
+    action: &str,
+    target_type: Option<&str>,
+    target_id: Option<&str>,
+    details: Option<&str>,
+) -> Result<(), sqlx::Error> {
+    let id = Uuid::new_v4().to_string();
+    if db::is_postgres() {
+        sqlx::query(
+            "INSERT INTO audit_log (id, admin_user_id, action, target_type, target_id, details) \
+             VALUES ($1, $2, $3, $4, $5, $6)",
+        )
+        .bind(&id)
+        .bind(admin_user_id)
+        .bind(action)
+        .bind(target_type)
+        .bind(target_id)
+        .bind(details)
+        .execute(pool)
+        .await?;
+    } else {
+        sqlx::query(
+            "INSERT INTO audit_log (id, admin_user_id, action, target_type, target_id, details) \
+             VALUES (?, ?, ?, ?, ?, ?)",
+        )
+        .bind(&id)
+        .bind(admin_user_id)
+        .bind(action)
+        .bind(target_type)
+        .bind(target_id)
+        .bind(details)
+        .execute(pool)
+        .await?;
+    }
+    Ok(())
+}
+
+// ---------- Bulk user actions ----------
+#[derive(Debug, Deserialize)]
+pub struct BulkUserIdsBody {
+    pub user_ids: Vec<String>,
+}
+
+async fn bulk_verify_users(
+    State(pool): State<AnyPool>,
+    AdminUser(admin_id, _role): AdminUser,
+    axum::Json(body): axum::Json<BulkUserIdsBody>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    if body.user_ids.is_empty() {
+        return Ok(Json(serde_json::json!({ "updated": 0, "message": "No users selected" })));
+    }
+    let mut updated = 0i64;
+    for uid in &body.user_ids {
+        let r = if db::is_postgres() {
+            sqlx::query("UPDATE users SET verified = 1 WHERE id = $1")
+                .bind(uid)
+                .execute(&pool)
+                .await
+        } else {
+            sqlx::query("UPDATE users SET verified = 1 WHERE id = ?")
+                .bind(uid)
+                .execute(&pool)
+                .await
+        };
+        if r.map(|e| e.rows_affected()).unwrap_or(0) > 0 {
+            updated += 1;
+        }
+    }
+    let details = serde_json::json!(body.user_ids).to_string();
+    let _ = log_audit(
+        &pool,
+        &admin_id,
+        "bulk_verify",
+        Some("users"),
+        None,
+        Some(&details),
+    )
+    .await;
+    Ok(Json(serde_json::json!({ "updated": updated })))
+}
+
+async fn bulk_mark_paid_users(
+    State(pool): State<AnyPool>,
+    AdminUser(admin_id, _role): AdminUser,
+    axum::Json(body): axum::Json<BulkUserIdsBody>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    if body.user_ids.is_empty() {
+        return Ok(Json(serde_json::json!({ "updated": 0, "message": "No users selected" })));
+    }
+    let mut updated = 0i64;
+    for uid in &body.user_ids {
+        let r = if db::is_postgres() {
+            sqlx::query("UPDATE users SET payment_complete = 1 WHERE id = $1")
+                .bind(uid)
+                .execute(&pool)
+                .await
+        } else {
+            sqlx::query("UPDATE users SET payment_complete = 1 WHERE id = ?")
+                .bind(uid)
+                .execute(&pool)
+                .await
+        };
+        if r.map(|e| e.rows_affected()).unwrap_or(0) > 0 {
+            updated += 1;
+        }
+    }
+    let details = serde_json::json!(body.user_ids).to_string();
+    let _ = log_audit(
+        &pool,
+        &admin_id,
+        "bulk_mark_paid",
+        Some("users"),
+        None,
+        Some(&details),
+    )
+    .await;
+    Ok(Json(serde_json::json!({ "updated": updated })))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AuditLogQuery {
+    pub limit: Option<u32>,
+    pub offset: Option<u32>,
+}
+
+async fn list_audit_log(
+    State(pool): State<AnyPool>,
+    AdminUser(_user_id, _role): AdminUser,
+    Query(q): Query<AuditLogQuery>,
+) -> Result<Json<Vec<AuditLogRow>>, (StatusCode, Json<serde_json::Value>)> {
+    let limit = q.limit.unwrap_or(50).clamp(1, 200);
+    let offset = q.offset.unwrap_or(0);
+    let rows: Vec<AuditLogRow> = if db::is_postgres() {
+        sqlx::query_as(
+            "SELECT id, admin_user_id, action, target_type, target_id, details, created_at \
+             FROM audit_log ORDER BY created_at DESC LIMIT $1 OFFSET $2",
+        )
+        .bind(limit as i64)
+        .bind(offset as i64)
+        .fetch_all(&pool)
+        .await
+    } else {
+        sqlx::query_as(
+            "SELECT id, admin_user_id, action, target_type, target_id, details, created_at \
+             FROM audit_log ORDER BY created_at DESC LIMIT ? OFFSET ?",
+        )
+        .bind(limit as i64)
+        .bind(offset as i64)
+        .fetch_all(&pool)
+        .await
+    }
+    .map_err(|e| {
+        tracing::error!("Admin list audit log error: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"message": "Failed to load audit log"})),
+        )
+    })?;
+    Ok(Json(rows))
+}
+
 // ---------- Reports / Export ----------
 #[derive(Debug, Deserialize)]
 pub struct ExportQuery {
@@ -1552,7 +1727,10 @@ pub fn admin_routes(pool: AnyPool) -> Router {
     Router::new()
         .route("/admin/metrics", get(metrics))
         .route("/admin/users", get(list_users))
+        .route("/admin/users/bulk-verify", post(bulk_verify_users))
+        .route("/admin/users/bulk-mark-paid", post(bulk_mark_paid_users))
         .route("/admin/reports/registrations", get(export_registrations))
+        .route("/admin/reports/audit-log", get(list_audit_log))
         .route(
             "/admin/courses",
             get(list_courses_admin).post(create_course),

@@ -112,6 +112,31 @@ export async function getAdminUsers(params?: {
 	return json as { users: AdminUser[]; total: number };
 }
 
+/** Bulk verify selected users (admin only). */
+export async function bulkVerifyUsers(userIds: string[]): Promise<{ updated: number }> {
+	const res = await fetch(`${API_BASE}/admin/users/bulk-verify`, {
+		method: 'POST',
+		headers: getAuthHeaders(),
+		body: JSON.stringify({ user_ids: userIds })
+	});
+	const json = await safeJson<{ updated: number } | { message?: string }>(res);
+	if (!res.ok) throw new Error((json as { message?: string }).message ?? 'Failed to verify users');
+	return json as { updated: number };
+}
+
+/** Bulk mark selected users as paid (admin only). */
+export async function bulkMarkPaidUsers(userIds: string[]): Promise<{ updated: number }> {
+	const res = await fetch(`${API_BASE}/admin/users/bulk-mark-paid`, {
+		method: 'POST',
+		headers: getAuthHeaders(),
+		body: JSON.stringify({ user_ids: userIds })
+	});
+	const json = await safeJson<{ updated: number } | { message?: string }>(res);
+	if (!res.ok)
+		throw new Error((json as { message?: string }).message ?? 'Failed to mark users paid');
+	return json as { updated: number };
+}
+
 /** Download registrations as CSV file (admin only). */
 export async function downloadRegistrationsCsv(): Promise<void> {
 	const url = `${API_BASE}/admin/reports/registrations?format=csv`;
@@ -129,6 +154,33 @@ export async function downloadRegistrationsCsv(): Promise<void> {
 	a.download = filename;
 	a.click();
 	URL.revokeObjectURL(a.href);
+}
+
+// --- Audit log ---
+
+export interface AuditLogEntry {
+	id: string;
+	admin_user_id: string;
+	action: string;
+	target_type: string | null;
+	target_id: string | null;
+	details: string | null;
+	created_at: string;
+}
+
+export async function getAuditLog(params?: {
+	limit?: number;
+	offset?: number;
+}): Promise<AuditLogEntry[]> {
+	const q = new URLSearchParams();
+	if (params?.limit != null) q.set('limit', String(params.limit));
+	if (params?.offset != null) q.set('offset', String(params.offset));
+	const url = `${API_BASE}/admin/reports/audit-log${q.toString() ? '?' + q.toString() : ''}`;
+	const res = await fetch(url, { headers: getAuthHeaders() });
+	const json = await safeJson<AuditLogEntry[] | { message?: string }>(res);
+	if (!res.ok)
+		throw new Error((json as { message?: string }).message ?? 'Failed to load audit log');
+	return Array.isArray(json) ? json : [];
 }
 
 function getMockUsers(): AdminUser[] {
