@@ -44,19 +44,16 @@ async fn list_events(
          COALESCE((SELECT COUNT(*) FROM event_rsvps r WHERE r.event_id = e.id), 0) AS rsvp_count \
          FROM events e ORDER BY e.date ASC"
     };
-    let events: Vec<EventListRow> = sqlx::query_as(sql)
-        .fetch_all(&pool)
-        .await
-        .map_err(|e| {
-            tracing::error!("List events error: {:?}", e);
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({
-                    "error": "fetch_failed",
-                    "message": "Could not fetch events"
-                })),
-            )
-        })?;
+    let events: Vec<EventListRow> = sqlx::query_as(sql).fetch_all(&pool).await.map_err(|e| {
+        tracing::error!("List events error: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({
+                "error": "fetch_failed",
+                "message": "Could not fetch events"
+            })),
+        )
+    })?;
     Ok(Json(events))
 }
 

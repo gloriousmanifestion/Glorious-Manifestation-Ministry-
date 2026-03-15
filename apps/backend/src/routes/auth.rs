@@ -574,8 +574,8 @@ async fn login(
         ));
     }
 
-    let requires_2fa = user.totp_secret.is_some()
-        && (user.role == "admin" || user.role == "super_admin");
+    let requires_2fa =
+        user.totp_secret.is_some() && (user.role == "admin" || user.role == "super_admin");
 
     if requires_2fa {
         let temp_token = create_token_2fa_pending(&user.id, &user.role).map_err(|_| {
@@ -617,7 +617,9 @@ async fn verify_2fa(
     if !claims.two_fa_pending {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({"error": "invalid_token", "message": "Not a 2FA pending token"})),
+            Json(
+                serde_json::json!({"error": "invalid_token", "message": "Not a 2FA pending token"}),
+            ),
         ));
     }
 
@@ -671,7 +673,9 @@ async fn verify_2fa(
     if !totp.check_current(code).unwrap_or(false) {
         return Err((
             StatusCode::UNAUTHORIZED,
-            Json(serde_json::json!({"error": "invalid_code", "message": "Invalid or expired code"})),
+            Json(
+                serde_json::json!({"error": "invalid_code", "message": "Invalid or expired code"}),
+            ),
         ));
     }
 
@@ -707,7 +711,9 @@ async fn verify_2fa(
         .map_err(|_| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({"error": "server_error", "message": "Could not load user"})),
+                Json(
+                    serde_json::json!({"error": "server_error", "message": "Could not load user"}),
+                ),
             )
         })?;
 

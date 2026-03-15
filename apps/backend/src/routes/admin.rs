@@ -11,9 +11,9 @@ use headers::{authorization::Bearer, Authorization};
 use serde::{Deserialize, Serialize};
 use sqlx::AnyPool;
 use std::collections::HashMap;
+use std::sync::OnceLock;
 use std::sync::RwLock;
 use std::time::{Duration, Instant};
-use std::sync::OnceLock;
 use totp_rs::{Algorithm, Secret, TOTP};
 use uuid::Uuid;
 
@@ -296,7 +296,9 @@ async fn bulk_verify_users(
     axum::Json(body): axum::Json<BulkUserIdsBody>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if body.user_ids.is_empty() {
-        return Ok(Json(serde_json::json!({ "updated": 0, "message": "No users selected" })));
+        return Ok(Json(
+            serde_json::json!({ "updated": 0, "message": "No users selected" }),
+        ));
     }
     let mut updated = 0i64;
     for uid in &body.user_ids {
@@ -334,7 +336,9 @@ async fn bulk_mark_paid_users(
     axum::Json(body): axum::Json<BulkUserIdsBody>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if body.user_ids.is_empty() {
-        return Ok(Json(serde_json::json!({ "updated": 0, "message": "No users selected" })));
+        return Ok(Json(
+            serde_json::json!({ "updated": 0, "message": "No users selected" }),
+        ));
     }
     let mut updated = 0i64;
     for uid in &body.user_ids {
@@ -1770,17 +1774,16 @@ async fn create_notifications(
     let user_ids: Vec<String> = match &body.user_ids {
         Some(ids) if !ids.is_empty() => ids.clone(),
         _ => {
-            let rows: Vec<(String,)> =
-                sqlx::query_as("SELECT id FROM users")
-                    .fetch_all(&pool)
-                    .await
-                    .map_err(|e| {
-                        tracing::error!("List users for notifications: {:?}", e);
-                        (
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                            Json(serde_json::json!({"message": "Could not load users"})),
-                        )
-                    })?;
+            let rows: Vec<(String,)> = sqlx::query_as("SELECT id FROM users")
+                .fetch_all(&pool)
+                .await
+                .map_err(|e| {
+                    tracing::error!("List users for notifications: {:?}", e);
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(serde_json::json!({"message": "Could not load users"})),
+                    )
+                })?;
             rows.into_iter().map(|r| r.0).collect()
         }
     };
@@ -1869,10 +1872,7 @@ async fn email_students(
             } else {
                 ids.iter().map(|_| "?").collect::<Vec<_>>().join(", ")
             };
-            let sql = format!(
-                "SELECT id, email FROM users WHERE id IN ({})",
-                placeholders
-            );
+            let sql = format!("SELECT id, email FROM users WHERE id IN ({})", placeholders);
             let mut q = sqlx::query_as::<_, (String, String)>(&sql);
             for id in ids {
                 q = q.bind(id);
@@ -1886,17 +1886,16 @@ async fn email_students(
             })?
         }
         _ => {
-            let rows: Vec<(String, String)> =
-                sqlx::query_as("SELECT id, email FROM users")
-                    .fetch_all(&pool)
-                    .await
-                    .map_err(|e| {
-                        tracing::error!("Fetch users for email: {:?}", e);
-                        (
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                            Json(serde_json::json!({"message": "Could not load users"})),
-                        )
-                    })?;
+            let rows: Vec<(String, String)> = sqlx::query_as("SELECT id, email FROM users")
+                .fetch_all(&pool)
+                .await
+                .map_err(|e| {
+                    tracing::error!("Fetch users for email: {:?}", e);
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(serde_json::json!({"message": "Could not load users"})),
+                    )
+                })?;
             rows
         }
     };
@@ -1923,7 +1922,10 @@ async fn email_students(
         "email_students",
         Some("email"),
         None,
-        Some(&format!("subject={}, sent={}, failed={}", subject, sent, failed)),
+        Some(&format!(
+            "subject={}, sent={}, failed={}",
+            subject, sent, failed
+        )),
     )
     .await;
 
@@ -1953,7 +1955,9 @@ async fn get_2fa_status(
             Json(serde_json::json!({"message": "Could not load 2FA status"})),
         )
     })?;
-    Ok(Json(serde_json::json!({ "enabled": enabled.map(|s| !s.is_empty()).unwrap_or(false) })))
+    Ok(Json(
+        serde_json::json!({ "enabled": enabled.map(|s| !s.is_empty()).unwrap_or(false) }),
+    ))
 }
 
 /// POST /admin/me/2fa with no body = setup (return provisioning_uri etc).
@@ -1980,35 +1984,45 @@ struct Admin2FaConfirmExt {
 }
 
 fn rejection_response(status: StatusCode, message: &str) -> Response {
-    (
-        status,
-        Json(serde_json::json!({"message": message})),
-    )
-        .into_response()
+    (status, Json(serde_json::json!({"message": message}))).into_response()
 }
 
 #[async_trait]
 impl FromRequest<AnyPool> for Admin2FaConfirmExt {
     type Rejection = Response;
 
-    async fn from_request(req: axum::extract::Request, state: &AnyPool) -> Result<Self, Self::Rejection> {
+    async fn from_request(
+        req: axum::extract::Request,
+        state: &AnyPool,
+    ) -> Result<Self, Self::Rejection> {
         let (mut parts, body) = req.into_parts();
         let auth = TypedHeader::<Authorization<Bearer>>::from_request_parts(&mut parts, state)
             .await
-            .map_err(|_| rejection_response(StatusCode::UNAUTHORIZED, "Missing or invalid authorization header"))?;
-        let claims = verify_token(auth.token())
-            .map_err(|_| rejection_response(StatusCode::UNAUTHORIZED, "Invalid or expired token"))?;
+            .map_err(|_| {
+                rejection_response(
+                    StatusCode::UNAUTHORIZED,
+                    "Missing or invalid authorization header",
+                )
+            })?;
+        let claims = verify_token(auth.token()).map_err(|_| {
+            rejection_response(StatusCode::UNAUTHORIZED, "Invalid or expired token")
+        })?;
         if claims.two_fa_pending {
-            return Err(rejection_response(StatusCode::UNAUTHORIZED, "2FA verification required"));
+            return Err(rejection_response(
+                StatusCode::UNAUTHORIZED,
+                "2FA verification required",
+            ));
         }
         if claims.role != "admin" && claims.role != "super_admin" {
-            return Err(rejection_response(StatusCode::FORBIDDEN, "Admin access required"));
+            return Err(rejection_response(
+                StatusCode::FORBIDDEN,
+                "Admin access required",
+            ));
         }
         let req = axum::extract::Request::from_parts(parts, body);
-        let axum::Json(body): axum::Json<Confirm2FaBody> =
-            axum::Json::from_request(req, state)
-                .await
-                .map_err(|e| rejection_response(StatusCode::BAD_REQUEST, &e.to_string()))?;
+        let axum::Json(body): axum::Json<Confirm2FaBody> = axum::Json::from_request(req, state)
+            .await
+            .map_err(|e| rejection_response(StatusCode::BAD_REQUEST, &e.to_string()))?;
         Ok(Admin2FaConfirmExt {
             pool: state.clone(),
             user_id: claims.sub,
@@ -2031,7 +2045,11 @@ async fn post_2fa_confirm_json_value(
     AdminUser(user_id, _role): AdminUser,
     axum::Json(body): axum::Json<serde_json::Value>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
-    let code = body.get("code").and_then(|v| v.as_str()).unwrap_or("").trim();
+    let code = body
+        .get("code")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .trim();
     confirm_2fa_inner(pool, user_id, code).await
 }
 
@@ -2086,12 +2104,15 @@ async fn setup_2fa_inner(
     let secret_base32_str = totp.get_secret_base32();
 
     let expires_at = Instant::now() + Duration::from_secs(600);
-    pending_2fa().write().map_err(|_| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(serde_json::json!({"message": "Lock error"})),
-        )
-    })?.insert(user_id.clone(), (secret_base32_str.clone(), expires_at));
+    pending_2fa()
+        .write()
+        .map_err(|_| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"message": "Lock error"})),
+            )
+        })?
+        .insert(user_id.clone(), (secret_base32_str.clone(), expires_at));
 
     let mut out = serde_json::json!({
         "provisioning_uri": provisioning_uri,
@@ -2129,21 +2150,13 @@ async fn confirm_2fa_inner(
         )
     })?;
 
-    let totp = TOTP::new(
-        Algorithm::SHA1,
-        6,
-        1,
-        30,
-        secret_bytes,
-        None,
-        String::new(),
-    )
-    .map_err(|_| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(serde_json::json!({"message": "Invalid secret"})),
-        )
-    })?;
+    let totp =
+        TOTP::new(Algorithm::SHA1, 6, 1, 30, secret_bytes, None, String::new()).map_err(|_| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"message": "Invalid secret"})),
+            )
+        })?;
 
     if !totp.check_current(code).unwrap_or(false) {
         return Err((
@@ -2206,7 +2219,10 @@ pub fn admin_routes(pool: AnyPool) -> Router {
     Router::new()
         // POST /admin/me/2fa/confirm omitted: (State, AdminUser, Json) hits Handler trait bound in this codebase; use confirm_2fa_inner from a working route if needed
         .route("/admin/metrics", get(metrics))
-        .route("/admin/me/2fa", get(get_2fa_status).post(post_2fa_setup).delete(disable_2fa))
+        .route(
+            "/admin/me/2fa",
+            get(get_2fa_status).post(post_2fa_setup).delete(disable_2fa),
+        )
         .route("/admin/users", get(list_users))
         .route("/admin/users/bulk-verify", post(bulk_verify_users))
         .route("/admin/users/bulk-mark-paid", post(bulk_mark_paid_users))
@@ -2238,7 +2254,10 @@ pub fn admin_routes(pool: AnyPool) -> Router {
             "/admin/payment-proofs/:id/review",
             post(review_payment_proof),
         )
-        .route("/admin/resources", get(list_resources_admin).post(create_resource))
+        .route(
+            "/admin/resources",
+            get(list_resources_admin).post(create_resource),
+        )
         .route(
             "/admin/resources/:id",
             patch(update_resource).delete(delete_resource),

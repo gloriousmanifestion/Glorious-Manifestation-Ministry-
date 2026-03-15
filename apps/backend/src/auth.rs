@@ -21,7 +21,8 @@ fn get_jwt_secret() -> &'static [u8] {
         let secret = std::env::var("JWT_SECRET")
             .or_else(|_| std::env::var("PMS_JWT_SECRET"))
             .unwrap_or_else(|_| {
-                let prod = std::env::var("ENVIRONMENT").as_ref().map(|s| s.as_str()) == Ok("production");
+                let prod =
+                    std::env::var("ENVIRONMENT").as_ref().map(|s| s.as_str()) == Ok("production");
                 if prod {
                     panic!("JWT_SECRET or PMS_JWT_SECRET must be set when ENVIRONMENT=production");
                 }
@@ -65,7 +66,10 @@ pub fn create_token(user_id: &str, role: &str) -> Result<String, jsonwebtoken::e
 }
 
 /// Short-lived token (5 min) only valid for POST /auth/2fa/verify.
-pub fn create_token_2fa_pending(user_id: &str, role: &str) -> Result<String, jsonwebtoken::errors::Error> {
+pub fn create_token_2fa_pending(
+    user_id: &str,
+    role: &str,
+) -> Result<String, jsonwebtoken::errors::Error> {
     let now = chrono::Utc::now();
     let exp = (now + chrono::Duration::minutes(5)).timestamp() as usize;
     let claims = Claims {
