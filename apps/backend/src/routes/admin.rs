@@ -3,7 +3,7 @@ use axum::{
     extract::{FromRequest, FromRequestParts, Path, Query, State},
     http::{header, StatusCode},
     response::{IntoResponse, Json, Response},
-    routing::{delete, get, patch, post},
+    routing::{get, patch, post},
     Router,
 };
 use axum_extra::TypedHeader;
@@ -2129,19 +2129,18 @@ async fn confirm_2fa_inner(
     user_id: String,
     code: &str,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
-    let mut pending = pending_2fa().write().map_err(|_| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(serde_json::json!({"message": "Lock error"})),
-        )
-    })?;
-
-    let (secret, _) = pending.remove(&user_id).ok_or((
-        StatusCode::BAD_REQUEST,
-        Json(serde_json::json!({"message": "No 2FA setup in progress. Please start setup again."})),
-    ))?;
-
-    drop(pending);
+    let (secret, _) = {
+        let mut pending = pending_2fa().write().map_err(|_| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"message": "Lock error"})),
+            )
+        })?;
+        pending.remove(&user_id).ok_or((
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"message": "No 2FA setup in progress. Please start setup again."})),
+        ))?
+    };
 
     let secret_bytes = Secret::Encoded(secret.clone()).to_bytes().map_err(|_| {
         (
