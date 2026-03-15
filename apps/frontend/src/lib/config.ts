@@ -26,5 +26,33 @@ export const SITE = {
 		name: 'Our Prophetess',
 		title: 'Leader & Teacher',
 		bio: 'Leading the Pastoral School with wisdom, grace, and a heart for equipping ministers. Under her guidance, pastors, ministers, and prophets are nurtured in sound doctrine and practical ministry.'
+	},
+	/** Church details and services (parent ministry) */
+	church: {
+		name: 'Prophetic Glorious Manifestation Ministries',
+		shortName: 'PGM Ministries',
+		description:
+			'We are a ministry dedicated to raising pastors, ministers, and prophets through the Pastoral School and weekly worship, prayer, and teaching. Our church family gathers to grow in faith and serve our community.',
+		address: 'Ezeigodo Avenue, Rochas Backgate Spilbait, Owerri, Imo State',
+		services: [
+			{
+				name: 'Sunday Worship',
+				description: 'Main worship service with praise, worship, and the Word.',
+				day: 'Sunday',
+				time: '10:00 AM'
+			},
+			{
+				name: 'Midweek Service',
+				description: 'Bible study and fellowship midweek.',
+				day: 'Wednesday',
+				time: '5:00 PM'
+			},
+			{
+				name: 'Prayer Meeting',
+				description: 'Corporate prayer and intercession.',
+				day: 'Friday',
+				time: '6:00 PM'
+			}
+		]
 	}
 } as const;

@@ -5,12 +5,13 @@
 	import { userStore } from '$lib/auth';
 	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 
-	// Desktop: all 5 links in header. Mobile bottom bar: first 4 + "More" = 5 items (Contact, Theme, Account live in More sheet).
+	// Desktop: main nav links. Mobile bottom bar: first 4 + "More" (Church, Contact, Theme, Account in More sheet).
 	const navLinks = [
 		{ href: '/', label: 'Home', icon: 'home' },
 		{ href: '/programs', label: 'Programs', icon: 'book' },
 		{ href: '/admissions', label: 'Admissions', icon: 'document' },
 		{ href: '/events', label: 'Events', icon: 'calendar' },
+		{ href: '/church', label: 'Church', icon: 'church' },
 		{ href: '/contact', label: 'Contact', icon: 'envelope' }
 	];
 	const mobileNavLinks = navLinks.slice(0, 4);
@@ -39,6 +40,8 @@
 				return 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z';
 			case 'envelope':
 				return 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z';
+			case 'church':
+				return 'M12 2L4 6v2h2v10H4v2h4v-4h4v4h4v-2h-2V8h2V6l-8-4zm0 2.5l5 2.5v1H7v-1l5-2.5zM7 11h2v2H7v-2zm6 0h2v2h-2v-2z';
 			default:
 				return 'M4 6h16M4 12h16M4 18h16';
 		}
@@ -205,7 +208,17 @@
 				<p class="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-400">
 					More
 				</p>
-				<div class="mb-4">
+				<div class="mb-4 flex flex-col gap-1">
+					<a
+						href="/church"
+						class="rounded-xl px-4 py-3.5 text-base font-medium touch-manipulation {isActive('/church')
+							? 'bg-pink-50 text-pink-600 dark:bg-white/10 dark:text-pink-400'
+							: 'text-slate-700 hover:bg-pink-50 dark:text-slate-100 dark:hover:bg-white/10'}"
+						aria-current={isActive('/church') ? 'page' : undefined}
+						onclick={() => (sheetOpen = false)}
+					>
+						Church
+					</a>
 					<a
 						href="/contact"
 						class="rounded-xl px-4 py-3.5 text-base font-medium touch-manipulation {isActive('/contact')

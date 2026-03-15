@@ -234,17 +234,18 @@ async fn list_courses_admin(
     State(pool): State<AnyPool>,
     AdminUser(_user_id, _role): AdminUser,
 ) -> Result<Json<Vec<serde_json::Value>>, (StatusCode, Json<serde_json::Value>)> {
-    let rows: Vec<CourseRow> =
-        sqlx::query_as("SELECT id, name, duration, description, price, active, teams_class_id FROM courses")
-            .fetch_all(&pool)
-            .await
-            .map_err(|e| {
-                tracing::error!("Admin list courses error: {:?}", e);
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(serde_json::json!({"message": "Failed to load courses"})),
-                )
-            })?;
+    let rows: Vec<CourseRow> = sqlx::query_as(
+        "SELECT id, name, duration, description, price, active, teams_class_id FROM courses",
+    )
+    .fetch_all(&pool)
+    .await
+    .map_err(|e| {
+        tracing::error!("Admin list courses error: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"message": "Failed to load courses"})),
+        )
+    })?;
     let list: Vec<serde_json::Value> = rows
         .into_iter()
         .map(|r| {

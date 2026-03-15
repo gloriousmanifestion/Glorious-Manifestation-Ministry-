@@ -872,16 +872,20 @@ struct CourseRow {
 async fn list_courses(
     State(pool): State<AnyPool>,
 ) -> Result<Json<Vec<CourseRow>>, (StatusCode, Json<serde_json::Value>)> {
-    let courses: Vec<CourseRow> = sqlx::query_as("SELECT id, name, duration, teams_class_id FROM courses")
-        .fetch_all(&pool)
-        .await
-        .map_err(|e| {
-            tracing::error!("List courses error: {:?}", e);
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({"error": "fetch_failed", "message": "Could not fetch courses"})),
-            )
-        })?;
+    let courses: Vec<CourseRow> = sqlx::query_as(
+        "SELECT id, name, duration, teams_class_id FROM courses",
+    )
+    .fetch_all(&pool)
+    .await
+    .map_err(|e| {
+        tracing::error!("List courses error: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(
+                serde_json::json!({"error": "fetch_failed", "message": "Could not fetch courses"}),
+            ),
+        )
+    })?;
     Ok(Json(courses))
 }
 

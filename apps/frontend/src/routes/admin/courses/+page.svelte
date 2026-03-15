@@ -60,7 +60,11 @@
 		error = '';
 		try {
 			const price = form.price === '' ? undefined : Number(form.price);
-			const teams_class_id = form.teams_class_id.trim() || null;
+			const teamsClassIdTrimmed = form.teams_class_id.trim();
+			// On update, send "" to clear Teams class ID; on create, send null when empty
+			const teams_class_id = editing
+				? teamsClassIdTrimmed
+				: (teamsClassIdTrimmed || null);
 			if (editing) {
 				await adminApi.updateCourse(editing.id, {
 					name: form.name,
