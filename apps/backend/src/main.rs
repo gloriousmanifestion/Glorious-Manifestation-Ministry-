@@ -1,4 +1,4 @@
-use axum::{response::Json, routing::get, Router};
+use axum::{response::Json, routing::{get, post}, Router};
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -20,6 +20,7 @@ struct ApiInfo {
 
 #[tokio::main]
 async fn main() {
+    // Enable tracing for debugging
     tracing_subscriber::fmt()
         .with_env_filter("backend=debug,tower_http=debug")
         .init();
@@ -59,9 +60,10 @@ async fn main() {
                     config: governor_conf,
                 }),
         )
-        .layer(CorsLayer::permissive())
+        .layer(cors)                     // ✅ Attach production CORS
         .layer(TraceLayer::new_for_http());
 
+    // Set server port
     let port: u16 = std::env::var("PORT")
         .ok()
         .and_then(|p| p.parse().ok())
@@ -78,6 +80,7 @@ async fn main() {
     .unwrap();
 }
 
+// Root endpoint
 async fn root() -> Json<serde_json::Value> {
     Json(serde_json::json!({
         "name": "Pastoral School Backend",
@@ -98,6 +101,16 @@ async fn root() -> Json<serde_json::Value> {
     }))
 }
 
+// Health endpoint
+async fn health() -> Json<HealthResponse> {
+    Json(HealthResponse {
+        status: "ok".to_string(),
+        version: env!("CARGO_PKG_VERSION").to_string(),
+        timestamp: chrono::Utc::now().to_rfc3339(),
+    })
+}
+
+// API info endpoint
 async fn api_info() -> Json<ApiInfo> {
     Json(ApiInfo {
         name: "Pastoral School API".to_string(),
