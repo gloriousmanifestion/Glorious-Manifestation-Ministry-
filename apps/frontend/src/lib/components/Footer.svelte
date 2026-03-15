@@ -7,6 +7,7 @@
 		{ href: '/events', label: 'Events' },
 		{ href: '/faq', label: 'FAQ' },
 		{ href: '/testimonials', label: 'Testimonials' },
+		{ href: '/blog', label: 'Blog' },
 		{ href: '/contact', label: 'Contact' }
 	];
 

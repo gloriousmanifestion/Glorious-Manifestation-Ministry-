@@ -13,6 +13,7 @@
 		{ href: '/events', label: 'Events', icon: 'calendar' },
 		{ href: '/faq', label: 'FAQ', icon: 'faq' },
 		{ href: '/testimonials', label: 'Testimonials', icon: 'quote' },
+		{ href: '/blog', label: 'Blog', icon: 'blog' },
 		{ href: '/church', label: 'Church', icon: 'church' },
 		{ href: '/contact', label: 'Contact', icon: 'envelope' }
 	];
@@ -48,6 +49,8 @@
 				return 'M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z';
 			case 'quote':
 				return 'M7 8h10m-5 8v-4m0-4V8m5 4l3 3m0 0l3-3m-3 3V4';
+			case 'blog':
+				return 'M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z';
 			default:
 				return 'M4 6h16M4 12h16M4 18h16';
 		}

@@ -43,6 +43,7 @@ async fn main() {
                 .merge(routes::church_routes(pool.clone()))
                 .merge(routes::announcements_routes(pool.clone()))
                 .merge(routes::testimonials_routes(pool.clone()))
+                .merge(routes::blog_routes(pool.clone()))
                 .merge(routes::contact_routes(pool)),
         )
         .layer(CorsLayer::permissive())
