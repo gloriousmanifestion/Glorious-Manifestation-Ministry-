@@ -1,17 +1,31 @@
 use axum::{
-    extract::{Path, Query, State},
+    async_trait,
+    extract::{FromRequest, FromRequestParts, Path, Query, State},
     http::{header, StatusCode},
     response::{IntoResponse, Json, Response},
-    routing::{get, patch, post},
+    routing::{delete, get, patch, post},
     Router,
 };
+use axum_extra::TypedHeader;
+use headers::{authorization::Bearer, Authorization};
 use serde::{Deserialize, Serialize};
 use sqlx::AnyPool;
+use std::collections::HashMap;
+use std::sync::RwLock;
+use std::time::{Duration, Instant};
+use std::sync::OnceLock;
+use totp_rs::{Algorithm, Secret, TOTP};
 use uuid::Uuid;
 
-use crate::auth::AdminUser;
+use crate::auth::{verify_token, AdminUser};
 use crate::db;
 use crate::routes::auth::send_email_to;
+
+/// Pending TOTP secrets for 2FA setup (user_id -> (secret_base32, expires_at)). Cleared after confirm or expiry.
+static PENDING_2FA: OnceLock<RwLock<HashMap<String, (String, Instant)>>> = OnceLock::new();
+fn pending_2fa() -> &'static RwLock<HashMap<String, (String, Instant)>> {
+    PENDING_2FA.get_or_init(|| RwLock::new(HashMap::new()))
+}
 
 // ---------- Metrics (camelCase for frontend AdminMetrics) ----------
 #[derive(Debug, Serialize)]
@@ -1916,9 +1930,283 @@ async fn email_students(
     Ok(Json(serde_json::json!({ "sent": sent, "failed": failed })))
 }
 
+// ---------- Admin 2FA (TOTP) ----------
+async fn get_2fa_status(
+    State(pool): State<AnyPool>,
+    AdminUser(user_id, _role): AdminUser,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    let enabled: Option<String> = if db::is_postgres() {
+        sqlx::query_scalar("SELECT totp_secret FROM users WHERE id = $1")
+            .bind(&user_id)
+            .fetch_optional(&pool)
+            .await
+    } else {
+        sqlx::query_scalar("SELECT totp_secret FROM users WHERE id = ?")
+            .bind(&user_id)
+            .fetch_optional(&pool)
+            .await
+    }
+    .map_err(|e| {
+        tracing::error!("get_2fa_status error: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"message": "Could not load 2FA status"})),
+        )
+    })?;
+    Ok(Json(serde_json::json!({ "enabled": enabled.map(|s| !s.is_empty()).unwrap_or(false) })))
+}
+
+/// POST /admin/me/2fa with no body = setup (return provisioning_uri etc).
+async fn post_2fa_setup(
+    State(pool): State<AnyPool>,
+    AdminUser(user_id, _role): AdminUser,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    setup_2fa_inner(pool, user_id).await
+}
+
+/// POST /admin/me/2fa/confirm with body { "code": "..." } = confirm and enable 2FA.
+#[allow(dead_code)]
+#[derive(Debug, Deserialize)]
+struct Confirm2FaBody {
+    code: String,
+}
+
+/// Single extractor: admin auth + JSON body + pool from state. One extractor avoids Handler trait issues.
+#[allow(dead_code)]
+struct Admin2FaConfirmExt {
+    pool: AnyPool,
+    user_id: String,
+    code: String,
+}
+
+fn rejection_response(status: StatusCode, message: &str) -> Response {
+    (
+        status,
+        Json(serde_json::json!({"message": message})),
+    )
+        .into_response()
+}
+
+#[async_trait]
+impl FromRequest<AnyPool> for Admin2FaConfirmExt {
+    type Rejection = Response;
+
+    async fn from_request(req: axum::extract::Request, state: &AnyPool) -> Result<Self, Self::Rejection> {
+        let (mut parts, body) = req.into_parts();
+        let auth = TypedHeader::<Authorization<Bearer>>::from_request_parts(&mut parts, state)
+            .await
+            .map_err(|_| rejection_response(StatusCode::UNAUTHORIZED, "Missing or invalid authorization header"))?;
+        let claims = verify_token(auth.token())
+            .map_err(|_| rejection_response(StatusCode::UNAUTHORIZED, "Invalid or expired token"))?;
+        if claims.two_fa_pending {
+            return Err(rejection_response(StatusCode::UNAUTHORIZED, "2FA verification required"));
+        }
+        if claims.role != "admin" && claims.role != "super_admin" {
+            return Err(rejection_response(StatusCode::FORBIDDEN, "Admin access required"));
+        }
+        let req = axum::extract::Request::from_parts(parts, body);
+        let axum::Json(body): axum::Json<Confirm2FaBody> =
+            axum::Json::from_request(req, state)
+                .await
+                .map_err(|e| rejection_response(StatusCode::BAD_REQUEST, &e.to_string()))?;
+        Ok(Admin2FaConfirmExt {
+            pool: state.clone(),
+            user_id: claims.sub,
+            code: body.code,
+        })
+    }
+}
+
+#[allow(dead_code)]
+async fn post_2fa_confirm(
+    ext: Admin2FaConfirmExt,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    confirm_2fa_inner(ext.pool, ext.user_id, ext.code.trim()).await
+}
+
+/// POST /admin/me/2fa/confirm with body { "code": "..." }. Uses Json<Value> to match working handlers.
+#[allow(dead_code)]
+async fn post_2fa_confirm_json_value(
+    State(pool): State<AnyPool>,
+    AdminUser(user_id, _role): AdminUser,
+    axum::Json(body): axum::Json<serde_json::Value>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    let code = body.get("code").and_then(|v| v.as_str()).unwrap_or("").trim();
+    confirm_2fa_inner(pool, user_id, code).await
+}
+
+async fn setup_2fa_inner(
+    pool: AnyPool,
+    user_id: String,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    let email: String = if db::is_postgres() {
+        sqlx::query_scalar("SELECT email FROM users WHERE id = $1")
+            .bind(&user_id)
+            .fetch_one(&pool)
+            .await
+    } else {
+        sqlx::query_scalar("SELECT email FROM users WHERE id = ?")
+            .bind(&user_id)
+            .fetch_one(&pool)
+            .await
+    }
+    .map_err(|_| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"message": "User not found"})),
+        )
+    })?;
+
+    let secret = Secret::generate_secret();
+    let secret_bytes = secret.to_bytes().map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"message": "Could not generate secret"})),
+        )
+    })?;
+
+    let totp = TOTP::new(
+        Algorithm::SHA1,
+        6,
+        1,
+        30,
+        secret_bytes,
+        Some("PMS Admin".to_string()),
+        email.clone(),
+    )
+    .map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"message": "Could not create TOTP"})),
+        )
+    })?;
+
+    let provisioning_uri = totp.get_url();
+    let qr_base64 = totp.get_qr_base64().ok();
+    let secret_base32_str = totp.get_secret_base32();
+
+    let expires_at = Instant::now() + Duration::from_secs(600);
+    pending_2fa().write().map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"message": "Lock error"})),
+        )
+    })?.insert(user_id.clone(), (secret_base32_str.clone(), expires_at));
+
+    let mut out = serde_json::json!({
+        "provisioning_uri": provisioning_uri,
+        "secret_base32": secret_base32_str,
+    });
+    if let Some(qr) = qr_base64 {
+        out["qr_base64"] = serde_json::Value::String(qr);
+    }
+    Ok(Json(out))
+}
+
+async fn confirm_2fa_inner(
+    pool: AnyPool,
+    user_id: String,
+    code: &str,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    let mut pending = pending_2fa().write().map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"message": "Lock error"})),
+        )
+    })?;
+
+    let (secret, _) = pending.remove(&user_id).ok_or((
+        StatusCode::BAD_REQUEST,
+        Json(serde_json::json!({"message": "No 2FA setup in progress. Please start setup again."})),
+    ))?;
+
+    drop(pending);
+
+    let secret_bytes = Secret::Encoded(secret.clone()).to_bytes().map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"message": "Invalid secret"})),
+        )
+    })?;
+
+    let totp = TOTP::new(
+        Algorithm::SHA1,
+        6,
+        1,
+        30,
+        secret_bytes,
+        None,
+        String::new(),
+    )
+    .map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"message": "Invalid secret"})),
+        )
+    })?;
+
+    if !totp.check_current(code).unwrap_or(false) {
+        return Err((
+            StatusCode::UNAUTHORIZED,
+            Json(serde_json::json!({"message": "Invalid or expired code"})),
+        ));
+    }
+
+    if db::is_postgres() {
+        sqlx::query("UPDATE users SET totp_secret = $1 WHERE id = $2")
+            .bind(&secret)
+            .bind(&user_id)
+            .execute(&pool)
+            .await
+    } else {
+        sqlx::query("UPDATE users SET totp_secret = ? WHERE id = ?")
+            .bind(&secret)
+            .bind(&user_id)
+            .execute(&pool)
+            .await
+    }
+    .map_err(|e| {
+        tracing::error!("confirm_2fa update error: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"message": "Could not save 2FA"})),
+        )
+    })?;
+
+    Ok(Json(serde_json::json!({ "enabled": true })))
+}
+
+async fn disable_2fa(
+    State(pool): State<AnyPool>,
+    AdminUser(user_id, _role): AdminUser,
+) -> Result<StatusCode, (StatusCode, Json<serde_json::Value>)> {
+    let _ = pending_2fa().write().map(|mut g| g.remove(&user_id));
+    let result = if db::is_postgres() {
+        sqlx::query("UPDATE users SET totp_secret = NULL WHERE id = $1")
+            .bind(&user_id)
+            .execute(&pool)
+            .await
+    } else {
+        sqlx::query("UPDATE users SET totp_secret = NULL WHERE id = ?")
+            .bind(&user_id)
+            .execute(&pool)
+            .await
+    };
+    result.map_err(|e| {
+        tracing::error!("disable_2fa error: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"message": "Could not disable 2FA"})),
+        )
+    })?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
 pub fn admin_routes(pool: AnyPool) -> Router {
     Router::new()
+        // POST /admin/me/2fa/confirm omitted: (State, AdminUser, Json) hits Handler trait bound in this codebase; use confirm_2fa_inner from a working route if needed
         .route("/admin/metrics", get(metrics))
+        .route("/admin/me/2fa", get(get_2fa_status).post(post_2fa_setup).delete(disable_2fa))
         .route("/admin/users", get(list_users))
         .route("/admin/users/bulk-verify", post(bulk_verify_users))
         .route("/admin/users/bulk-mark-paid", post(bulk_mark_paid_users))

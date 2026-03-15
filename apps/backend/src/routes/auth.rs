@@ -7,9 +7,12 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use sqlx::AnyPool;
+use std::sync::Arc;
+use std::time::Duration;
+use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
 use uuid::Uuid;
 
-use crate::auth::{create_token, AuthUser};
+use crate::auth::{create_token, create_token_2fa_pending, verify_token, AuthUser};
 use crate::db;
 use crate::models::{User, UserResponse};
 
@@ -18,6 +21,7 @@ use argon2::{
     Argon2,
 };
 use rand_core::OsRng;
+use totp_rs::{Algorithm, Secret, TOTP};
 use wangamail_rs::{BodyType, GraphMailClient, Message, MessageBody, Recipient, SendMailRequest};
 
 #[derive(Debug, Deserialize)]
@@ -38,6 +42,12 @@ pub struct RegisterRequest {
 pub struct LoginRequest {
     pub email: String,
     pub password: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Verify2FaRequest {
+    pub temp_token: String,
+    pub code: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -151,13 +161,27 @@ struct InviteRow {
 }
 
 pub fn auth_routes(pool: AnyPool) -> Router {
-    Router::new()
-        .route("/auth/register", post(register))
+    // Stricter rate limit for login/register only: 5/min, burst 3
+    let auth_strict_config = Arc::new(
+        GovernorConfigBuilder::default()
+            .period(Duration::from_secs(12))
+            .burst_size(3)
+            .finish()
+            .expect("auth governor config"),
+    );
+    let auth_strict = Router::new()
         .route("/auth/login", post(login))
+        .route("/auth/register", post(register))
+        .layer(GovernorLayer {
+            config: auth_strict_config,
+        })
+        .with_state(pool.clone());
+    let auth_rest = Router::new()
         .route("/auth/forgot-password", post(forgot_password))
         .route("/auth/reset-password", post(reset_password))
         .route("/auth/me", get(me).patch(update_me))
         .route("/auth/verify", post(verify))
+        .route("/auth/2fa/verify", post(verify_2fa))
         .route("/auth/complete-payment", post(complete_payment))
         .route("/auth/courses", get(list_courses))
         .route("/auth/invite/:token", get(get_invite))
@@ -170,7 +194,8 @@ pub fn auth_routes(pool: AnyPool) -> Router {
         )
         .route("/me/notifications", get(get_my_notifications))
         .route("/me/notifications/:id/read", patch(mark_notification_read))
-        .with_state(pool)
+        .with_state(pool);
+    auth_strict.merge(auth_rest)
 }
 
 #[derive(Debug, Serialize, sqlx::FromRow)]
@@ -492,6 +517,7 @@ async fn register(
         payment_complete: false,
         role: role.clone(),
         created_at: now,
+        totp_secret: None,
     };
 
     // Fire-and-forget registration email via Microsoft Graph using wangamail-rs.
@@ -516,11 +542,11 @@ async fn register(
 async fn login(
     State(pool): State<AnyPool>,
     axum::Json(req): axum::Json<LoginRequest>,
-) -> Result<Json<AuthResponse>, (StatusCode, Json<serde_json::Value>)> {
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     let login_sql = if db::is_postgres() {
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE email = $1"
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at, totp_secret FROM users WHERE email = $1"
     } else {
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE email = ?"
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at, totp_secret FROM users WHERE email = ?"
     };
     let user: Option<User> = sqlx::query_as(login_sql)
         .bind(&req.email)
@@ -548,6 +574,22 @@ async fn login(
         ));
     }
 
+    let requires_2fa = user.totp_secret.is_some()
+        && (user.role == "admin" || user.role == "super_admin");
+
+    if requires_2fa {
+        let temp_token = create_token_2fa_pending(&user.id, &user.role).map_err(|_| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "token_failed", "message": "Could not create token"})),
+            )
+        })?;
+        return Ok(Json(serde_json::json!({
+            "requires_2fa": true,
+            "temp_token": temp_token,
+        })));
+    }
+
     let token = create_token(&user.id, &user.role).map_err(|_| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -555,10 +597,129 @@ async fn login(
         )
     })?;
 
-    Ok(Json(AuthResponse {
-        user: user.to_response(),
-        token,
-    }))
+    Ok(Json(serde_json::json!({
+        "user": user.to_response(),
+        "token": token,
+    })))
+}
+
+async fn verify_2fa(
+    State(pool): State<AnyPool>,
+    axum::Json(req): axum::Json<Verify2FaRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    let claims = verify_token(req.temp_token.trim())
+        .map_err(|_| {
+            (
+                StatusCode::UNAUTHORIZED,
+                Json(serde_json::json!({"error": "invalid_token", "message": "Invalid or expired code. Please log in again."})),
+            )
+        })?;
+    if !claims.two_fa_pending {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"error": "invalid_token", "message": "Not a 2FA pending token"})),
+        ));
+    }
+
+    let user_id = &claims.sub;
+    let totp_secret: Option<String> = if db::is_postgres() {
+        sqlx::query_scalar("SELECT totp_secret FROM users WHERE id = $1")
+            .bind(user_id)
+            .fetch_optional(&pool)
+            .await
+    } else {
+        sqlx::query_scalar("SELECT totp_secret FROM users WHERE id = ?")
+            .bind(user_id)
+            .fetch_optional(&pool)
+            .await
+    }
+    .map_err(|e| {
+        tracing::error!("Fetch totp_secret error: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": "server_error", "message": "Could not verify"})),
+        )
+    })?;
+
+    let secret = totp_secret.ok_or((
+        StatusCode::BAD_REQUEST,
+        Json(serde_json::json!({"error": "no_2fa", "message": "2FA not enabled for this account"})),
+    ))?;
+
+    let totp = TOTP::new(
+        Algorithm::SHA1,
+        6,
+        1,
+        30,
+        Secret::Encoded(secret).to_bytes().map_err(|_| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "server_error", "message": "Invalid 2FA config"})),
+            )
+        })?,
+        None,
+        String::new(),
+    )
+    .map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": "server_error", "message": "Invalid 2FA config"})),
+        )
+    })?;
+
+    let code = req.code.trim();
+    if !totp.check_current(code).unwrap_or(false) {
+        return Err((
+            StatusCode::UNAUTHORIZED,
+            Json(serde_json::json!({"error": "invalid_code", "message": "Invalid or expired code"})),
+        ));
+    }
+
+    let role: String = if db::is_postgres() {
+        sqlx::query_scalar("SELECT role FROM users WHERE id = $1")
+            .bind(user_id)
+            .fetch_one(&pool)
+            .await
+    } else {
+        sqlx::query_scalar("SELECT role FROM users WHERE id = ?")
+            .bind(user_id)
+            .fetch_one(&pool)
+            .await
+    }
+    .unwrap_or_else(|_| "student".to_string());
+
+    let token = create_token(user_id, &role).map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": "token_failed", "message": "Could not create token"})),
+        )
+    })?;
+
+    let user_sql = if db::is_postgres() {
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at, totp_secret FROM users WHERE id = $1"
+    } else {
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at, totp_secret FROM users WHERE id = ?"
+    };
+    let user: Option<User> = sqlx::query_as(user_sql)
+        .bind(user_id)
+        .fetch_optional(&pool)
+        .await
+        .map_err(|_| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "server_error", "message": "Could not load user"})),
+            )
+        })?;
+
+    let user = user.ok_or((
+        StatusCode::NOT_FOUND,
+        Json(serde_json::json!({"error": "user_not_found", "message": "User not found"})),
+    ))?;
+
+    Ok(Json(serde_json::json!({
+        "user": user.to_response(),
+        "token": token,
+    })))
 }
 
 async fn send_password_reset_email(to: &str, name: &str, reset_link: &str) -> Result<(), String> {
@@ -623,9 +784,9 @@ async fn forgot_password(
     }
 
     let user_sql = if db::is_postgres() {
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE email = $1"
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at, totp_secret FROM users WHERE email = $1"
     } else {
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE email = ?"
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at, totp_secret FROM users WHERE email = ?"
     };
 
     let user: Option<User> = sqlx::query_as(user_sql)
@@ -791,9 +952,9 @@ async fn me(
     AuthUser(user_id): AuthUser,
 ) -> Result<Json<UserResponse>, (StatusCode, Json<serde_json::Value>)> {
     let me_sql = if db::is_postgres() {
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE id = $1"
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at, totp_secret FROM users WHERE id = $1"
     } else {
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE id = ?"
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at, totp_secret FROM users WHERE id = ?"
     };
     let user: Option<User> = sqlx::query_as(me_sql)
         .bind(&user_id)
@@ -913,9 +1074,9 @@ async fn update_me(
     }
 
     let me_sql2 = if db::is_postgres() {
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE id = $1"
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at, totp_secret FROM users WHERE id = $1"
     } else {
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE id = ?"
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at, totp_secret FROM users WHERE id = ?"
     };
     let user: Option<User> = sqlx::query_as(me_sql2)
         .bind(&user_id)
@@ -955,9 +1116,9 @@ async fn verify(
         })?;
 
     let verify_select_sql = if db::is_postgres() {
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE id = $1"
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at, totp_secret FROM users WHERE id = $1"
     } else {
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE id = ?"
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at, totp_secret FROM users WHERE id = ?"
     };
     let user: Option<User> = sqlx::query_as(verify_select_sql)
         .bind(&user_id)
@@ -997,9 +1158,9 @@ async fn complete_payment(
         })?;
 
     let payment_select_sql = if db::is_postgres() {
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE id = $1"
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at, totp_secret FROM users WHERE id = $1"
     } else {
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE id = ?"
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at, totp_secret FROM users WHERE id = ?"
     };
     let user: Option<User> = sqlx::query_as(payment_select_sql)
         .bind(&user_id)

@@ -135,3 +135,14 @@ export async function addBlogComment(slug: string, body: string): Promise<BlogCo
 	}
 	return json as BlogComment;
 }
+
+export async function deleteBlogComment(slug: string, commentId: string): Promise<void> {
+	const res = await fetch(
+		`${API_BASE}/blog/${encodeURIComponent(slug)}/comments/${encodeURIComponent(commentId)}`,
+		{ method: 'DELETE', headers: getAuthHeaders() }
+	);
+	if (!res.ok) {
+		const json = await safeJson<{ message?: string }>(res);
+		throw new Error(json.message ?? 'Failed to delete comment');
+	}
+}

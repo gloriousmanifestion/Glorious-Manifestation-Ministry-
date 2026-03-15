@@ -24,6 +24,8 @@ async fn main() {
         .with_env_filter("backend=debug,tower_http=debug")
         .init();
 
+    auth::ensure_jwt_secret();
+
     let pool: sqlx::AnyPool = db::init_db().await.expect("Failed to init database");
 
     // Rate limit: 2 req/s per IP, burst 10 (protects login and admin from abuse)

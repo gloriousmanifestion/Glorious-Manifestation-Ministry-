@@ -5,6 +5,7 @@
 	import Footer from '$lib/components/Footer.svelte';
 	import {
 		addBlogComment,
+		deleteBlogComment,
 		getBlogComments,
 		getBlogPostBySlug,
 		type BlogComment,
@@ -20,9 +21,13 @@
 	let commentBody = $state('');
 	let commentSubmitting = $state(false);
 	let commentError = $state('');
+	let deletingId = $state<string | null>(null);
 
 	const slug = $derived($page.params.slug);
 	const isLoggedIn = $derived($authReady && $userStore != null);
+	const canDeleteComment = (c: BlogComment) =>
+		$userStore &&
+		($userStore.id === c.user_id || $userStore.role === 'admin' || $userStore.role === 'super_admin');
 
 	onMount(load);
 
@@ -77,7 +82,7 @@
 		}
 	}
 
-	function formatCommentDate(iso: string): string {
+		function formatCommentDate(iso: string): string {
 		try {
 			return new Date(iso).toLocaleString(undefined, {
 				month: 'short',
@@ -88,6 +93,19 @@
 			});
 		} catch {
 			return iso;
+		}
+	}
+
+	async function removeComment(commentId: string) {
+		if (!slug || deletingId) return;
+		deletingId = commentId;
+		try {
+			await deleteBlogComment(slug, commentId);
+			comments = comments.filter((c) => c.id !== commentId);
+		} catch {
+			// ignore; could show toast
+		} finally {
+			deletingId = null;
 		}
 	}
 </script>
@@ -176,9 +194,23 @@
 					<ul class="mt-6 space-y-4">
 						{#each comments as c}
 							<li class="border-t border-slate-200/80 pt-4 first:border-t-0 first:pt-0 dark:border-slate-700">
-								<p class="font-medium text-slate-900 dark:text-white">{c.author_name}</p>
-								<p class="mt-1 text-sm text-slate-600 dark:text-slate-200">{c.body}</p>
-								<p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{formatCommentDate(c.created_at)}</p>
+								<div class="flex items-start justify-between gap-2">
+									<div class="min-w-0 flex-1">
+										<p class="font-medium text-slate-900 dark:text-white">{c.author_name}</p>
+										<p class="mt-1 text-sm text-slate-600 dark:text-slate-200">{c.body}</p>
+										<p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{formatCommentDate(c.created_at)}</p>
+									</div>
+									{#if isLoggedIn && canDeleteComment(c)}
+										<button
+											type="button"
+											disabled={deletingId === c.id}
+											class="shrink-0 rounded px-2 py-1 text-xs text-slate-500 hover:bg-slate-100 hover:text-red-600 dark:hover:bg-slate-700 dark:hover:text-red-400 disabled:opacity-50"
+											onclick={() => removeComment(c.id)}
+										>
+											{deletingId === c.id ? '…' : 'Delete'}
+										</button>
+									{/if}
+								</div>
 							</li>
 						{/each}
 					</ul>

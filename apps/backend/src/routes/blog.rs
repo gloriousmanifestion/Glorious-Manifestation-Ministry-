@@ -5,7 +5,7 @@ use axum::{
     extract::{Path, State},
     http::StatusCode,
     response::Json,
-    routing::{get, patch, post},
+    routing::{delete, get, patch, post},
     Router,
 };
 use serde::Deserialize;
@@ -250,6 +250,119 @@ async fn add_comment(
         body: body_text.to_string(),
         created_at: now,
     }))
+}
+
+/// Delete a comment: author or admin/super_admin.
+async fn delete_comment(
+    State(pool): State<AnyPool>,
+    AuthUser(user_id): AuthUser,
+    Path((slug, comment_id)): Path<(String, String)>,
+) -> Result<StatusCode, (StatusCode, Json<serde_json::Value>)> {
+    let post_id: Option<String> = if db::is_postgres() {
+        sqlx::query_scalar("SELECT id FROM blog_posts WHERE slug = $1 AND published_at IS NOT NULL")
+            .bind(&slug)
+            .fetch_optional(&pool)
+            .await
+    } else {
+        sqlx::query_scalar("SELECT id FROM blog_posts WHERE slug = ? AND published_at IS NOT NULL")
+            .bind(&slug)
+            .fetch_optional(&pool)
+            .await
+    }
+    .map_err(|e| {
+        tracing::error!("Resolve slug for delete comment: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"message": "Could not delete comment"})),
+        )
+    })?;
+
+    let post_id = post_id.ok_or((
+        StatusCode::NOT_FOUND,
+        Json(serde_json::json!({"message": "Post not found"})),
+    ))?;
+
+    let comment_user: Option<String> = if db::is_postgres() {
+        sqlx::query_scalar("SELECT user_id FROM blog_comments WHERE id = $1 AND blog_post_id = $2")
+            .bind(&comment_id)
+            .bind(&post_id)
+            .fetch_optional(&pool)
+            .await
+    } else {
+        sqlx::query_scalar("SELECT user_id FROM blog_comments WHERE id = ? AND blog_post_id = ?")
+            .bind(&comment_id)
+            .bind(&post_id)
+            .fetch_optional(&pool)
+            .await
+    }
+    .map_err(|e| {
+        tracing::error!("Fetch comment for delete: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"message": "Could not delete comment"})),
+        )
+    })?;
+
+    let comment_user = comment_user.ok_or((
+        StatusCode::NOT_FOUND,
+        Json(serde_json::json!({"message": "Comment not found"})),
+    ))?;
+
+    let is_owner = comment_user == user_id;
+    let is_admin = if is_owner {
+        false
+    } else {
+        let role: Option<String> = if db::is_postgres() {
+            sqlx::query_scalar("SELECT role FROM users WHERE id = $1")
+                .bind(&user_id)
+                .fetch_optional(&pool)
+                .await
+        } else {
+            sqlx::query_scalar("SELECT role FROM users WHERE id = ?")
+                .bind(&user_id)
+                .fetch_optional(&pool)
+                .await
+        }
+        .ok()
+        .flatten();
+        matches!(role.as_deref(), Some("admin") | Some("super_admin"))
+    };
+
+    if !is_owner && !is_admin {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(serde_json::json!({"message": "You can only delete your own comments"})),
+        ));
+    }
+
+    let result = if db::is_postgres() {
+        sqlx::query("DELETE FROM blog_comments WHERE id = $1 AND blog_post_id = $2")
+            .bind(&comment_id)
+            .bind(&post_id)
+            .execute(&pool)
+            .await
+    } else {
+        sqlx::query("DELETE FROM blog_comments WHERE id = ? AND blog_post_id = ?")
+            .bind(&comment_id)
+            .bind(&post_id)
+            .execute(&pool)
+            .await
+    }
+    .map_err(|e| {
+        tracing::error!("Delete comment error: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"message": "Could not delete comment"})),
+        )
+    })?;
+
+    if result.rows_affected() == 0 {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"message": "Comment not found"})),
+        ));
+    }
+    Ok(StatusCode::NO_CONTENT)
 }
 
 async fn list_admin(
@@ -615,6 +728,7 @@ pub fn blog_routes(pool: AnyPool) -> Router {
         .route("/blog", get(list_public))
         .route("/blog/:slug", get(get_by_slug))
         .route("/blog/:slug/comments", get(list_comments).post(add_comment))
+        .route("/blog/:slug/comments/:id", delete(delete_comment))
         .route("/admin/blog", get(list_admin).post(create))
         .route("/admin/blog/:id", patch(update).delete(delete_one))
         .with_state(pool)
