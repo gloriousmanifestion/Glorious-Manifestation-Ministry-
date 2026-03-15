@@ -1113,7 +1113,15 @@ async fn update_course_module(
     let sort_order = body.sort_order;
     let link = body.link.as_deref().filter(|s| !s.is_empty());
     let description = body.description.as_deref().filter(|s| !s.is_empty());
-    type ModuleRow = (String, String, String, i32, Option<String>, Option<String>, String);
+    type ModuleRow = (
+        String,
+        String,
+        String,
+        i32,
+        Option<String>,
+        Option<String>,
+        String,
+    );
     let row: Option<ModuleRow> = if db::is_postgres() {
         sqlx::query_as(
             "SELECT id, course_id, title, sort_order, link, description, created_at FROM course_modules WHERE id = $1 AND course_id = $2",
@@ -1231,6 +1239,315 @@ async fn delete_course_module(
     Ok(StatusCode::NO_CONTENT)
 }
 
+// ---------- Resources (library) ----------
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct ResourceRow {
+    pub id: String,
+    pub course_id: Option<String>,
+    pub title: String,
+    pub url: String,
+    pub resource_type: String,
+    pub sort_order: i32,
+    pub created_at: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CreateResourceBody {
+    pub course_id: Option<String>,
+    pub title: String,
+    pub url: String,
+    pub resource_type: Option<String>,
+    pub sort_order: Option<i32>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateResourceBody {
+    pub course_id: Option<String>,
+    pub title: Option<String>,
+    pub url: Option<String>,
+    pub resource_type: Option<String>,
+    pub sort_order: Option<i32>,
+}
+
+async fn list_resources_admin(
+    State(pool): State<AnyPool>,
+    AdminUser(_user_id, _role): AdminUser,
+    Query(q): Query<std::collections::HashMap<String, String>>,
+) -> Result<Json<Vec<ResourceRow>>, (StatusCode, Json<serde_json::Value>)> {
+    let course_id: Option<&str> = q.get("course_id").map(|s| s.as_str());
+    let resources: Vec<ResourceRow> = if let Some(cid) = course_id {
+        if db::is_postgres() {
+            sqlx::query_as(
+                "SELECT id, course_id, title, url, resource_type, sort_order, created_at \
+                 FROM resources WHERE course_id = $1 OR course_id IS NULL ORDER BY sort_order ASC, created_at ASC",
+            )
+            .bind(cid)
+            .fetch_all(&pool)
+            .await
+        } else {
+            sqlx::query_as(
+                "SELECT id, course_id, title, url, resource_type, sort_order, created_at \
+                 FROM resources WHERE course_id = ? OR course_id IS NULL ORDER BY sort_order ASC, created_at ASC",
+            )
+            .bind(cid)
+            .fetch_all(&pool)
+            .await
+        }
+    } else {
+        sqlx::query_as(
+            "SELECT id, course_id, title, url, resource_type, sort_order, created_at \
+             FROM resources ORDER BY sort_order ASC, created_at ASC",
+        )
+        .fetch_all(&pool)
+        .await
+    }
+    .map_err(|e| {
+        tracing::error!("Admin list resources error: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"message": "Failed to load resources"})),
+        )
+    })?;
+    Ok(Json(resources))
+}
+
+async fn create_resource(
+    State(pool): State<AnyPool>,
+    AdminUser(_user_id, _role): AdminUser,
+    axum::Json(body): axum::Json<CreateResourceBody>,
+) -> Result<(StatusCode, Json<ResourceRow>), (StatusCode, Json<serde_json::Value>)> {
+    let id = Uuid::new_v4().to_string();
+    let resource_type = body.resource_type.as_deref().unwrap_or("link");
+    let sort_order = body.sort_order.unwrap_or(0);
+    if db::is_postgres() {
+        sqlx::query(
+            "INSERT INTO resources (id, course_id, title, url, resource_type, sort_order) \
+             VALUES ($1, $2, $3, $4, $5, $6)",
+        )
+        .bind(&id)
+        .bind(&body.course_id)
+        .bind(&body.title)
+        .bind(&body.url)
+        .bind(resource_type)
+        .bind(sort_order)
+        .execute(&pool)
+        .await
+    } else {
+        sqlx::query(
+            "INSERT INTO resources (id, course_id, title, url, resource_type, sort_order) \
+             VALUES (?, ?, ?, ?, ?, ?)",
+        )
+        .bind(&id)
+        .bind(&body.course_id)
+        .bind(&body.title)
+        .bind(&body.url)
+        .bind(resource_type)
+        .bind(sort_order)
+        .execute(&pool)
+        .await
+    }
+    .map_err(|e| {
+        tracing::error!("Admin create resource error: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"message": "Failed to create resource"})),
+        )
+    })?;
+    let row: ResourceRow = if db::is_postgres() {
+        sqlx::query_as(
+            "SELECT id, course_id, title, url, resource_type, sort_order, created_at FROM resources WHERE id = $1",
+        )
+        .bind(&id)
+        .fetch_one(&pool)
+        .await
+    } else {
+        sqlx::query_as(
+            "SELECT id, course_id, title, url, resource_type, sort_order, created_at FROM resources WHERE id = ?",
+        )
+        .bind(&id)
+        .fetch_one(&pool)
+        .await
+    }
+    .map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"message": "Failed to fetch created resource"})),
+        )
+    })?;
+    Ok((StatusCode::CREATED, Json(row)))
+}
+
+async fn update_resource(
+    State(pool): State<AnyPool>,
+    AdminUser(_user_id, _role): AdminUser,
+    Path(id): Path<String>,
+    axum::Json(body): axum::Json<UpdateResourceBody>,
+) -> Result<Json<ResourceRow>, (StatusCode, Json<serde_json::Value>)> {
+    if let Some(ref t) = body.title {
+        if db::is_postgres() {
+            sqlx::query("UPDATE resources SET title = $1 WHERE id = $2")
+                .bind(t)
+                .bind(&id)
+                .execute(&pool)
+                .await
+        } else {
+            sqlx::query("UPDATE resources SET title = ? WHERE id = ?")
+                .bind(t)
+                .bind(&id)
+                .execute(&pool)
+                .await
+        }
+        .map_err(|e| {
+            tracing::error!("Admin update resource title error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"message": "Failed to update resource"})),
+            )
+        })?;
+    }
+    if let Some(ref u) = body.url {
+        if db::is_postgres() {
+            sqlx::query("UPDATE resources SET url = $1 WHERE id = $2")
+                .bind(u)
+                .bind(&id)
+                .execute(&pool)
+                .await
+        } else {
+            sqlx::query("UPDATE resources SET url = ? WHERE id = ?")
+                .bind(u)
+                .bind(&id)
+                .execute(&pool)
+                .await
+        }
+        .map_err(|e| {
+            tracing::error!("Admin update resource url error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"message": "Failed to update resource"})),
+            )
+        })?;
+    }
+    if let Some(ref rt) = body.resource_type {
+        if db::is_postgres() {
+            sqlx::query("UPDATE resources SET resource_type = $1 WHERE id = $2")
+                .bind(rt)
+                .bind(&id)
+                .execute(&pool)
+                .await
+        } else {
+            sqlx::query("UPDATE resources SET resource_type = ? WHERE id = ?")
+                .bind(rt)
+                .bind(&id)
+                .execute(&pool)
+                .await
+        }
+        .map_err(|e| {
+            tracing::error!("Admin update resource type error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"message": "Failed to update resource"})),
+            )
+        })?;
+    }
+    if let Some(ref cid) = body.course_id {
+        if db::is_postgres() {
+            sqlx::query("UPDATE resources SET course_id = $1 WHERE id = $2")
+                .bind(cid)
+                .bind(&id)
+                .execute(&pool)
+                .await
+        } else {
+            sqlx::query("UPDATE resources SET course_id = ? WHERE id = ?")
+                .bind(cid)
+                .bind(&id)
+                .execute(&pool)
+                .await
+        }
+        .map_err(|e| {
+            tracing::error!("Admin update resource course_id error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"message": "Failed to update resource"})),
+            )
+        })?;
+    }
+    if let Some(so) = body.sort_order {
+        if db::is_postgres() {
+            sqlx::query("UPDATE resources SET sort_order = $1 WHERE id = $2")
+                .bind(so)
+                .bind(&id)
+                .execute(&pool)
+                .await
+        } else {
+            sqlx::query("UPDATE resources SET sort_order = ? WHERE id = ?")
+                .bind(so)
+                .bind(&id)
+                .execute(&pool)
+                .await
+        }
+        .map_err(|e| {
+            tracing::error!("Admin update resource sort_order error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"message": "Failed to update resource"})),
+            )
+        })?;
+    }
+    let row: ResourceRow = if db::is_postgres() {
+        sqlx::query_as(
+            "SELECT id, course_id, title, url, resource_type, sort_order, created_at FROM resources WHERE id = $1",
+        )
+        .bind(&id)
+        .fetch_optional(&pool)
+        .await
+    } else {
+        sqlx::query_as(
+            "SELECT id, course_id, title, url, resource_type, sort_order, created_at FROM resources WHERE id = ?",
+        )
+        .bind(&id)
+        .fetch_optional(&pool)
+        .await
+    }
+    .map_err(|e| {
+        tracing::error!("Admin fetch resource error: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"message": "Failed to fetch resource"})),
+        )
+    })?
+    .ok_or((
+        StatusCode::NOT_FOUND,
+        Json(serde_json::json!({"message": "Resource not found"})),
+    ))?;
+    Ok(Json(row))
+}
+
+async fn delete_resource(
+    State(pool): State<AnyPool>,
+    AdminUser(_user_id, _role): AdminUser,
+    Path(id): Path<String>,
+) -> Result<StatusCode, (StatusCode, Json<serde_json::Value>)> {
+    let result = if db::is_postgres() {
+        sqlx::query("DELETE FROM resources WHERE id = $1")
+            .bind(&id)
+            .execute(&pool)
+            .await
+    } else {
+        sqlx::query("DELETE FROM resources WHERE id = ?")
+            .bind(&id)
+            .execute(&pool)
+            .await
+    };
+    result.map_err(|e| {
+        tracing::error!("Admin delete resource error: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"message": "Failed to delete resource"})),
+        )
+    })?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
 pub fn admin_routes(pool: AnyPool) -> Router {
     Router::new()
         .route("/admin/metrics", get(metrics))
@@ -1259,6 +1576,11 @@ pub fn admin_routes(pool: AnyPool) -> Router {
         .route(
             "/admin/payment-proofs/:id/review",
             post(review_payment_proof),
+        )
+        .route("/admin/resources", get(list_resources_admin).post(create_resource))
+        .route(
+            "/admin/resources/:id",
+            patch(update_resource).delete(delete_resource),
         )
         .with_state(pool)
 }

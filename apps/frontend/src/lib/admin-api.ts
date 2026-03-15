@@ -236,7 +236,12 @@ export async function createCourseModule(
 export async function updateCourseModule(
 	courseId: string,
 	moduleId: string,
-	data: Partial<{ title: string; sort_order: number; link: string | null; description: string | null }>
+	data: Partial<{
+		title: string;
+		sort_order: number;
+		link: string | null;
+		description: string | null;
+	}>
 ): Promise<AdminCourseModule> {
 	const res = await fetch(
 		`${API_BASE}/admin/courses/${encodeURIComponent(courseId)}/modules/${encodeURIComponent(moduleId)}`,
@@ -259,6 +264,78 @@ export async function deleteCourseModule(courseId: string, moduleId: string): Pr
 	if (res.status === 204) return;
 	const json = await safeJson<{ message?: string }>(res).catch(() => ({ message: undefined }));
 	throw new Error(json?.message ?? 'Failed to delete module');
+}
+
+// --- Resources (library) ---
+
+export interface AdminResource {
+	id: string;
+	course_id: string | null;
+	title: string;
+	url: string;
+	resource_type: string;
+	sort_order: number;
+	created_at: string;
+}
+
+export async function getAdminResources(courseId?: string | null): Promise<AdminResource[]> {
+	const url = courseId
+		? `${API_BASE}/admin/resources?course_id=${encodeURIComponent(courseId)}`
+		: `${API_BASE}/admin/resources`;
+	const res = await fetch(url, { headers: getAuthHeaders() });
+	const json = await safeJson<AdminResource[] | { message?: string }>(res);
+	if (!res.ok)
+		throw new Error((json as { message?: string }).message ?? 'Failed to load resources');
+	return Array.isArray(json) ? json : [];
+}
+
+export async function createResource(data: {
+	course_id?: string | null;
+	title: string;
+	url: string;
+	resource_type?: string;
+	sort_order?: number;
+}): Promise<AdminResource> {
+	const res = await fetch(`${API_BASE}/admin/resources`, {
+		method: 'POST',
+		headers: getAuthHeaders(),
+		body: JSON.stringify(data)
+	});
+	const json = await safeJson<AdminResource | { message?: string }>(res);
+	if (!res.ok)
+		throw new Error((json as { message?: string }).message ?? 'Failed to create resource');
+	return json as AdminResource;
+}
+
+export async function updateResource(
+	id: string,
+	data: Partial<{
+		course_id: string | null;
+		title: string;
+		url: string;
+		resource_type: string;
+		sort_order: number;
+	}>
+): Promise<AdminResource> {
+	const res = await fetch(`${API_BASE}/admin/resources/${encodeURIComponent(id)}`, {
+		method: 'PATCH',
+		headers: getAuthHeaders(),
+		body: JSON.stringify(data)
+	});
+	const json = await safeJson<AdminResource | { message?: string }>(res);
+	if (!res.ok)
+		throw new Error((json as { message?: string }).message ?? 'Failed to update resource');
+	return json as AdminResource;
+}
+
+export async function deleteResource(id: string): Promise<void> {
+	const res = await fetch(`${API_BASE}/admin/resources/${encodeURIComponent(id)}`, {
+		method: 'DELETE',
+		headers: getAuthHeaders()
+	});
+	if (res.status === 204) return;
+	const json = await safeJson<{ message?: string }>(res).catch(() => ({ message: undefined }));
+	throw new Error(json?.message ?? 'Failed to delete resource');
 }
 
 export async function updateCourse(

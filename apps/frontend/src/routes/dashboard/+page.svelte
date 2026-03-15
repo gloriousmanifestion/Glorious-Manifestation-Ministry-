@@ -190,13 +190,21 @@
 						<p class="mt-1 text-slate-600 dark:text-slate-200">
 							{progress?.completed_module_ids.length ?? 0} / {courseModules.length} modules completed
 						</p>
-						<a
-							href="/courses/{selectedCourse.id}"
-							class="mt-3 inline-flex items-center gap-2 text-sm font-medium text-pink-600 hover:text-pink-700 dark:text-pink-400"
-						>
-							View curriculum
-							<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-						</a>
+						<div class="mt-3 flex flex-wrap items-center gap-4">
+							<a
+								href="/courses/{selectedCourse.id}"
+								class="inline-flex items-center gap-2 text-sm font-medium text-pink-600 hover:text-pink-700 dark:text-pink-400"
+							>
+								View curriculum
+								<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+							</a>
+							<a
+								href={selectedCourse ? `/resources?course_id=${encodeURIComponent(selectedCourse.id)}` : '/resources'}
+								class="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+							>
+								Resource library
+							</a>
+						</div>
 					</div>
 				{/if}
 
