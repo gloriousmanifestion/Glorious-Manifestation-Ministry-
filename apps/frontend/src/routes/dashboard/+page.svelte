@@ -251,6 +251,19 @@
 									</span>
 								</dd>
 							</div>
+							{#if user.verified && user.paymentComplete}
+								<div>
+									<dt class="text-sm font-medium text-slate-600 dark:text-slate-200">Certificate</dt>
+									<dd class="mt-0.5">
+										<a
+											href="/dashboard/certificate"
+											class="text-sm font-medium text-pink-600 hover:text-pink-700 dark:text-pink-400 dark:hover:text-pink-300"
+										>
+											View / print certificate
+										</a>
+									</dd>
+								</div>
+							{/if}
 						</dl>
 					</div>
 
