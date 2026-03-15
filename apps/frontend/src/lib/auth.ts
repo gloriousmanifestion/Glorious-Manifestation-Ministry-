@@ -187,6 +187,24 @@ function createAuthStore() {
 			userStore.set(user);
 			saveUser(user);
 		},
+		async updateProfile(profile: {
+			name?: string;
+			phone?: string;
+			ministryRole?: string;
+			churchName?: string;
+			calling?: string;
+		}) {
+			const r = await api.updateProfile({
+				name: profile.name,
+				phone: profile.phone,
+				ministry_role: profile.ministryRole,
+				church_name: profile.churchName,
+				calling: profile.calling
+			});
+			const user = toUser(r);
+			userStore.set(user);
+			saveUser(user);
+		},
 		logout() {
 			userStore.set(null);
 			saveUser(null);

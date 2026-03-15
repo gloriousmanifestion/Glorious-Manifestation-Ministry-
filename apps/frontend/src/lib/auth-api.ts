@@ -196,6 +196,33 @@ export async function selectCourse(courseId: string | null): Promise<UserRespons
 	return json as UserResponse;
 }
 
+export interface UpdateProfileRequest {
+	name?: string;
+	phone?: string;
+	ministry_role?: string;
+	church_name?: string;
+	calling?: string;
+}
+
+export async function updateProfile(profile: UpdateProfileRequest): Promise<UserResponse> {
+	const body: Record<string, string> = {};
+	if (profile.name !== undefined) body.name = profile.name;
+	if (profile.phone !== undefined) body.phone = profile.phone;
+	if (profile.ministry_role !== undefined) body.ministry_role = profile.ministry_role;
+	if (profile.church_name !== undefined) body.church_name = profile.church_name;
+	if (profile.calling !== undefined) body.calling = profile.calling;
+	const res = await fetch(`${API_BASE}/auth/me`, {
+		method: 'PATCH',
+		headers: getAuthHeaders(),
+		body: JSON.stringify(body)
+	});
+	const json = await safeJson<unknown>(res);
+	if (!res.ok) {
+		throw new Error(getErrorMessage(json, 'Failed to update profile'));
+	}
+	return json as UserResponse;
+}
+
 export async function completePayment(): Promise<UserResponse> {
 	const res = await fetch(`${API_BASE}/auth/complete-payment`, {
 		method: 'POST',

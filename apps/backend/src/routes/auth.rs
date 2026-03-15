@@ -57,8 +57,14 @@ pub struct AuthResponse {
     pub token: String,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct SelectCourseRequest {
+/// PATCH /auth/me body: any subset of profile fields (snake_case from frontend).
+#[derive(Debug, Default, Deserialize)]
+pub struct UpdateMeRequest {
+    pub name: Option<String>,
+    pub phone: Option<String>,
+    pub ministry_role: Option<String>,
+    pub church_name: Option<String>,
+    pub calling: Option<String>,
     pub selected_course_id: Option<String>,
 }
 
@@ -735,25 +741,97 @@ async fn me(
 async fn update_me(
     State(pool): State<AnyPool>,
     AuthUser(user_id): AuthUser,
-    axum::Json(req): axum::Json<SelectCourseRequest>,
+    axum::Json(req): axum::Json<UpdateMeRequest>,
 ) -> Result<Json<UserResponse>, (StatusCode, Json<serde_json::Value>)> {
-    let update_course_sql = if db::is_postgres() {
-        "UPDATE users SET selected_course_id = $1 WHERE id = $2"
-    } else {
-        "UPDATE users SET selected_course_id = ? WHERE id = ?"
-    };
-    sqlx::query(update_course_sql)
-        .bind(&req.selected_course_id)
-        .bind(&user_id)
-        .execute(&pool)
-        .await
-        .map_err(|e| {
-            tracing::error!("Update me error: {:?}", e);
+    if let Some(v) = &req.name {
+        let sql = if db::is_postgres() {
+            "UPDATE users SET name = $1 WHERE id = $2"
+        } else {
+            "UPDATE users SET name = ? WHERE id = ?"
+        };
+        sqlx::query(sql).bind(v).bind(&user_id).execute(&pool).await.map_err(|e| {
+            tracing::error!("Update me name error: {:?}", e);
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({"error": "update_failed", "message": "Could not update"})),
             )
         })?;
+    }
+    if let Some(v) = &req.phone {
+        let sql = if db::is_postgres() {
+            "UPDATE users SET phone = $1 WHERE id = $2"
+        } else {
+            "UPDATE users SET phone = ? WHERE id = ?"
+        };
+        sqlx::query(sql).bind(v).bind(&user_id).execute(&pool).await.map_err(|e| {
+            tracing::error!("Update me phone error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "update_failed", "message": "Could not update"})),
+            )
+        })?;
+    }
+    if let Some(v) = &req.ministry_role {
+        let sql = if db::is_postgres() {
+            "UPDATE users SET ministry_role = $1 WHERE id = $2"
+        } else {
+            "UPDATE users SET ministry_role = ? WHERE id = ?"
+        };
+        sqlx::query(sql).bind(v).bind(&user_id).execute(&pool).await.map_err(|e| {
+            tracing::error!("Update me ministry_role error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "update_failed", "message": "Could not update"})),
+            )
+        })?;
+    }
+    if let Some(v) = &req.church_name {
+        let sql = if db::is_postgres() {
+            "UPDATE users SET church_name = $1 WHERE id = $2"
+        } else {
+            "UPDATE users SET church_name = ? WHERE id = ?"
+        };
+        sqlx::query(sql).bind(v).bind(&user_id).execute(&pool).await.map_err(|e| {
+            tracing::error!("Update me church_name error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "update_failed", "message": "Could not update"})),
+            )
+        })?;
+    }
+    if let Some(v) = &req.calling {
+        let sql = if db::is_postgres() {
+            "UPDATE users SET calling = $1 WHERE id = $2"
+        } else {
+            "UPDATE users SET calling = ? WHERE id = ?"
+        };
+        sqlx::query(sql).bind(v).bind(&user_id).execute(&pool).await.map_err(|e| {
+            tracing::error!("Update me calling error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "update_failed", "message": "Could not update"})),
+            )
+        })?;
+    }
+    if req.selected_course_id.is_some() {
+        let sql = if db::is_postgres() {
+            "UPDATE users SET selected_course_id = $1 WHERE id = $2"
+        } else {
+            "UPDATE users SET selected_course_id = ? WHERE id = ?"
+        };
+        sqlx::query(sql)
+            .bind(&req.selected_course_id)
+            .bind(&user_id)
+            .execute(&pool)
+            .await
+            .map_err(|e| {
+                tracing::error!("Update me selected_course_id error: {:?}", e);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({"error": "update_failed", "message": "Could not update"})),
+                )
+            })?;
+    }
 
     let me_sql2 = if db::is_postgres() {
         "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE id = $1"

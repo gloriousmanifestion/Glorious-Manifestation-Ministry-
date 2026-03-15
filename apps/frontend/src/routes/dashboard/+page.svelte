@@ -214,7 +214,15 @@
 				<div class="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
 					<!-- Profile card -->
 					<div class="rounded-2xl border border-slate-200/80 section-separator card-premium bg-white/95 p-4 sm:p-6 shadow-sm dark:bg-[#1e2642]">
-						<h2 class="text-lg font-semibold text-slate-900 dark:text-white">Your profile</h2>
+						<div class="flex items-center justify-between">
+							<h2 class="text-lg font-semibold text-slate-900 dark:text-white">Your profile</h2>
+							<a
+								href="/dashboard/profile"
+								class="text-sm font-medium text-pink-600 hover:text-pink-700 dark:text-pink-400 dark:hover:text-pink-300"
+							>
+								Edit profile
+							</a>
+						</div>
 						<dl class="mt-4 space-y-3">
 							<div>
 								<dt class="text-sm font-medium text-slate-600 dark:text-slate-200">Name</dt>
