@@ -4,23 +4,26 @@
 	import Footer from '$lib/components/Footer.svelte';
 	import AnimateOnView from '$lib/components/AnimateOnView.svelte';
 	import { SITE } from '$lib/config';
-	import { getChurchServices, getChurchContent, churchImageUrl } from '$lib/api/church';
-	import type { ChurchService } from '$lib/api/church';
+	import { getChurchServices, getChurchContent, getChurchVideos, churchImageUrl, churchVideoUrl } from '$lib/api/church';
+	import type { ChurchService, ChurchVideo } from '$lib/api/church';
 
 	const church = SITE.church;
 
 	let services = $state<ChurchService[]>([]);
 	let aboutContent = $state<string | null>(null);
+	let videos = $state<ChurchVideo[]>([]);
 	let loaded = $state(false);
 
 	onMount(async () => {
 		try {
-			const [list, about] = await Promise.all([
+			const [list, about, videoList] = await Promise.all([
 				getChurchServices(),
-				getChurchContent('church_about')
+				getChurchContent('church_about'),
+				getChurchVideos()
 			]);
 			services = list;
 			aboutContent = about;
+			videos = videoList;
 		} catch {
 			// Keep config fallback
 		} finally {
@@ -47,14 +50,12 @@
 	);
 	const displayAbout = $derived(aboutContent ?? church.description);
 
-	/** Church / ministry videos (Facebook share links — open on Facebook) */
-	const GALLERY_VIDEOS = [
-		{ url: 'https://www.facebook.com/share/r/14d6b939rQK/', title: 'Ministry video 1' },
-		{ url: 'https://www.facebook.com/share/r/188QQkxJ6g/', title: 'Ministry video 2' },
-		{ url: 'https://www.facebook.com/share/r/1DcNbwK1fN/', title: 'Ministry video 3' },
-		{ url: 'https://www.facebook.com/share/r/1J1n27R67w/', title: 'Ministry video 4' },
-		{ url: 'https://www.facebook.com/share/r/182GSfx1U7/', title: 'Ministry video 5' }
-	];
+	/** Video href: external URL or uploaded file URL */
+	function videoHref(v: ChurchVideo): string {
+		if (v.url && v.url.trim()) return v.url;
+		if (v.file_path) return churchVideoUrl(v.file_path);
+		return '#';
+	}
 </script>
 
 <svelte:head>
@@ -167,7 +168,8 @@
 			</div>
 		</section>
 
-		<!-- Video gallery -->
+		<!-- Video gallery (only when admin has added videos) -->
+		{#if loaded && videos.length > 0}
 		<section class="border-t border-pink-200/50 section-separator bg-gradient-to-b from-slate-50 to-white py-14 sm:py-20 px-4 sm:px-6 dark:from-[#1e2642]/80 dark:to-[#252d47]/80">
 			<div class="mx-auto max-w-5xl">
 				<AnimateOnView animation="fade-up">
@@ -175,15 +177,15 @@
 						<p class="text-sm font-medium uppercase tracking-[0.2em] text-pink-600 dark:text-pink-400">Watch & share</p>
 						<h2 class="mt-2 text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl">Ministry videos</h2>
 						<p class="mx-auto mt-3 max-w-xl text-slate-600 dark:text-slate-200">
-							Worship, teaching, and moments from our services. Click any card to watch on Facebook.
+							Worship, teaching, and moments from our services. Click any card to watch.
 						</p>
 					</div>
 				</AnimateOnView>
 				<div class="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 lg:gap-8">
-					{#each GALLERY_VIDEOS as video, i}
+					{#each videos as video, i}
 						<AnimateOnView animation="fade-up" stagger={i}>
 							<a
-								href={video.url}
+								href={videoHref(video)}
 								target="_blank"
 								rel="noopener noreferrer"
 								class="group relative block overflow-hidden rounded-2xl border border-pink-200/50 bg-white/90 shadow-md transition-all duration-300 hover:scale-[1.02] hover:border-pink-400/60 hover:shadow-xl hover:shadow-pink-500/10 dark:border-pink-500/30 dark:bg-[#252d47]/90 dark:hover:border-pink-500/60 dark:hover:shadow-pink-500/10"
@@ -201,7 +203,7 @@
 								</div>
 								<div class="px-4 py-3 text-center">
 									<span class="text-sm font-medium text-slate-700 dark:text-slate-200 group-hover:text-pink-600 dark:group-hover:text-pink-400">{video.title}</span>
-									<span class="mt-1 block text-xs text-slate-500 dark:text-slate-400">Watch on Facebook →</span>
+									<span class="mt-1 block text-xs text-slate-500 dark:text-slate-400">{video.url ? 'Watch video →' : 'Play →'}</span>
 								</div>
 							</a>
 						</AnimateOnView>
@@ -209,6 +211,7 @@
 				</div>
 			</div>
 		</section>
+		{/if}
 
 		<!-- CTA -->
 		<section class="border-t border-pink-200/50 section-separator bg-white/60 py-12 sm:py-16 px-4 sm:px-6 dark:bg-[#252d47]/80">

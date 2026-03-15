@@ -1,4 +1,4 @@
-//! Church services and site content: public API + admin CRUD and artwork upload.
+//! Church services, videos, and site content: public API + admin CRUD and uploads.
 
 use axum::{
     extract::{Multipart, Path, State},
@@ -19,6 +19,443 @@ fn upload_base() -> PathBuf {
     std::env::var("UPLOAD_BASE_PATH")
         .unwrap_or_else(|_| "uploads".into())
         .into()
+}
+
+// ---------- Church videos (gallery) ----------
+
+#[derive(Debug, Serialize, sqlx::FromRow)]
+struct ChurchVideoRow {
+    id: String,
+    title: String,
+    url: Option<String>,
+    file_path: Option<String>,
+    sort_order: i64,
+    created_at: String,
+}
+
+async fn list_videos_public(
+    State(pool): State<AnyPool>,
+) -> Result<Json<Vec<serde_json::Value>>, (StatusCode, Json<serde_json::Value>)> {
+    let rows: Vec<ChurchVideoRow> = sqlx::query_as(
+        "SELECT id, title, url, file_path, sort_order, created_at FROM church_videos \
+         WHERE (url IS NOT NULL AND url != '') OR (file_path IS NOT NULL AND file_path != '') \
+         ORDER BY sort_order, created_at DESC",
+    )
+    .fetch_all(&pool)
+    .await
+    .map_err(|e| {
+        tracing::error!("List church videos error: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"message": "Could not fetch videos"})),
+        )
+    })?;
+
+    let list: Vec<serde_json::Value> = rows
+        .into_iter()
+        .map(|r| {
+            serde_json::json!({
+                "id": r.id,
+                "title": r.title,
+                "url": r.url,
+                "file_path": r.file_path,
+                "sort_order": r.sort_order,
+                "created_at": r.created_at,
+            })
+        })
+        .collect();
+    Ok(Json(list))
+}
+
+async fn list_videos_admin(
+    State(pool): State<AnyPool>,
+    AdminUser(_user_id, _role): AdminUser,
+) -> Result<Json<Vec<serde_json::Value>>, (StatusCode, Json<serde_json::Value>)> {
+    let rows: Vec<ChurchVideoRow> = sqlx::query_as(
+        "SELECT id, title, url, file_path, sort_order, created_at FROM church_videos \
+         ORDER BY sort_order, created_at DESC",
+    )
+    .fetch_all(&pool)
+    .await
+    .map_err(|e| {
+        tracing::error!("Admin list church videos error: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"message": "Failed to load videos"})),
+        )
+    })?;
+
+    let list: Vec<serde_json::Value> = rows
+        .into_iter()
+        .map(|r| {
+            serde_json::json!({
+                "id": r.id,
+                "title": r.title,
+                "url": r.url,
+                "file_path": r.file_path,
+                "sort_order": r.sort_order,
+                "created_at": r.created_at,
+            })
+        })
+        .collect();
+    Ok(Json(list))
+}
+
+#[derive(Debug, Deserialize)]
+struct CreateChurchVideoBody {
+    pub title: String,
+    pub url: Option<String>,
+    pub file_path: Option<String>,
+    pub sort_order: Option<i32>,
+}
+
+async fn create_video(
+    State(pool): State<AnyPool>,
+    AdminUser(_user_id, _role): AdminUser,
+    axum::Json(body): axum::Json<CreateChurchVideoBody>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    let title = body.title.trim().to_string();
+    if title.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"message": "Title is required"})),
+        ));
+    }
+    let url = body.url.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
+    let file_path = body
+        .file_path
+        .as_ref()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty());
+    if url.is_none() && file_path.is_none() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"message": "Provide a video URL or upload a file"})),
+        ));
+    }
+    let id = Uuid::new_v4().to_string();
+    let sort_order = body.sort_order.unwrap_or(0) as i64;
+    let now = chrono::Utc::now().to_rfc3339();
+
+    if db::is_postgres() {
+        sqlx::query(
+            "INSERT INTO church_videos (id, title, url, file_path, sort_order, created_at) \
+             VALUES ($1, $2, $3, $4, $5, $6)",
+        )
+        .bind(&id)
+        .bind(&title)
+        .bind(&url)
+        .bind(&file_path)
+        .bind(sort_order)
+        .bind(&now)
+        .execute(&pool)
+        .await
+    } else {
+        sqlx::query(
+            "INSERT INTO church_videos (id, title, url, file_path, sort_order, created_at) \
+             VALUES (?, ?, ?, ?, ?, ?)",
+        )
+        .bind(&id)
+        .bind(&title)
+        .bind(&url)
+        .bind(&file_path)
+        .bind(sort_order)
+        .bind(&now)
+        .execute(&pool)
+        .await
+    }
+    .map_err(|e| {
+        tracing::error!("Create church video error: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"message": "Failed to create video"})),
+        )
+    })?;
+
+    Ok(Json(serde_json::json!({
+        "id": id,
+        "title": title,
+        "url": url,
+        "file_path": file_path,
+        "sort_order": sort_order,
+        "created_at": now,
+    })))
+}
+
+#[derive(Debug, Deserialize)]
+struct UpdateChurchVideoBody {
+    pub title: Option<String>,
+    pub url: Option<String>,
+    pub file_path: Option<String>,
+    pub sort_order: Option<i32>,
+}
+
+async fn update_video(
+    State(pool): State<AnyPool>,
+    AdminUser(_user_id, _role): AdminUser,
+    Path(id): Path<String>,
+    axum::Json(body): axum::Json<UpdateChurchVideoBody>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    type UpdateRow = (String, Option<String>, Option<String>, i64);
+    let existing: Option<UpdateRow> = if db::is_postgres() {
+        sqlx::query_as("SELECT title, url, file_path, sort_order FROM church_videos WHERE id = $1")
+            .bind(&id)
+            .fetch_optional(&pool)
+            .await
+    } else {
+        sqlx::query_as("SELECT title, url, file_path, sort_order FROM church_videos WHERE id = ?")
+            .bind(&id)
+            .fetch_optional(&pool)
+            .await
+    }
+    .map_err(|e| {
+        tracing::error!("Fetch church video error: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"message": "Failed to update"})),
+        )
+    })?;
+
+    let (title, url, file_path, sort_order) = match existing {
+        Some(r) => r,
+        None => {
+            return Err((
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({"message": "Video not found"})),
+            ));
+        }
+    };
+
+    let title = body
+        .title
+        .as_ref()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .unwrap_or(title);
+    let url = body
+        .url
+        .as_ref()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .or(url);
+    let file_path = body
+        .file_path
+        .as_ref()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .or(file_path);
+    if url.is_none() && file_path.is_none() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"message": "At least one of URL or file is required"})),
+        ));
+    }
+    let sort_order = body.sort_order.map(|i| i as i64).unwrap_or(sort_order);
+
+    if db::is_postgres() {
+        sqlx::query(
+            "UPDATE church_videos SET title = $1, url = $2, file_path = $3, sort_order = $4 WHERE id = $5",
+        )
+        .bind(&title)
+        .bind(&url)
+        .bind(&file_path)
+        .bind(sort_order)
+        .bind(&id)
+        .execute(&pool)
+        .await
+    } else {
+        sqlx::query(
+            "UPDATE church_videos SET title = ?, url = ?, file_path = ?, sort_order = ? WHERE id = ?",
+        )
+        .bind(&title)
+        .bind(&url)
+        .bind(&file_path)
+        .bind(sort_order)
+        .bind(&id)
+        .execute(&pool)
+        .await
+    }
+    .map_err(|e| {
+        tracing::error!("Update church video error: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"message": "Failed to update video"})),
+        )
+    })?;
+
+    Ok(Json(serde_json::json!({
+        "id": id,
+        "title": title,
+        "url": url,
+        "file_path": file_path,
+        "sort_order": sort_order,
+    })))
+}
+
+async fn delete_video(
+    State(pool): State<AnyPool>,
+    AdminUser(_user_id, _role): AdminUser,
+    Path(id): Path<String>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    let result = if db::is_postgres() {
+        sqlx::query("DELETE FROM church_videos WHERE id = $1")
+            .bind(&id)
+            .execute(&pool)
+            .await
+    } else {
+        sqlx::query("DELETE FROM church_videos WHERE id = ?")
+            .bind(&id)
+            .execute(&pool)
+            .await
+    }
+    .map_err(|e| {
+        tracing::error!("Delete church video error: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"message": "Failed to delete video"})),
+        )
+    })?;
+
+    if result.rows_affected() == 0 {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"message": "Video not found"})),
+        ));
+    }
+    Ok(Json(serde_json::json!({"ok": true})))
+}
+
+fn safe_video_filename(name: &str) -> String {
+    let ext = std::path::Path::new(name)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("mp4");
+    let safe_ext = ext
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric())
+        .collect::<String>();
+    format!(
+        "{}.{}",
+        Uuid::new_v4(),
+        if safe_ext.is_empty() { "mp4" } else { &safe_ext }
+    )
+}
+
+static ALLOWED_VIDEO_EXT: [&str; 5] = ["mp4", "webm", "mov", "ogg", "m4v"];
+
+async fn upload_video(
+    State(_pool): State<AnyPool>,
+    AdminUser(_user_id, _role): AdminUser,
+    mut multipart: Multipart,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    use tokio::io::AsyncWriteExt;
+
+    let mut file_path: Option<PathBuf> = None;
+    let base = upload_base();
+    while let Some(field) = multipart.next_field().await.map_err(|e| {
+        tracing::error!("Multipart error: {:?}", e);
+        (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"message": "Invalid upload"})),
+        )
+    })? {
+        if field.name().unwrap_or("") == "file" {
+            let name = field.file_name().unwrap_or("video.mp4");
+            let ext = std::path::Path::new(name)
+                .extension()
+                .and_then(|e| e.to_str())
+                .unwrap_or("mp4")
+                .to_lowercase();
+            if !ALLOWED_VIDEO_EXT.contains(&ext.as_str()) {
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    Json(serde_json::json!({
+                        "message": "Allowed video formats: mp4, webm, mov, ogg, m4v"
+                    })),
+                ));
+            }
+            let file_name = safe_video_filename(name);
+            let bytes = field.bytes().await.map_err(|e| {
+                tracing::error!("Read upload error: {:?}", e);
+                (
+                    StatusCode::BAD_REQUEST,
+                    Json(serde_json::json!({"message": "Could not read file"})),
+                )
+            })?;
+
+            let dir = base.join("church").join("videos");
+            tokio::fs::create_dir_all(&dir).await.map_err(|e| {
+                tracing::error!("Create upload dir error: {:?}", e);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({"message": "Could not prepare upload directory"})),
+                )
+            })?;
+            let path = dir.join(&file_name);
+            let mut file = tokio::fs::File::create(&path).await.map_err(|e| {
+                tracing::error!("Create file error: {:?}", e);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({"message": "Could not save file"})),
+                )
+            })?;
+            file.write_all(&bytes).await.map_err(|e| {
+                tracing::error!("Write file error: {:?}", e);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({"message": "Could not save file"})),
+                )
+            })?;
+            file_path = Some(path);
+        }
+    }
+
+    let path = file_path.ok_or((
+        StatusCode::BAD_REQUEST,
+        Json(serde_json::json!({"message": "Please upload a video file"})),
+    ))?;
+
+    let file_name = path
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or("video.mp4");
+    Ok(Json(serde_json::json!({
+        "file_path": file_name,
+        "url": format!("/api/v1/uploads/church/videos/{}", file_name),
+    })))
+}
+
+async fn serve_video_upload(Path(filename): Path<String>) -> Response {
+    if filename.contains("..") || filename.contains('/') || filename.contains('\\') {
+        return (StatusCode::BAD_REQUEST, "Invalid filename").into_response();
+    }
+    let base = upload_base();
+    let path = base.join("church").join("videos").join(&filename);
+    if !path.starts_with(&base) {
+        return (StatusCode::FORBIDDEN, "Invalid path").into_response();
+    }
+    match tokio::fs::read(&path).await {
+        Ok(data) => {
+            let content_type = infer_video_content_type(&filename);
+            ([(header::CONTENT_TYPE, content_type)], data).into_response()
+        }
+        Err(_) => (StatusCode::NOT_FOUND, "File not found").into_response(),
+    }
+}
+
+fn infer_video_content_type(filename: &str) -> &'static str {
+    let lower = filename.to_lowercase();
+    if lower.ends_with(".webm") {
+        "video/webm"
+    } else if lower.ends_with(".mov") {
+        "video/quicktime"
+    } else if lower.ends_with(".ogg") {
+        "video/ogg"
+    } else if lower.ends_with(".m4v") {
+        "video/x-m4v"
+    } else {
+        "video/mp4"
+    }
 }
 
 // ---------- Public: list church services ----------
@@ -620,8 +1057,10 @@ async fn set_site_content(
 pub fn church_routes(pool: AnyPool) -> Router {
     Router::new()
         .route("/church/services", get(list_services_public))
+        .route("/church/videos", get(list_videos_public))
         .route("/church/content/:key", get(get_site_content_public))
         .route("/uploads/church/:filename", get(serve_upload))
+        .route("/uploads/church/videos/:filename", get(serve_video_upload))
         .route(
             "/admin/church/services",
             get(list_services_admin).post(create_service),
@@ -630,6 +1069,15 @@ pub fn church_routes(pool: AnyPool) -> Router {
         .route(
             "/admin/church/services/:id",
             patch(update_service).delete(delete_service),
+        )
+        .route(
+            "/admin/church/videos",
+            get(list_videos_admin).post(create_video),
+        )
+        .route("/admin/church/videos/upload", post(upload_video))
+        .route(
+            "/admin/church/videos/:id",
+            patch(update_video).delete(delete_video),
         )
         .route("/admin/church/content/:key", post(set_site_content))
         .with_state(pool)

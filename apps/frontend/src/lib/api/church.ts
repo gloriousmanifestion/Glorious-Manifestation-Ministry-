@@ -161,3 +161,108 @@ export async function setChurchContent(key: string, value: string): Promise<void
 		throw new Error(json.message ?? 'Failed to save content');
 	}
 }
+
+// ---------- Church videos (gallery) ----------
+
+export interface ChurchVideo {
+	id: string;
+	title: string;
+	url: string | null;
+	file_path: string | null;
+	sort_order: number;
+	created_at: string;
+}
+
+export async function getChurchVideos(): Promise<ChurchVideo[]> {
+	const res = await fetch(`${API_BASE}/church/videos`);
+	const json = await safeJson<ChurchVideo[] | { message?: string }>(res);
+	if (!res.ok) throw new Error((json as { message?: string }).message ?? 'Failed to fetch videos');
+	return Array.isArray(json) ? json : [];
+}
+
+export async function listChurchVideosAdmin(): Promise<ChurchVideo[]> {
+	const res = await fetch(`${API_BASE}/admin/church/videos`, { headers: getAuthHeaders() });
+	const json = await safeJson<ChurchVideo[] | { message?: string }>(res);
+	if (!res.ok) throw new Error((json as { message?: string }).message ?? 'Failed to list videos');
+	return Array.isArray(json) ? json : [];
+}
+
+export interface CreateChurchVideoBody {
+	title: string;
+	url?: string | null;
+	file_path?: string | null;
+	sort_order?: number;
+}
+
+export async function createChurchVideo(body: CreateChurchVideoBody): Promise<ChurchVideo> {
+	const res = await fetch(`${API_BASE}/admin/church/videos`, {
+		method: 'POST',
+		headers: getAuthHeaders(),
+		body: JSON.stringify(body)
+	});
+	const json = await safeJson<ChurchVideo | { message?: string }>(res);
+	if (!res.ok) throw new Error((json as { message?: string }).message ?? 'Failed to create video');
+	return json as ChurchVideo;
+}
+
+export interface UpdateChurchVideoBody {
+	title?: string;
+	url?: string | null;
+	file_path?: string | null;
+	sort_order?: number;
+}
+
+export async function updateChurchVideo(
+	id: string,
+	body: UpdateChurchVideoBody
+): Promise<ChurchVideo> {
+	const res = await fetch(`${API_BASE}/admin/church/videos/${encodeURIComponent(id)}`, {
+		method: 'PATCH',
+		headers: getAuthHeaders(),
+		body: JSON.stringify(body)
+	});
+	const json = await safeJson<ChurchVideo | { message?: string }>(res);
+	if (!res.ok) throw new Error((json as { message?: string }).message ?? 'Failed to update video');
+	return json as ChurchVideo;
+}
+
+export async function deleteChurchVideo(id: string): Promise<void> {
+	const res = await fetch(`${API_BASE}/admin/church/videos/${encodeURIComponent(id)}`, {
+		method: 'DELETE',
+		headers: getAuthHeaders()
+	});
+	if (!res.ok) {
+		const json = await safeJson<{ message?: string }>(res);
+		throw new Error(json.message ?? 'Failed to delete video');
+	}
+}
+
+/** Upload video file; returns file_path and url for use in create/update. */
+export async function uploadChurchVideo(file: File): Promise<{ file_path: string; url: string }> {
+	const form = new FormData();
+	form.append('file', file);
+	const token = typeof window !== 'undefined' ? localStorage.getItem('pms_token') : null;
+	const headers: Record<string, string> = {};
+	if (token) headers['Authorization'] = `Bearer ${token}`;
+
+	const res = await fetch(`${API_BASE}/admin/church/videos/upload`, {
+		method: 'POST',
+		headers,
+		body: form
+	});
+	const json = await safeJson<{ file_path?: string; url?: string } | { message?: string }>(res);
+	if (!res.ok) throw new Error((json as { message?: string }).message ?? 'Upload failed');
+	const out = json as { file_path?: string; url?: string };
+	if (!out.file_path) throw new Error('Upload response missing file_path');
+	return {
+		file_path: out.file_path,
+		url: out.url ?? `${API_BASE}/uploads/church/videos/${out.file_path}`
+	};
+}
+
+/** Full URL for a video file (file_path from API). */
+export function churchVideoUrl(filePath: string | null | undefined): string {
+	if (!filePath) return '';
+	if (filePath.startsWith('http') || filePath.startsWith('/')) return filePath;
+	return `${API_BASE}/uploads/church/videos/${filePath.replace(/^.*\//, '')}`;
+}
