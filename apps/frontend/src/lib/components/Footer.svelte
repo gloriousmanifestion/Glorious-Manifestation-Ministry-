@@ -6,6 +6,7 @@
 		{ href: '/admissions', label: 'Admissions' },
 		{ href: '/events', label: 'Events' },
 		{ href: '/faq', label: 'FAQ' },
+		{ href: '/testimonials', label: 'Testimonials' },
 		{ href: '/contact', label: 'Contact' }
 	];
 

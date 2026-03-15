@@ -12,6 +12,7 @@
 		{ href: '/admissions', label: 'Admissions', icon: 'document' },
 		{ href: '/events', label: 'Events', icon: 'calendar' },
 		{ href: '/faq', label: 'FAQ', icon: 'faq' },
+		{ href: '/testimonials', label: 'Testimonials', icon: 'quote' },
 		{ href: '/church', label: 'Church', icon: 'church' },
 		{ href: '/contact', label: 'Contact', icon: 'envelope' }
 	];
@@ -45,6 +46,8 @@
 				return 'M12 2L4 6v2h2v10H4v2h4v-4h4v4h4v-2h-2V8h2V6l-8-4zm0 2.5l5 2.5v1H7v-1l5-2.5zM7 11h2v2H7v-2zm6 0h2v2h-2v-2z';
 			case 'faq':
 				return 'M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z';
+			case 'quote':
+				return 'M7 8h10m-5 8v-4m0-4V8m5 4l3 3m0 0l3-3m-3 3V4';
 			default:
 				return 'M4 6h16M4 12h16M4 18h16';
 		}
