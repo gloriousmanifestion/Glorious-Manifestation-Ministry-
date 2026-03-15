@@ -17,6 +17,7 @@
 		{ href: '/admin/courses', label: 'Courses', icon: 'book' as const },
 		{ href: '/admin/learning-plans', label: 'Learning plans', icon: 'academic' as const },
 		{ href: '/admin/church', label: 'Church', icon: 'church' as const },
+		{ href: '/admin/faq', label: 'FAQ', icon: 'faq' as const },
 		...(user?.role === 'super_admin' ? [{ href: '/admin/team', label: 'Team & invites', icon: 'invite' as const }] : [])
 	]);
 
@@ -55,6 +56,8 @@
 				return 'M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z';
 			case 'church':
 				return 'M12 2L9 5v2H5v2h4v10h2V9h4V7h-4V5l-3-3zm0 2.5l1.5 1.5H12v1h-1V6l.5-.5z';
+			case 'faq':
+				return 'M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z';
 			default:
 				return 'M4 6h16M4 12h16M4 18h16';
 		}
