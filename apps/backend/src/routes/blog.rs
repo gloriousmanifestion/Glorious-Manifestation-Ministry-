@@ -255,7 +255,14 @@ async fn update(
     Path(id): Path<String>,
     axum::Json(body): axum::Json<UpdateBlogPostBody>,
 ) -> Result<Json<BlogPostRow>, (StatusCode, Json<serde_json::Value>)> {
-    type BlogPostParts = (String, String, String, String, Option<String>, Option<String>);
+    type BlogPostParts = (
+        String,
+        String,
+        String,
+        String,
+        Option<String>,
+        Option<String>,
+    );
     let existing: Option<BlogPostParts> = if db::is_postgres() {
             sqlx::query_as(
                 "SELECT title, slug, body, author_name, image_url, published_at FROM blog_posts WHERE id = $1",
