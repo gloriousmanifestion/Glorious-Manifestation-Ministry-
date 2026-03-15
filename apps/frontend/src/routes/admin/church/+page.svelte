@@ -22,6 +22,10 @@
 	let uploadProgress = $state(false);
 	let submitLoading = $state(false);
 
+	let aboutContent = $state('');
+	let aboutLoading = $state(true);
+	let aboutSaving = $state(false);
+
 	const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 	onMount(load);
@@ -35,6 +39,27 @@
 			error = e instanceof Error ? e.message : 'Failed to load church services';
 		} finally {
 			loading = false;
+		}
+		aboutLoading = true;
+		try {
+			const raw = await churchApi.getChurchContent('church_about');
+			aboutContent = raw ?? '';
+		} catch {
+			aboutContent = '';
+		} finally {
+			aboutLoading = false;
+		}
+	}
+
+	async function saveAbout() {
+		aboutSaving = true;
+		error = '';
+		try {
+			await churchApi.setChurchContent('church_about', aboutContent);
+		} catch (e) {
+			error = e instanceof Error ? e.message : 'Failed to save';
+		} finally {
+			aboutSaving = false;
 		}
 	}
 
@@ -153,6 +178,36 @@
 </svelte:head>
 
 <div class="mx-auto max-w-7xl">
+	<!-- Church about (public /church "About" block) -->
+	<section class="mb-10 rounded-xl border border-slate-700 bg-slate-800/50 p-6">
+		<h2 class="text-lg font-bold text-white">Church about</h2>
+		<p class="mt-1 text-sm text-slate-400">
+			Text shown in the "About the Church" section on the public <a href="/church" class="text-pink-400 hover:underline">Church</a> page.
+		</p>
+		{#if aboutLoading}
+			<div class="mt-4 h-24 animate-pulse rounded-lg bg-slate-700/50"></div>
+		{:else}
+			<div class="mt-4">
+				<label for="church-about" class="sr-only">Church about text</label>
+				<textarea
+					id="church-about"
+					bind:value={aboutContent}
+					rows="5"
+					class="w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-white placeholder-slate-500"
+					placeholder="Describe the church and ministry..."
+				></textarea>
+				<button
+					type="button"
+					onclick={saveAbout}
+					disabled={aboutSaving}
+					class="mt-3 rounded-lg bg-pink-600 px-4 py-2 text-sm font-semibold text-white hover:bg-pink-500 disabled:opacity-50"
+				>
+					{aboutSaving ? 'Saving…' : 'Save about text'}
+				</button>
+			</div>
+		{/if}
+	</section>
+
 	<header class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 		<div>
 			<h1 class="text-2xl font-bold text-white">Church services</h1>
