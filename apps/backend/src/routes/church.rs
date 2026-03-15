@@ -121,7 +121,11 @@ async fn create_video(
             Json(serde_json::json!({"message": "Title is required"})),
         ));
     }
-    let url = body.url.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
+    let url = body
+        .url
+        .as_ref()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty());
     let file_path = body
         .file_path
         .as_ref()
@@ -337,7 +341,11 @@ fn safe_video_filename(name: &str) -> String {
     format!(
         "{}.{}",
         Uuid::new_v4(),
-        if safe_ext.is_empty() { "mp4" } else { &safe_ext }
+        if safe_ext.is_empty() {
+            "mp4"
+        } else {
+            &safe_ext
+        }
     )
 }
 
