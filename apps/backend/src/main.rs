@@ -10,13 +10,6 @@ mod models;
 mod routes;
 
 #[derive(Serialize, Deserialize)]
-struct HealthResponse {
-    status: String,
-    version: String,
-    timestamp: String,
-}
-
-#[derive(Serialize, Deserialize)]
 struct ApiInfo {
     name: String,
     version: String,
@@ -33,8 +26,8 @@ async fn main() {
 
     let app = Router::new()
         .route("/", get(root))
-        .route("/health", get(health))
         .route("/api/v1/info", get(api_info))
+        .merge(routes::health_routes(pool.clone()))
         .nest(
             "/api/v1",
             routes::auth_routes(pool.clone())
@@ -79,14 +72,6 @@ async fn root() -> Json<serde_json::Value> {
             "contact": "/api/v1/contact"
         }
     }))
-}
-
-async fn health() -> Json<HealthResponse> {
-    Json(HealthResponse {
-        status: "ok".to_string(),
-        version: env!("CARGO_PKG_VERSION").to_string(),
-        timestamp: chrono::Utc::now().to_rfc3339(),
-    })
 }
 
 async fn api_info() -> Json<ApiInfo> {

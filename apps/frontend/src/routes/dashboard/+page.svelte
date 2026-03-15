@@ -113,6 +113,62 @@
 					</div>
 				{/if}
 
+				<!-- Next steps checklist -->
+				<div class="mb-6 sm:mb-8 rounded-2xl border border-slate-200/80 section-separator card-premium bg-white/95 p-4 sm:p-6 shadow-sm dark:bg-[#1e2642]">
+					<h2 class="text-lg font-semibold text-slate-900 dark:text-white">Your next steps</h2>
+					<ul class="mt-4 space-y-3" role="list">
+						<li class="flex items-center gap-3">
+							<span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full {user.verified ? 'bg-green-100 text-green-600 dark:bg-green-900/50 dark:text-green-300' : 'bg-amber-100 text-amber-600 dark:bg-amber-900/50 dark:text-amber-300'}">
+								{#if user.verified}
+									<svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+								{:else}
+									<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+								{/if}
+							</span>
+							<span class="{user.verified ? 'text-slate-500 dark:text-slate-400' : 'font-medium text-slate-900 dark:text-white'}">Verify your account</span>
+							{#if !user.verified}
+								<button type="button" onclick={handleVerify} disabled={verifyLoading} class="ml-auto text-sm font-medium text-pink-600 hover:text-pink-700 dark:text-pink-400">Verify now</button>
+							{/if}
+						</li>
+						<li class="flex items-center gap-3">
+							<span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full {selectedCourse ? 'bg-green-100 text-green-600 dark:bg-green-900/50 dark:text-green-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400'}">
+								{#if selectedCourse}
+									<svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+								{:else}
+									<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+								{/if}
+							</span>
+							<span class="{selectedCourse ? 'text-slate-500 dark:text-slate-400' : 'font-medium text-slate-900 dark:text-white'}">Select a course</span>
+						</li>
+						<li class="flex items-center gap-3">
+							<span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full {user.paymentComplete ? 'bg-green-100 text-green-600 dark:bg-green-900/50 dark:text-green-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400'}">
+								{#if user.paymentComplete}
+									<svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+								{:else}
+									<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+								{/if}
+							</span>
+							<span class="{user.paymentComplete ? 'text-slate-500 dark:text-slate-400' : 'font-medium text-slate-900 dark:text-white'}">Complete payment</span>
+							{#if !user.paymentComplete && selectedCourse}
+								<a href={SITE.selarPaymentUrl} target="_blank" rel="noopener noreferrer" class="ml-auto text-sm font-medium text-pink-600 hover:text-pink-700 dark:text-pink-400">Pay via Selar</a>
+							{/if}
+						</li>
+						<li class="flex items-center gap-3">
+							<span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full {user.verified && user.paymentComplete ? 'bg-green-100 text-green-600 dark:bg-green-900/50 dark:text-green-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400'}">
+								{#if user.verified && user.paymentComplete}
+									<svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+								{:else}
+									<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+								{/if}
+							</span>
+							<span class="{user.verified && user.paymentComplete ? 'text-slate-500 dark:text-slate-400' : 'font-medium text-slate-900 dark:text-white'}">View your certificate</span>
+							{#if user.verified && user.paymentComplete}
+								<a href="/dashboard/certificate" class="ml-auto text-sm font-medium text-pink-600 hover:text-pink-700 dark:text-pink-400">View certificate</a>
+							{/if}
+						</li>
+					</ul>
+				</div>
+
 				<!-- Pending actions banners -->
 				<div class="mb-6 sm:mb-8 space-y-3 sm:space-y-4">
 					{#if showVerifyBanner}
