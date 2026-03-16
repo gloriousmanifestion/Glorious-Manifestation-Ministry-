@@ -178,6 +178,12 @@ function createAuthStore() {
 			userStore.set(user);
 			saveUser(user);
 		},
+		async markPaymentSuccess(reference?: string | null) {
+			const r = await api.markPaymentSuccess(reference);
+			const user = toUser(r);
+			userStore.set(user);
+			saveUser(user);
+		},
 		async uploadPaymentProof(file: File, note?: string) {
 			const proof = await api.uploadPaymentProof(file, note);
 			return proof;
@@ -218,6 +224,18 @@ function createAuthStore() {
 			const user = toUser(r);
 			userStore.set(user);
 			saveUser(user);
+		},
+		/** Force-refresh current user from backend (e.g. after external payment redirect). */
+		async refreshUser() {
+			const r = await api.getMe();
+			if (r) {
+				const user = toUser(r);
+				userStore.set(user);
+				saveUser(user);
+			} else {
+				userStore.set(null);
+				saveUser(null);
+			}
 		},
 		logout() {
 			userStore.set(null);

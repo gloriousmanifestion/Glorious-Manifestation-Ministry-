@@ -252,6 +252,19 @@ export async function completePayment(): Promise<UserResponse> {
 	return json as UserResponse;
 }
 
+export async function markPaymentSuccess(reference?: string | null): Promise<UserResponse> {
+	const res = await fetch(`${API_BASE}/payments/success`, {
+		method: 'POST',
+		headers: getAuthHeaders(),
+		body: JSON.stringify({ reference: reference ?? null })
+	});
+	const json = await safeJson<unknown>(res);
+	if (!res.ok) {
+		throw new Error(getErrorMessage(json, 'Failed to mark payment as successful'));
+	}
+	return json as UserResponse;
+}
+
 // --- Payment proofs (POP upload) ---
 
 export type PaymentProofStatus = 'pending' | 'approved' | 'rejected';
