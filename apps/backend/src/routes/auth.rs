@@ -119,7 +119,8 @@ pub async fn send_email_to(to: &str, subject: &str, body: &str) -> Result<(), St
     let message = Message {
         subject: subject.to_string(),
         body: MessageBody {
-            content_type: BodyType::Text,
+            // Use HTML for rich, responsive emails.
+            content_type: BodyType::HTML,
             content: body.to_string(),
         },
         to_recipients: vec![Recipient::new(to)],
@@ -133,16 +134,79 @@ pub async fn send_email_to(to: &str, subject: &str, body: &str) -> Result<(), St
         .map_err(|e| e.to_string())
 }
 
-async fn send_registration_email(to: &str, name: &str) -> Result<(), String> {
+async fn send_registration_email(to: &str, name: &str, verify_link: &str) -> Result<(), String> {
     let subject = "Welcome to Prophetic Ministry Manifestation Pastoral School";
+    // Simple responsive email layout with inline styles for broad client support.
     let body = format!(
-        "Hi {name},\n\n\
-Thank you for registering for the Prophetic Ministry Manifestation Pastoral School.\n\n\
-Your account has been created successfully.\n\
-You can now log in with your email and password. After logging in, use the dashboard to request a verification email.\n\n\
-If you did not create this account, please ignore this email.\n\n\
-Blessings,\n\
-Prophetic Ministry Manifestation Pastoral School"
+        r#"<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Welcome to PMS Pastoral School</title>
+  </head>
+  <body style="margin:0;padding:0;background-color:#f3f4f6;">
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+      <tr>
+        <td align="center" style="padding:24px 12px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:560px;background-color:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 10px 30px rgba(15,23,42,0.08);">
+            <tr>
+              <td style="padding:24px 24px 12px 24px;background:linear-gradient(135deg,#db2777,#4f46e5);color:#f9fafb;text-align:center;">
+                <h1 style="margin:0;font-size:22px;line-height:1.3;font-family:System,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+                  Prophetic Glorious Manifestation<br/>
+                  <span style="font-weight:400;font-size:16px;opacity:0.9;">Pastoral School</span>
+                </h1>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px 24px 8px 24px;font-family:System,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#0f172a;font-size:15px;line-height:1.6;">
+                <p style="margin:0 0 12px 0;">Hi {name},</p>
+                <p style="margin:0 0 12px 0;">
+                  Thank you for registering for the <strong>Prophetic Ministry Manifestation Pastoral School</strong>.
+                  We are honoured to walk with you on this journey of equipping for ministry.
+                </p>
+                <p style="margin:0 0 16px 0;">
+                  To secure your account and access your dashboard, please verify your email address:
+                </p>
+                <div style="text-align:center;margin:20px 0;">
+                  <a href="{verify_link}"
+                     style="display:inline-block;padding:12px 28px;border-radius:999px;background-color:#db2777;color:#f9fafb;text-decoration:none;font-weight:600;font-size:14px;font-family:System,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+                    Verify my email
+                  </a>
+                </div>
+                <p style="margin:0 0 12px 0;font-size:13px;color:#64748b;">
+                  If the button above does not work, copy and paste this link into your browser:
+                  <br/>
+                  <span style="word-break:break-all;color:#4f46e5;">{verify_link}</span>
+                </p>
+                <p style="margin:16px 0 8px 0;">
+                  After verification, you will be able to:
+                </p>
+                <ul style="margin:0 0 16px 20px;padding:0;font-size:14px;color:#0f172a;">
+                  <li>Select your course in the dashboard.</li>
+                  <li>Complete your enrollment and payment.</li>
+                  <li>Access announcements, resources, and your learning journey.</li>
+                </ul>
+                <p style="margin:0 0 12px 0;font-size:13px;color:#64748b;">
+                  If you did not create this account, you can safely ignore this email.
+                </p>
+                <p style="margin:8px 0 0 0;">
+                  Blessings,<br/>
+                  <strong>Prophetic Glorious Manifestation Pastoral School</strong>
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:16px 24px 20px 24px;background-color:#f9fafb;font-family:System,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:11px;color:#6b7280;text-align:center;">
+                You are receiving this email because you registered for the Prophetic Glorious Manifestation Pastoral School.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>"#
     );
     send_email_to(to, subject, &body).await
 }
@@ -523,13 +587,41 @@ async fn register(
         verified: 0,
         payment_complete: 0,
         role: role.clone(),
-        created_at: now,
+        created_at: now.clone(),
         totp_secret: None,
     };
 
+    // Create initial email verification token so the registration email has an activation link.
+    let verif_token_id = Uuid::new_v4().to_string();
+    let verif_token = Uuid::new_v4().to_string();
+    let verif_expires_at = (chrono::Utc::now() + chrono::Duration::hours(24)).to_rfc3339();
+
+    let ev_sql = if db::is_postgres() {
+        "INSERT INTO email_verification_tokens (id, user_id, token, expires_at, created_at) VALUES ($1, $2, $3, $4, $5)"
+    } else {
+        "INSERT INTO email_verification_tokens (id, user_id, token, expires_at, created_at) VALUES (?, ?, ?, ?, ?)"
+    };
+    let _ = sqlx::query(ev_sql)
+        .bind(&verif_token_id)
+        .bind(&id)
+        .bind(&verif_token)
+        .bind(&verif_expires_at)
+        .bind(&now)
+        .execute(&pool)
+        .await;
+
+    // Build verification link for HTML email.
+    let base_url =
+        std::env::var("APP_BASE_URL").unwrap_or_else(|_| "http://localhost:5173".to_string());
+    let verify_link = format!(
+        "{}/verify-email?token={}",
+        base_url.trim_end_matches('/'),
+        verif_token
+    );
+
     // Fire-and-forget registration email via Microsoft Graph using wangamail-rs.
     // Failing to send email must not block registration.
-    if let Err(e) = send_registration_email(&user.email, &user.name).await {
+    if let Err(e) = send_registration_email(&user.email, &user.name, &verify_link).await {
         tracing::error!("Registration email error for {}: {}", user.email, e);
     }
 
