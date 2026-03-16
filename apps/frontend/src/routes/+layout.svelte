@@ -6,6 +6,7 @@
 	import HeroLogoProgress from '$lib/components/HeroLogoProgress.svelte';
 	import { hydrateUser } from '$lib/auth';
 	import { initTheme } from '$lib/stores/theme';
+	import { pageSeo } from '$lib/stores/pageSeo';
 
 	onMount(() => {
 		initTheme();
@@ -13,7 +14,12 @@
 	});
 </script>
 
-<SeoHead />
+<SeoHead
+	title={$pageSeo.title}
+	description={$pageSeo.description}
+	keywords={$pageSeo.keywords}
+	noIndex={$pageSeo.noIndex}
+/>
 
 <div class="pb-20 md:pb-0">
 	<slot />

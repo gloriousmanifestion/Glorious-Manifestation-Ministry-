@@ -4,6 +4,12 @@
 	import { SITE } from '$lib/config';
 	import type { Resource } from '$lib/api/resources';
 	import EmptySection from '$lib/components/EmptySection.svelte';
+	import { pageSeo } from '$lib/stores/pageSeo';
+
+	pageSeo.set({
+		title: `Resource library — ${SITE.schoolName}`,
+		description: 'Downloads, links, and resources for students.'
+	});
 
 	interface Data {
 		resources: Resource[];
@@ -18,11 +24,6 @@
 		return 'Link';
 	}
 </script>
-
-<svelte:head>
-	<title>Resource library — {SITE.schoolName}</title>
-	<meta name="description" content="Downloads, links, and resources for students." />
-</svelte:head>
 
 <div class="min-h-screen flex flex-col">
 	<Nav />

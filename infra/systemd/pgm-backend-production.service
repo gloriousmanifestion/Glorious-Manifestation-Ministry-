@@ -18,8 +18,8 @@ ExecStart=/opt/pgm/backend/backend
 Restart=on-failure
 RestartSec=5
 WorkingDirectory=/opt/pgm/backend
-# Same .env written by deploy (DATABASE_URL, PORT=5800, VAULT_*, etc.)
-EnvironmentFile=-/opt/pgm/backend/.env
+# Production-specific env file (matches /opt/pgm/backend/production/.env layout).
+EnvironmentFile=-/opt/pgm/backend/production/.env
 
 [Install]
 WantedBy=multi-user.target

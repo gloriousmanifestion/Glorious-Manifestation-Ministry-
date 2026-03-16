@@ -20,7 +20,7 @@ jsonwebtoken = "9"
 uuid = { version = "1", features = ["v4"] }
 axum-extra = { version = "0.9", features = ["typed-header"] }
 headers = "0.4"
-wangamail-rs = "0.1"
+reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
 governor = "0.6"
 tower_governor = { version = "0.4", features = ["axum"] }
 totp-rs = { version = "5", features = ["gen_secret", "otpauth", "qr"] }

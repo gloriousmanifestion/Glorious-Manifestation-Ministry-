@@ -18,9 +18,10 @@ Type=simple
 ExecStart=/opt/pgm/backend/backend
 Restart=on-failure
 RestartSec=5
+# Keep backend root as working directory so relative paths still work.
 WorkingDirectory=/opt/pgm/backend
-# Same .env written by deploy (DATABASE_URL, PORT=5668, VAULT_*, etc.)
-EnvironmentFile=-/opt/pgm/backend/.env
+# Staging-specific env file (matches your existing folder layout).
+EnvironmentFile=-/opt/pgm/backend/staging/.env
 
 [Install]
 WantedBy=multi-user.target

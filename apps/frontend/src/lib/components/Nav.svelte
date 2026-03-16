@@ -30,6 +30,11 @@
 	const mobileNavLinks = navLinks.slice(0, 4);
 	const pathname = $derived($page.url.pathname);
 
+	// Simple env banner: read from Vite/SvelteKit public env.
+	const envName =
+		(typeof import.meta.env !== 'undefined' && import.meta.env.PUBLIC_APP_ENV) || 'production';
+	const isNonProd = envName !== 'production';
+
 	function isActive(href: string): boolean {
 		if (href === '/') return pathname === '/';
 		return pathname === href || pathname.startsWith(href + '/');
@@ -234,11 +239,19 @@
 			{/if}
 		</div>
 	</nav>
+	{#if isNonProd}
+		<div class="mx-auto max-w-[100rem] px-4 pb-2 sm:px-6">
+			<div class="inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800 dark:bg-amber-900/60 dark:text-amber-200">
+				<span class="inline-flex h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+				<span>{envName.toUpperCase()} environment</span>
+			</div>
+		</div>
+	{/if}
 </header>
 
 <!-- Mobile: top bar (logo only) -->
 <header
-	class="fixed top-0 left-0 right-0 z-40 flex items-center justify-center pt-[env(safe-area-inset-top)] pb-3 md:hidden {scrolled
+	class="fixed top-0 left-0 right-0 z-40 flex flex-col items-center justify-center pt-[env(safe-area-inset-top)] pb-1 md:hidden {scrolled
 		? 'border-b border-pink-200/50 bg-white/90 backdrop-blur-xl dark:bg-[#252d47]/90'
 		: 'border-b border-transparent bg-transparent dark:bg-transparent'}"
 >
@@ -249,6 +262,11 @@
 		<img src="/favicon.png" alt="" class="h-8 w-8 shrink-0 rounded-full object-cover" aria-hidden="true" />
 		<span>{SITE.schoolName}</span>
 	</a>
+	{#if isNonProd}
+		<div class="mt-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-900/60 dark:text-amber-200">
+			{envName.toUpperCase()} environment
+		</div>
+	{/if}
 </header>
 
 <!-- Mobile: bottom nav (exactly 5 items: 4 links + More) -->

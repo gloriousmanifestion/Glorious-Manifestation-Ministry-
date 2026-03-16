@@ -111,8 +111,10 @@ pub struct AdminUserRow {
     pub phone: String,
     pub ministry_role: String,
     pub church_name: String,
-    pub verified: bool,
-    pub payment_complete: bool,
+    /// Stored as INTEGER (0/1) in the database.
+    pub verified: i32,
+    /// Stored as INTEGER (0/1) in the database.
+    pub payment_complete: i32,
     pub selected_course_id: Option<String>,
     pub created_at: String,
 }
@@ -224,8 +226,8 @@ async fn list_users(
             "phone": u.phone,
             "ministryRole": u.ministry_role,
             "churchName": u.church_name,
-            "verified": u.verified,
-            "paymentComplete": u.payment_complete,
+            "verified": u.verified != 0,
+            "paymentComplete": u.payment_complete != 0,
             "selectedCourseId": u.selected_course_id,
             "createdAt": u.created_at,
         })).collect::<Vec<_>>(),
@@ -465,9 +467,13 @@ async fn export_registrations(
             csv.push(',');
             csv.push_str(&escape_csv_field(&u.church_name));
             csv.push(',');
-            csv.push_str(if u.verified { "true" } else { "false" });
+            csv.push_str(if u.verified != 0 { "true" } else { "false" });
             csv.push(',');
-            csv.push_str(if u.payment_complete { "true" } else { "false" });
+            csv.push_str(if u.payment_complete != 0 {
+                "true"
+            } else {
+                "false"
+            });
             csv.push(',');
             csv.push_str(&escape_csv_field(
                 u.selected_course_id.as_deref().unwrap_or(""),

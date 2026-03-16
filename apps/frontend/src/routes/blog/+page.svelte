@@ -5,6 +5,12 @@
 	import { getBlogPosts, type BlogPost } from '$lib/api/blog';
 	import { SITE } from '$lib/config';
 	import EmptySection from '$lib/components/EmptySection.svelte';
+	import { pageSeo } from '$lib/stores/pageSeo';
+
+	pageSeo.set({
+		title: `Blog — ${SITE.name} Pastoral School`,
+		description: 'News and updates from the Pastoral School.'
+	});
 
 	let items = $state<BlogPost[]>([]);
 	let loading = $state(true);
@@ -32,11 +38,6 @@
 		}
 	}
 </script>
-
-<svelte:head>
-	<title>Blog — {SITE.name} Pastoral School</title>
-	<meta name="description" content="News and updates from the Pastoral School." />
-</svelte:head>
 
 <div class="min-h-screen flex flex-col">
 	<Nav />

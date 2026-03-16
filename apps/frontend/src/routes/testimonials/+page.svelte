@@ -5,6 +5,12 @@
 	import { getTestimonials, type Testimonial } from '$lib/api/testimonials';
 	import { SITE } from '$lib/config';
 	import EmptySection from '$lib/components/EmptySection.svelte';
+	import { pageSeo } from '$lib/stores/pageSeo';
+
+	pageSeo.set({
+		title: `Testimonials — ${SITE.name} Pastoral School`,
+		description: 'What students and alumni say about the Pastoral School.'
+	});
 
 	let items = $state<Testimonial[]>([]);
 	let loading = $state(true);
@@ -19,14 +25,6 @@
 		}
 	});
 </script>
-
-<svelte:head>
-	<title>Testimonials — {SITE.name} Pastoral School</title>
-	<meta
-		name="description"
-		content="What students and alumni say about the Pastoral School."
-	/>
-</svelte:head>
 
 <div class="min-h-screen flex flex-col">
 	<Nav />

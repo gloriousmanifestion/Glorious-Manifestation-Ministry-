@@ -9,6 +9,7 @@
 	import type { CourseDetail } from '$lib/courses';
 	import type { CourseModule } from '$lib/api/course-modules';
 	import { auth, userStore } from '$lib/auth';
+	import { pageSeo } from '$lib/stores/pageSeo';
 
 	interface Data {
 		course: CourseDetail | null;
@@ -16,6 +17,18 @@
 	}
 
 	let { data }: { data: Data } = $props();
+
+	$effect(() => {
+		const c = data.course;
+		if (c) {
+			pageSeo.set({
+				title: `${c.name} — ${SITE.schoolName}`,
+				description: `${c.name}: ${c.shortDescription} ${SITE.schoolName}, ${SITE.location}.`
+			});
+		} else {
+			pageSeo.set({ title: 'Course not found', description: 'Course not found.' });
+		}
+	});
 
 	let completedSet = $state<Set<string>>(new Set());
 	let toggleLoading = $state<string | null>(null);
@@ -56,16 +69,6 @@
 		}
 	}
 </script>
-
-<svelte:head>
-	<title>{data.course ? `${data.course.name} — ${SITE.schoolName}` : 'Course not found'} — {SITE.name}</title>
-	<meta
-		name="description"
-		content={data.course
-			? `${data.course.name}: ${data.course.shortDescription} ${SITE.schoolName}, ${SITE.location}.`
-			: 'Course not found.'}
-	/>
-</svelte:head>
 
 <div class="min-h-screen flex flex-col">
 	<Nav />

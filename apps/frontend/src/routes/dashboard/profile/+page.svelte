@@ -5,6 +5,12 @@
 	import Footer from '$lib/components/Footer.svelte';
 	import { auth, userStore, authReady } from '$lib/auth';
 	import { SITE } from '$lib/config';
+	import { pageSeo } from '$lib/stores/pageSeo';
+
+	pageSeo.set({
+		title: `Profile — ${SITE.name} Pastoral School`,
+		description: 'Edit your profile.'
+	});
 
 	let mounted = $state(false);
 	let form = $state({ name: '', phone: '', ministryRole: '', churchName: '', calling: '' });
@@ -70,11 +76,6 @@
 		}
 	}
 </script>
-
-<svelte:head>
-	<title>Profile — {SITE.name} Pastoral School</title>
-	<meta name="description" content="Edit your profile." />
-</svelte:head>
 
 {#if !mounted || !$authReady}
 	<div class="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-[#252d47]">

@@ -2,22 +2,22 @@
 	import '../../app.css';
 	import { plusUrl, businessUrl } from '$lib/urls';
 	import Footer from '$lib/components/Footer.svelte';
-</script>
+	import { pageSeo } from '$lib/stores/pageSeo';
 
-<svelte:head>
-	<title>Careers — 1nga Solutions</title>
-	<meta
-		name="description"
-		content="Join 1nga Solutions and its subsidiaries. Build the future of digital transformation with us."
-	/>
-</svelte:head>
+	pageSeo.set({
+		title: 'Careers — 1nga Solutions',
+		description: 'Join 1nga Solutions and its subsidiaries. Build the future of digital transformation with us.'
+	});
+</script>
 
 <div class="min-h-screen flex flex-col bg-[#FFFCFA] dark:bg-[#252d47]">
 	<!-- Nav -->
 	<header class="sticky top-0 left-0 right-0 z-50 border-b border-slate-200 section-separator bg-[#FFFCFA]/90 backdrop-blur-xl dark:bg-[#252d47]/95">
 		<nav class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
 			<a href="/" class="inline-flex items-center gap-2 text-xl font-semibold tracking-tight text-slate-900 transition hover:text-amber-600 dark:text-white dark:hover:text-amber-400">
-				<img src="/oneauth-logo.svg" alt="" class="h-7 w-auto" aria-hidden="true" />
+				<span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-amber-500 text-sm font-bold text-slate-950 shadow-sm">
+					1
+				</span>
 				<span>1nga Solutions</span>
 			</a>
 			<a

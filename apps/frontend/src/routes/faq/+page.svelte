@@ -6,6 +6,12 @@
 	import { getChurchContent } from '$lib/api/church';
 	import { SITE, getDefaultFaqs } from '$lib/config';
 	import EmptySection from '$lib/components/EmptySection.svelte';
+	import { pageSeo } from '$lib/stores/pageSeo';
+
+	pageSeo.set({
+		title: `FAQ — ${SITE.name} Pastoral School`,
+		description: 'Frequently asked questions about the Pastoral School: admissions, courses, payments, and more.'
+	});
 
 	interface FaqItem {
 		q: string;
@@ -39,14 +45,6 @@
 		openIndex = openIndex === i ? null : i;
 	}
 </script>
-
-<svelte:head>
-	<title>FAQ — {SITE.name} Pastoral School</title>
-	<meta
-		name="description"
-		content="Frequently asked questions about the Pastoral School: admissions, courses, payments, and more."
-	/>
-</svelte:head>
 
 <div class="min-h-screen flex flex-col">
 	<Nav />

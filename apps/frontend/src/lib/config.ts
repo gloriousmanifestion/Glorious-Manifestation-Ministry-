@@ -2,6 +2,18 @@
  * Church ministry school configuration
  */
 
+// Use different Selar checkout URLs per environment.
+// PUBLIC_APP_ENV is already used elsewhere (e.g. env banner).
+type PublicEnv = {
+	PUBLIC_APP_ENV?: string;
+};
+
+const envName =
+	(typeof import.meta.env !== 'undefined' && (import.meta.env as PublicEnv).PUBLIC_APP_ENV) ||
+	'production';
+const selarPaymentUrl =
+	envName === 'production' ? 'https://selar.com/k7t41ibp26' : 'https://selar.com/577p7vtjkr';
+
 export const SITE = {
 	name: 'Prophetic Glorious Manifestation',
 	/** Short name for nav/branding (e.g. "PGM | Pastoral School") */
@@ -23,7 +35,7 @@ export const SITE = {
 	duration: 'February to July',
 	targetAudience: 'Pastors, ministers and prophets',
 	/** Selar checkout URL for PGM Pastoral School payments */
-	selarPaymentUrl: 'https://selar.com/577p7vtjkr',
+	selarPaymentUrl,
 	/** Leader and teacher of the Pastoral School */
 	leader: {
 		name: 'Our Prophetess',

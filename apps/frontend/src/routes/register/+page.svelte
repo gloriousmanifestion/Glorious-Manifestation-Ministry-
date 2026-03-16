@@ -6,6 +6,12 @@
 	import { auth } from '$lib/auth';
 	import { SITE } from '$lib/config';
 	import { getCourseDetailById } from '$lib/courses';
+	import { pageSeo } from '$lib/stores/pageSeo';
+
+	pageSeo.set({
+		title: `Register — ${SITE.name} Pastoral School`,
+		description: 'Register for the Pastoral School at Prophetic Glorious Manifestation.'
+	});
 
 	const steps = [
 		{ id: 1, title: 'Personal info', desc: 'Your contact details' },
@@ -90,11 +96,6 @@
 	}
 
 </script>
-
-<svelte:head>
-	<title>Register — {SITE.name} Pastoral School</title>
-	<meta name="description" content="Register for the Pastoral School at Prophetic Glorious Manifestation." />
-</svelte:head>
 
 <div class="min-h-screen flex flex-col bg-slate-50 dark:bg-[#252d47]">
 	<Nav />

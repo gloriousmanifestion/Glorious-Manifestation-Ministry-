@@ -5,6 +5,12 @@
 	import Footer from '$lib/components/Footer.svelte';
 	import { SITE } from '$lib/config';
 	import { auth } from '$lib/auth';
+	import { pageSeo } from '$lib/stores/pageSeo';
+
+	pageSeo.set({
+		title: `Reset password — ${SITE.name} Pastoral School`,
+		description: 'Choose a new password for your Pastoral School account.'
+	});
 
 	const token = $derived($page.url.searchParams.get('token') ?? '');
 
@@ -48,11 +54,6 @@
 		}
 	}
 </script>
-
-<svelte:head>
-	<title>Reset password — {SITE.name} Pastoral School</title>
-	<meta name="description" content="Choose a new password for your Pastoral School account." />
-</svelte:head>
 
 <div class="min-h-screen flex flex-col bg-slate-50 dark:bg-[#252d47]">
 	<Nav />

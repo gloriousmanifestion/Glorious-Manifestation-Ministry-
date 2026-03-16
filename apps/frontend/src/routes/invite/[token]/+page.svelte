@@ -6,6 +6,13 @@
 	import { getInvite } from '$lib/auth-api';
 	import type { InviteInfo } from '$lib/auth-api';
 	import { SITE } from '$lib/config';
+	import { pageSeo } from '$lib/stores/pageSeo';
+
+	pageSeo.set({
+		title: `Invitation — ${SITE.schoolName} Admin`,
+		description: 'Admin invitation to Pastoral School.',
+		noIndex: true
+	});
 
 	interface Props {
 		data: { token: string };
@@ -31,11 +38,6 @@
 		goto(`/register?invite=${encodeURIComponent(data.token)}`);
 	}
 </script>
-
-<svelte:head>
-	<title>Invitation — {SITE.schoolName} Admin</title>
-	<meta name="robots" content="noindex" />
-</svelte:head>
 
 <div class="min-h-screen flex flex-col bg-slate-50 dark:bg-[#252d47]">
 	<Nav />

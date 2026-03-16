@@ -888,6 +888,7 @@ jobs:
             echo "service_file=pgm-backend-production.service" >> $GITHUB_OUTPUT
             echo "service_name=pgm-backend-production" >> $GITHUB_OUTPUT
             echo "deploy_dir=/opt/${APP_NAME}/backend" >> $GITHUB_OUTPUT
+            echo "env_subdir=production" >> $GITHUB_OUTPUT
             echo "vault_dir=/var/lib/${APP_NAME}/vault" >> $GITHUB_OUTPUT
             echo "port=5800" >> $GITHUB_OUTPUT
           else
@@ -895,6 +896,7 @@ jobs:
             echo "service_file=pgm-backend-staging.service" >> $GITHUB_OUTPUT
             echo "service_name=pgm-backend-staging" >> $GITHUB_OUTPUT
             echo "deploy_dir=/opt/${APP_NAME}/backend" >> $GITHUB_OUTPUT
+            echo "env_subdir=staging" >> $GITHUB_OUTPUT
             echo "vault_dir=/var/lib/${APP_NAME}/vault" >> $GITHUB_OUTPUT
             echo "port=5668" >> $GITHUB_OUTPUT
           fi
@@ -970,12 +972,13 @@ jobs:
             set -e
             DEPLOY_DIR="${{ steps.deploy_env.outputs.deploy_dir }}"
             VAULT_DIR="${{ steps.deploy_env.outputs.vault_dir }}"
+            ENV_SUBDIR="${{ steps.deploy_env.outputs.env_subdir }}"
             SERVICE_NAME="${{ steps.deploy_env.outputs.service_name }}"
             SERVICE_FILE="${{ steps.deploy_env.outputs.service_file }}"
             ENV_NAME="${{ steps.deploy_env.outputs.environment }}"
             
             echo "=== Creating required deploy directories ==="
-            sudo mkdir -p "$DEPLOY_DIR" "$VAULT_DIR"
+            sudo mkdir -p "$DEPLOY_DIR" "$VAULT_DIR" "$DEPLOY_DIR/$ENV_SUBDIR"
             sudo chown www-data:www-data "$VAULT_DIR"
             echo "=== Deploying to $ENV_NAME environment ==="
             echo "Deploy directory: $DEPLOY_DIR"
@@ -991,9 +994,10 @@ jobs:
             sudo rm -rf "$DEPLOY_DIR/migrations"
             sudo cp -r /tmp/pgm-deploy/backend/migrations "$DEPLOY_DIR/"
             sudo chown -R www-data:www-data "$DEPLOY_DIR/migrations"
-            sudo cp /tmp/pgm-deploy/backend.env "$DEPLOY_DIR/.env"
-            sudo chown www-data:www-data "$DEPLOY_DIR/.env"
-            sudo chmod 600 "$DEPLOY_DIR/.env"
+            # Write env into per-environment subdirectory (staging/ or production)
+            sudo cp /tmp/pgm-deploy/backend.env "$DEPLOY_DIR/$ENV_SUBDIR/.env"
+            sudo chown www-data:www-data "$DEPLOY_DIR/$ENV_SUBDIR/.env"
+            sudo chmod 600 "$DEPLOY_DIR/$ENV_SUBDIR/.env"
             sudo install -m 755 /tmp/pgm-deploy/backend/ensure-db.sh "$DEPLOY_DIR/ensure-db.sh"
             [ -f /tmp/pgm-deploy/backend/sync-all-migration-checksums.sh ] && sudo install -m 755 /tmp/pgm-deploy/backend/sync-all-migration-checksums.sh "$DEPLOY_DIR/sync-all-migration-checksums.sh" || true
             [ -f /tmp/pgm-deploy/backend/wipe-schema-on-vm.sh ] && sudo install -m 755 /tmp/pgm-deploy/backend/wipe-schema-on-vm.sh "$DEPLOY_DIR/wipe-schema-on-vm.sh" || true

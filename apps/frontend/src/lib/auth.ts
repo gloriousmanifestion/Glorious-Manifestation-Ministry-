@@ -162,13 +162,24 @@ function createAuthStore() {
 			await api.resetPassword(token, password);
 		},
 		async verifyAccount() {
-			const r = await api.verifyAccount();
-			const user = toUser(r);
+			// (Re)send verification email; user remains unverified until they click the email link.
+			await api.verifyAccount();
+		},
+		async confirmEmailVerification(token: string) {
+			const res = await api.confirmVerification(token);
+			localStorage.setItem(TOKEN_KEY, res.token);
+			const user = toUser(res.user);
 			userStore.set(user);
 			saveUser(user);
 		},
 		async completePayment() {
 			const r = await api.completePayment();
+			const user = toUser(r);
+			userStore.set(user);
+			saveUser(user);
+		},
+		async markPaymentSuccess(reference?: string | null) {
+			const r = await api.markPaymentSuccess(reference);
 			const user = toUser(r);
 			userStore.set(user);
 			saveUser(user);
@@ -213,6 +224,18 @@ function createAuthStore() {
 			const user = toUser(r);
 			userStore.set(user);
 			saveUser(user);
+		},
+		/** Force-refresh current user from backend (e.g. after external payment redirect). */
+		async refreshUser() {
+			const r = await api.getMe();
+			if (r) {
+				const user = toUser(r);
+				userStore.set(user);
+				saveUser(user);
+			} else {
+				userStore.set(null);
+				saveUser(null);
+			}
 		},
 		logout() {
 			userStore.set(null);

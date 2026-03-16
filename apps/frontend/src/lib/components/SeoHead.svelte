@@ -4,27 +4,30 @@
 	import { page } from '$app/stores';
 	import { SITE, type SeoProps } from '$lib/seo';
 
-	/** SEO props - pass from page load or component */
+	/** SEO props - pass from page load or component. Undefined title/description use SITE defaults. */
 	let {
 		title,
-		description = SITE.description,
-		keywords = SITE.keywords,
+		description: descriptionProp,
+		keywords: keywordsProp,
 		image,
-		imageAlt = SITE.description,
+		imageAlt = SITE.ogImageAlt ?? SITE.description,
 		url,
 		type = 'website',
 		noIndex = false,
 		canonical
 	}: SeoProps = $props();
 
-	// Resolve full URLs — use SITE.baseUrl for social sharing so og:url/og:image always point to 1nga.com
+	const description = $derived(descriptionProp ?? SITE.description);
+	const keywords = $derived(keywordsProp ?? SITE.keywords);
+
+	// Resolve full URLs — canonical and og:url use SITE.baseUrl; og:image is always global (never overridden by page)
 	const origin = $derived(SITE.baseUrl.replace(/\/$/, ''));
 	const path = $derived($page.url.pathname);
 	const fullUrl = $derived(url || canonical || `${origin}${path}`);
 	const fullImage = $derived(
 		image?.startsWith('http') ? image : image ? `${origin}${image.startsWith('/') ? '' : '/'}${image}` : `${origin}${SITE.ogImage}`
 	);
-	const fullTitle = $derived(title ? `${title} — ${SITE.name}` : `${SITE.name} — ${SITE.tagline}`);
+	const fullTitle = $derived(title != null && title !== '' ? `${title} — ${SITE.name}` : `${SITE.name} — ${SITE.tagline}`);
 </script>
 
 <svelte:head>

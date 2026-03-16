@@ -21,8 +21,8 @@ use argon2::{
     Argon2,
 };
 use rand_core::OsRng;
+use reqwest::Client;
 use totp_rs::{Algorithm, Secret, TOTP};
-use wangamail_rs::{BodyType, GraphMailClient, Message, MessageBody, Recipient, SendMailRequest};
 
 #[derive(Debug, Deserialize)]
 pub struct RegisterRequest {
@@ -67,6 +67,11 @@ pub struct AuthResponse {
     pub token: String,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct ConfirmVerificationRequest {
+    pub token: String,
+}
+
 /// PATCH /auth/me body: any subset of profile fields (snake_case from frontend).
 #[derive(Debug, Default, Deserialize)]
 pub struct UpdateMeRequest {
@@ -95,6 +100,16 @@ fn verify_password(password: &str, hash: &str) -> Result<bool, String> {
 
 /// Send a single email via Microsoft Graph (used by registration, password reset, and admin email-students).
 pub async fn send_email_to(to: &str, subject: &str, body: &str) -> Result<(), String> {
+    send_graph_mail(to, subject, body, "HTML").await
+}
+
+/// Low-level helper to send mail via Microsoft Graph using reqwest.
+async fn send_graph_mail(
+    to: &str,
+    subject: &str,
+    body: &str,
+    content_type: &str,
+) -> Result<(), String> {
     let tenant_id =
         std::env::var("AZURE_TENANT_ID").map_err(|_| "AZURE_TENANT_ID is not set".to_string())?;
     let client_id =
@@ -104,40 +119,174 @@ pub async fn send_email_to(to: &str, subject: &str, body: &str) -> Result<(), St
     let from_user = std::env::var("WANGAMAIL_FROM_USER")
         .map_err(|_| "WANGAMAIL_FROM_USER is not set".to_string())?;
 
-    let client = GraphMailClient::builder()
-        .tenant_id(tenant_id)
-        .client_id(client_id)
-        .client_secret(client_secret)
-        .build()
-        .map_err(|e| e.to_string())?;
+    let client = Client::new();
 
-    let message = Message {
-        subject: subject.to_string(),
-        body: MessageBody {
-            content_type: BodyType::Text,
-            content: body.to_string(),
-        },
-        to_recipients: vec![Recipient::new(to)],
-        ..Default::default()
-    };
-
-    let request = SendMailRequest::new(message);
-    client
-        .send_mail(&from_user, request)
+    // Acquire access token using client credentials flow.
+    let token_url = format!("https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token");
+    let token_resp = client
+        .post(&token_url)
+        .form(&[
+            ("client_id", client_id.as_str()),
+            ("client_secret", client_secret.as_str()),
+            ("grant_type", "client_credentials"),
+            ("scope", "https://graph.microsoft.com/.default"),
+        ])
+        .send()
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Graph token request failed: {e}"))?;
+
+    if !token_resp.status().is_success() {
+        let status = token_resp.status();
+        let text = token_resp.text().await.unwrap_or_default();
+        return Err(format!("Graph token request failed: {status} {text}"));
+    }
+
+    let token_json: serde_json::Value = token_resp
+        .json()
+        .await
+        .map_err(|e| format!("Graph token JSON parse failed: {e}"))?;
+    let access_token = token_json
+        .get("access_token")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| "Graph token response missing access_token".to_string())?;
+
+    // Build Graph sendMail payload. Note the required emailAddress casing.
+    let mail_url = format!("https://graph.microsoft.com/v1.0/users/{from_user}/sendMail");
+    let payload = serde_json::json!({
+        "message": {
+            "subject": subject,
+            "body": {
+                "contentType": content_type,
+                "content": body,
+            },
+            "toRecipients": [
+                {
+                    "emailAddress": {
+                        "address": to
+                    }
+                }
+            ]
+        },
+        "saveToSentItems": false
+    });
+
+    let resp = client
+        .post(&mail_url)
+        .bearer_auth(access_token)
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|e| format!("Graph sendMail request failed: {e}"))?;
+
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let text = resp.text().await.unwrap_or_default();
+
+        // If Graph denies sendMail, probe whether the app can read the sender user.
+        // This helps distinguish "bad mailbox / not found" from "permission blocked / access policy".
+        let mut extra = String::new();
+        if status == StatusCode::FORBIDDEN || status == StatusCode::UNAUTHORIZED {
+            let probe_url = format!(
+                "https://graph.microsoft.com/v1.0/users/{from_user}?$select=id,userPrincipalName,mail"
+            );
+            let probe = client
+                .get(&probe_url)
+                .bearer_auth(access_token)
+                .send()
+                .await;
+            match probe {
+                Ok(r) => {
+                    let ps = r.status();
+                    let pt = r.text().await.unwrap_or_default();
+                    extra = format!("; probe_sender_user={ps} {pt}");
+                }
+                Err(e) => {
+                    extra = format!("; probe_sender_user_request_failed={e}");
+                }
+            }
+        }
+
+        return Err(format!(
+            "Graph sendMail failed: {status} {text}; from_user={from_user}{extra}"
+        ));
+    }
+
+    Ok(())
 }
 
-async fn send_registration_email(to: &str, name: &str) -> Result<(), String> {
+async fn send_registration_email(to: &str, name: &str, verify_link: &str) -> Result<(), String> {
     let subject = "Welcome to Prophetic Ministry Manifestation Pastoral School";
+    // Simple responsive email layout with inline styles for broad client support.
     let body = format!(
-        "Hi {name},\n\n\
-Thank you for registering for the Prophetic Ministry Manifestation Pastoral School.\n\n\
-Your account has been created successfully.\n\
-Please log in with your email and password to complete your profile and verification.\n\n\
-If you did not create this account, please ignore this email.\n\n\
-Blessings,\n\
-Prophetic Ministry Manifestation Pastoral School"
+        r#"<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Welcome to PMS Pastoral School</title>
+  </head>
+  <body style="margin:0;padding:0;background-color:#f3f4f6;">
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+      <tr>
+        <td align="center" style="padding:24px 12px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:560px;background-color:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 10px 30px rgba(15,23,42,0.08);">
+            <tr>
+              <td style="padding:24px 24px 12px 24px;background:linear-gradient(135deg,#db2777,#4f46e5);color:#f9fafb;text-align:center;">
+                <h1 style="margin:0;font-size:22px;line-height:1.3;font-family:System,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+                  Prophetic Glorious Manifestation<br/>
+                  <span style="font-weight:400;font-size:16px;opacity:0.9;">Pastoral School</span>
+                </h1>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px 24px 8px 24px;font-family:System,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#0f172a;font-size:15px;line-height:1.6;">
+                <p style="margin:0 0 12px 0;">Hi {name},</p>
+                <p style="margin:0 0 12px 0;">
+                  Thank you for registering for the <strong>Prophetic Ministry Manifestation Pastoral School</strong>.
+                  We are honoured to walk with you on this journey of equipping for ministry.
+                </p>
+                <p style="margin:0 0 16px 0;">
+                  To secure your account and access your dashboard, please verify your email address:
+                </p>
+                <div style="text-align:center;margin:20px 0;">
+                  <a href="{verify_link}"
+                     style="display:inline-block;padding:12px 28px;border-radius:999px;background-color:#db2777;color:#f9fafb;text-decoration:none;font-weight:600;font-size:14px;font-family:System,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+                    Verify my email
+                  </a>
+                </div>
+                <p style="margin:0 0 12px 0;font-size:13px;color:#64748b;">
+                  If the button above does not work, copy and paste this link into your browser:
+                  <br/>
+                  <span style="word-break:break-all;color:#4f46e5;">{verify_link}</span>
+                </p>
+                <p style="margin:16px 0 8px 0;">
+                  After verification, you will be able to:
+                </p>
+                <ul style="margin:0 0 16px 20px;padding:0;font-size:14px;color:#0f172a;">
+                  <li>Select your course in the dashboard.</li>
+                  <li>Make your payment to start your course.</li>
+                  <li>Access announcements, resources, and your learning journey.</li>
+                </ul>
+                <p style="margin:0 0 12px 0;font-size:13px;color:#64748b;">
+                  If you did not create this account, you can safely ignore this email.
+                </p>
+                <p style="margin:8px 0 0 0;">
+                  Blessings,<br/>
+                  <strong>Prophetic Glorious Manifestation Pastoral School</strong>
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:16px 24px 20px 24px;background-color:#f9fafb;font-family:System,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:11px;color:#6b7280;text-align:center;">
+                You are receiving this email because you registered for the Prophetic Glorious Manifestation Pastoral School.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>"#
     );
     send_email_to(to, subject, &body).await
 }
@@ -180,13 +329,15 @@ pub fn auth_routes(pool: AnyPool) -> Router {
         .route("/auth/forgot-password", post(forgot_password))
         .route("/auth/reset-password", post(reset_password))
         .route("/auth/me", get(me).patch(update_me))
-        .route("/auth/verify", post(verify))
+        .route("/auth/verify", post(request_verification_email))
+        .route("/auth/verify/confirm", post(confirm_verification))
         .route("/auth/2fa/verify", post(verify_2fa))
         .route("/auth/complete-payment", post(complete_payment))
         .route("/auth/courses", get(list_courses))
         .route("/auth/invite/:token", get(get_invite))
         .route("/payments/proofs", post(upload_payment_proof))
         .route("/payments/proofs/me", get(list_my_payment_proofs))
+        .route("/payments/success", post(mark_payment_success))
         .route("/auth/me/courses/:course_id/progress", get(get_my_progress))
         .route(
             "/auth/me/courses/:course_id/modules/:module_id/complete",
@@ -513,16 +664,44 @@ async fn register(
         church_name: req.church_name,
         calling: req.calling,
         selected_course_id: req.selected_course_id,
-        verified: false,
-        payment_complete: false,
+        verified: 0,
+        payment_complete: 0,
         role: role.clone(),
-        created_at: now,
+        created_at: now.clone(),
         totp_secret: None,
     };
 
+    // Create initial email verification token so the registration email has an activation link.
+    let verif_token_id = Uuid::new_v4().to_string();
+    let verif_token = Uuid::new_v4().to_string();
+    let verif_expires_at = (chrono::Utc::now() + chrono::Duration::hours(24)).to_rfc3339();
+
+    let ev_sql = if db::is_postgres() {
+        "INSERT INTO email_verification_tokens (id, user_id, token, expires_at, created_at) VALUES ($1, $2, $3, $4, $5)"
+    } else {
+        "INSERT INTO email_verification_tokens (id, user_id, token, expires_at, created_at) VALUES (?, ?, ?, ?, ?)"
+    };
+    let _ = sqlx::query(ev_sql)
+        .bind(&verif_token_id)
+        .bind(&id)
+        .bind(&verif_token)
+        .bind(&verif_expires_at)
+        .bind(&now)
+        .execute(&pool)
+        .await;
+
+    // Build verification link for HTML email.
+    let base_url =
+        std::env::var("APP_BASE_URL").unwrap_or_else(|_| "http://localhost:5173".to_string());
+    let verify_link = format!(
+        "{}/verify-email?token={}",
+        base_url.trim_end_matches('/'),
+        verif_token
+    );
+
     // Fire-and-forget registration email via Microsoft Graph using wangamail-rs.
     // Failing to send email must not block registration.
-    if let Err(e) = send_registration_email(&user.email, &user.name).await {
+    if let Err(e) = send_registration_email(&user.email, &user.name, &verify_link).await {
         tracing::error!("Registration email error for {}: {}", user.email, e);
     }
 
@@ -537,6 +716,302 @@ async fn register(
         user: user.to_response(),
         token,
     }))
+}
+
+/// POST /auth/verify – (re)send verification email for the authenticated user.
+async fn request_verification_email(
+    State(pool): State<AnyPool>,
+    AuthUser(user_id): AuthUser,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    // Load user email/name and current verified status.
+    let sql = if db::is_postgres() {
+        "SELECT email, name, verified FROM users WHERE id = $1"
+    } else {
+        "SELECT email, name, verified FROM users WHERE id = ?"
+    };
+    let row: Option<(String, String, i64)> = sqlx::query_as(sql)
+        .bind(&user_id)
+        .fetch_optional(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Request verification: fetch user error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "verify_failed", "message": "Could not start verification"})),
+            )
+        })?;
+
+    let Some((email, name, verified)) = row else {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error": "user_not_found", "message": "User not found"})),
+        ));
+    };
+
+    // If already verified, just return success.
+    if verified != 0 {
+        return Ok(Json(serde_json::json!({
+            "status": "ok",
+            "message": "Account already verified."
+        })));
+    }
+
+    let id = Uuid::new_v4().to_string();
+    let token = Uuid::new_v4().to_string();
+    let now = chrono::Utc::now();
+    let expires_at = (now + chrono::Duration::hours(24)).to_rfc3339();
+    let created_at = now.to_rfc3339();
+
+    let insert_sql = if db::is_postgres() {
+        "INSERT INTO email_verification_tokens (id, user_id, token, expires_at, created_at) VALUES ($1, $2, $3, $4, $5)"
+    } else {
+        "INSERT INTO email_verification_tokens (id, user_id, token, expires_at, created_at) VALUES (?, ?, ?, ?, ?)"
+    };
+
+    sqlx::query(insert_sql)
+        .bind(&id)
+        .bind(&user_id)
+        .bind(&token)
+        .bind(&expires_at)
+        .bind(&created_at)
+        .execute(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Request verification: insert token error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "verify_failed", "message": "Could not create verification token"})),
+            )
+        })?;
+
+    let base_url =
+        std::env::var("APP_BASE_URL").unwrap_or_else(|_| "http://localhost:5173".to_string());
+    let verify_link = format!(
+        "{}/verify-email?token={}",
+        base_url.trim_end_matches('/'),
+        token
+    );
+    // Reuse the same elegant HTML email as initial registration.
+    if let Err(e) = send_registration_email(&email, &name, &verify_link).await {
+        tracing::error!("Request verification email error for {}: {}", email, e);
+        // Do not fail the request – avoid leaking email issues to user.
+    }
+
+    Ok(Json(serde_json::json!({
+        "status": "ok",
+        "message": "Verification email sent. Please check your inbox."
+    })))
+}
+
+/// POST /auth/verify/confirm – confirm email verification by token, mark verified, and log user in.
+async fn confirm_verification(
+    State(pool): State<AnyPool>,
+    axum::Json(req): axum::Json<ConfirmVerificationRequest>,
+) -> Result<Json<AuthResponse>, (StatusCode, Json<serde_json::Value>)> {
+    let token = req.token.trim();
+    if token.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(
+                serde_json::json!({"error": "invalid_token", "message": "Invalid or missing token"}),
+            ),
+        ));
+    }
+
+    #[derive(Debug, sqlx::FromRow)]
+    struct EmailVerifRow {
+        id: String,
+        user_id: String,
+        #[allow(dead_code)]
+        expires_at: String,
+        #[allow(dead_code)]
+        used_at: Option<String>,
+    }
+
+    let now = chrono::Utc::now().to_rfc3339();
+    let select_sql = if db::is_postgres() {
+        "SELECT id, user_id, expires_at, used_at FROM email_verification_tokens WHERE token = $1 AND (used_at IS NULL OR used_at = '') AND expires_at > $2"
+    } else {
+        "SELECT id, user_id, expires_at, used_at FROM email_verification_tokens WHERE token = ? AND (used_at IS NULL OR used_at = '') AND expires_at > ?"
+    };
+
+    let row: Option<EmailVerifRow> = sqlx::query_as(select_sql)
+        .bind(token)
+        .bind(&now)
+        .fetch_optional(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Confirm verification: token lookup error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "verify_failed", "message": "Could not verify token"})),
+            )
+        })?;
+
+    let row = row.ok_or((
+        StatusCode::BAD_REQUEST,
+        Json(
+            serde_json::json!({"error": "invalid_token", "message": "Invalid or expired verification link"}),
+        ),
+    ))?;
+
+    // Mark user as verified.
+    let update_user_sql = if db::is_postgres() {
+        "UPDATE users SET verified = 1 WHERE id = $1"
+    } else {
+        "UPDATE users SET verified = 1 WHERE id = ?"
+    };
+    sqlx::query(update_user_sql)
+        .bind(&row.user_id)
+        .execute(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Confirm verification: update user error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(
+                    serde_json::json!({"error": "verify_failed", "message": "Could not verify account"}),
+                ),
+            )
+        })?;
+
+    // Mark token as used.
+    let update_token_sql = if db::is_postgres() {
+        "UPDATE email_verification_tokens SET used_at = $1 WHERE id = $2"
+    } else {
+        "UPDATE email_verification_tokens SET used_at = ? WHERE id = ?"
+    };
+    if let Err(e) = sqlx::query(update_token_sql)
+        .bind(&now)
+        .bind(&row.id)
+        .execute(&pool)
+        .await
+    {
+        tracing::error!("Confirm verification: mark token used error: {:?}", e);
+    }
+
+    // Load freshly updated user.
+    let user_sql = if db::is_postgres() {
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at, totp_secret FROM users WHERE id = $1"
+    } else {
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at, totp_secret FROM users WHERE id = ?"
+    };
+    let user: Option<User> = sqlx::query_as(user_sql)
+        .bind(&row.user_id)
+        .fetch_optional(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Confirm verification: fetch user error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(
+                    serde_json::json!({"error": "fetch_failed", "message": "Could not load user after verification"}),
+                ),
+            )
+        })?;
+
+    let user = user.ok_or((
+        StatusCode::NOT_FOUND,
+        Json(serde_json::json!({"error": "user_not_found", "message": "User not found"})),
+    ))?;
+
+    let token = create_token(&user.id, &user.role).map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": "token_failed", "message": "Could not create token"})),
+        )
+    })?;
+
+    Ok(Json(AuthResponse {
+        user: user.to_response(),
+        token,
+    }))
+}
+
+// ---------- Payment success via redirect (no direct Selar webhook) ----------
+
+#[derive(Debug, Deserialize)]
+pub struct PaymentSuccessRequest {
+    pub reference: Option<String>,
+}
+
+/// POST /payments/success – mark current authenticated user's payment as complete.
+async fn mark_payment_success(
+    State(pool): State<AnyPool>,
+    AuthUser(user_id): AuthUser,
+    axum::Json(req): axum::Json<PaymentSuccessRequest>,
+) -> Result<Json<UserResponse>, (StatusCode, Json<serde_json::Value>)> {
+    let update_sql = if db::is_postgres() {
+        "UPDATE users SET payment_complete = 1 WHERE id = $1"
+    } else {
+        "UPDATE users SET payment_complete = 1 WHERE id = ?"
+    };
+    sqlx::query(update_sql)
+        .bind(&user_id)
+        .execute(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Mark payment success: update user error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(
+                    serde_json::json!({"error": "payment_failed", "message": "Could not update payment status"}),
+                ),
+            )
+        })?;
+
+    // Optional: create notification using reference
+    let notif_id = Uuid::new_v4().to_string();
+    let now = chrono::Utc::now().to_rfc3339();
+    let title = "Payment received".to_string();
+    let msg = if let Some(r) = req.reference.as_deref() {
+        format!("We have recorded your payment (reference: {}).", r)
+    } else {
+        "We have recorded your payment.".to_string()
+    };
+    let notif_sql = if db::is_postgres() {
+        "INSERT INTO notifications (id, user_id, title, message, created_at) VALUES ($1, $2, $3, $4, $5)"
+    } else {
+        "INSERT INTO notifications (id, user_id, title, message, created_at) VALUES (?, ?, ?, ?, ?)"
+    };
+    if let Err(e) = sqlx::query(notif_sql)
+        .bind(&notif_id)
+        .bind(&user_id)
+        .bind(&title)
+        .bind(&msg)
+        .bind(&now)
+        .execute(&pool)
+        .await
+    {
+        tracing::error!("Mark payment success: insert notification error: {:?}", e);
+    }
+
+    // Return updated user
+    let user_sql = if db::is_postgres() {
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at, totp_secret FROM users WHERE id = $1"
+    } else {
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at, totp_secret FROM users WHERE id = ?"
+    };
+    let user: Option<User> = sqlx::query_as(user_sql)
+        .bind(&user_id)
+        .fetch_optional(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Mark payment success: fetch user error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(
+                    serde_json::json!({"error": "fetch_failed", "message": "Could not fetch user after payment"}),
+                ),
+            )
+        })?;
+
+    let user = user.ok_or((
+        StatusCode::NOT_FOUND,
+        Json(serde_json::json!({"error": "user_not_found", "message": "User not found"})),
+    ))?;
+
+    Ok(Json(user.to_response()))
 }
 
 async fn login(
@@ -729,49 +1204,73 @@ async fn verify_2fa(
 }
 
 async fn send_password_reset_email(to: &str, name: &str, reset_link: &str) -> Result<(), String> {
-    let tenant_id =
-        std::env::var("AZURE_TENANT_ID").map_err(|_| "AZURE_TENANT_ID is not set".to_string())?;
-    let client_id =
-        std::env::var("AZURE_CLIENT_ID").map_err(|_| "AZURE_CLIENT_ID is not set".to_string())?;
-    let client_secret = std::env::var("AZURE_CLIENT_SECRET")
-        .map_err(|_| "AZURE_CLIENT_SECRET is not set".to_string())?;
-    let from_user = std::env::var("WANGAMAIL_FROM_USER")
-        .map_err(|_| "WANGAMAIL_FROM_USER is not set".to_string())?;
-
-    let client = GraphMailClient::builder()
-        .tenant_id(tenant_id)
-        .client_id(client_id)
-        .client_secret(client_secret)
-        .build()
-        .map_err(|e| e.to_string())?;
-
-    let subject = "Reset your Prophetic Ministry Manifestation Pastoral School password";
-    let body_text = format!(
-        "Hi {name},\n\n\
-We received a request to reset your password for the Prophetic Ministry Manifestation Pastoral School.\n\n\
-You can reset your password using the link below:\n\
-{reset_link}\n\n\
-If you did not request a password reset, you can safely ignore this email.\n\n\
-Blessings,\n\
-Prophetic Ministry Manifestation Pastoral School"
+    let subject = "Reset your Pastoral School password";
+    // Simple responsive HTML layout reusing the registration style.
+    let body = format!(
+        r#"<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reset your password</title>
+  </head>
+  <body style="margin:0;padding:0;background-color:#f3f4f6;">
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+      <tr>
+        <td align="center" style="padding:24px 12px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:560px;background-color:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 10px 30px rgba(15,23,42,0.08);">
+            <tr>
+              <td style="padding:24px 24px 12px 24px;background:linear-gradient(135deg,#db2777,#4f46e5);color:#f9fafb;text-align:center;">
+                <h1 style="margin:0;font-size:22px;line-height:1.3;font-family:System,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+                  Prophetic Glorious Manifestation<br/>
+                  <span style="font-weight:400;font-size:16px;opacity:0.9;">Pastoral School</span>
+                </h1>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px 24px 8px 24px;font-family:System,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#0f172a;font-size:15px;line-height:1.6;">
+                <p style="margin:0 0 12px 0;">Hi {name},</p>
+                <p style="margin:0 0 12px 0;">
+                  We received a request to reset the password for your
+                  <strong>Prophetic Ministry Manifestation Pastoral School</strong> account.
+                </p>
+                <p style="margin:0 0 16px 0;">
+                  Click the button below to create a new password:
+                </p>
+                <div style="text-align:center;margin:20px 0;">
+                  <a href="{reset_link}"
+                     style="display:inline-block;padding:12px 28px;border-radius:999px;background-color:#4f46e5;color:#f9fafb;text-decoration:none;font-weight:600;font-size:14px;font-family:System,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+                    Reset my password
+                  </a>
+                </div>
+                <p style="margin:0 0 12px 0;font-size:13px;color:#64748b;">
+                  If the button above does not work, copy and paste this link into your browser:
+                  <br/>
+                  <span style="word-break:break-all;color:#4f46e5;">{reset_link}</span>
+                </p>
+                <p style="margin:16px 0 12px 0;font-size:13px;color:#64748b;">
+                  If you did not request a password reset, you can safely ignore this email.
+                </p>
+                <p style="margin:8px 0 0 0;">
+                  Blessings,<br/>
+                  <strong>Prophetic Glorious Manifestation Pastoral School</strong>
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:16px 24px 20px 24px;background-color:#f9fafb;font-family:System,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:11px;color:#6b7280;text-align:center;">
+                You are receiving this email because a password reset was requested for your Pastoral School account.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>"#
     );
 
-    let message = Message {
-        subject: subject.to_string(),
-        body: MessageBody {
-            content_type: BodyType::Text,
-            content: body_text,
-        },
-        to_recipients: vec![Recipient::new(to)],
-        ..Default::default()
-    };
-
-    let request = SendMailRequest::new(message);
-
-    client
-        .send_mail(&from_user, request)
-        .await
-        .map_err(|e| e.to_string())
+    send_graph_mail(to, subject, &body, "HTML").await
 }
 
 async fn forgot_password(
@@ -1100,6 +1599,7 @@ async fn update_me(
     Ok(Json(user.unwrap().to_response()))
 }
 
+#[allow(dead_code)]
 async fn verify(
     State(pool): State<AnyPool>,
     AuthUser(user_id): AuthUser,
