@@ -23,7 +23,7 @@ RUN cargo build --release
 # Runtime stage
 FROM alpine:3.19
 
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates curl
 
 WORKDIR /app
 

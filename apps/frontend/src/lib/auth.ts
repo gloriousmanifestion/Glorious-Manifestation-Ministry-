@@ -33,6 +33,8 @@ export interface Course {
 	id: string;
 	name: string;
 	duration: string;
+	/** Microsoft Teams class/team id; when set, dashboard shows "Open in Teams". */
+	teams_class_id?: string | null;
 }
 
 export type { PaymentProof };
@@ -178,9 +180,36 @@ function createAuthStore() {
 		async getMyPaymentProofs() {
 			return api.getMyPaymentProofs();
 		},
+		async getMyProgress(courseId: string) {
+			return api.getMyProgress(courseId);
+		},
+		async markModuleComplete(courseId: string, moduleId: string) {
+			await api.markModuleComplete(courseId, moduleId);
+		},
+		async unmarkModuleComplete(courseId: string, moduleId: string) {
+			await api.unmarkModuleComplete(courseId, moduleId);
+		},
 		async selectCourse(courseId: string | null) {
 			if (!courseId) return;
 			const r = await api.selectCourse(courseId);
+			const user = toUser(r);
+			userStore.set(user);
+			saveUser(user);
+		},
+		async updateProfile(profile: {
+			name?: string;
+			phone?: string;
+			ministryRole?: string;
+			churchName?: string;
+			calling?: string;
+		}) {
+			const r = await api.updateProfile({
+				name: profile.name,
+				phone: profile.phone,
+				ministry_role: profile.ministryRole,
+				church_name: profile.churchName,
+				calling: profile.calling
+			});
 			const user = toUser(r);
 			userStore.set(user);
 			saveUser(user);

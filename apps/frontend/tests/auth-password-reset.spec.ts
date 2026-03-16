@@ -13,7 +13,7 @@ test.describe('Password reset flow (UI)', () => {
 		await page.goto('/forgot-password');
 
 		await expect(page.getByRole('heading', { name: 'Forgot your password?' })).toBeVisible();
-		const emailInput = page.getByLabel('Email');
+		const emailInput = page.getByLabel('Email', { exact: true });
 		await expect(emailInput).toBeVisible();
 	});
 

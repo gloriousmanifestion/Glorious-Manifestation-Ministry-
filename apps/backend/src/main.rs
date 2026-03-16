@@ -1,21 +1,15 @@
 use axum::{response::Json, routing::{get, post}, Router};
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
-use tower_http::cors::{CorsLayer, Any};
-use axum::http::{Method, HeaderValue};
+use std::sync::Arc;
+use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
+use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 
 mod auth;
 mod db;
 mod models;
 mod routes;
-
-#[derive(Serialize, Deserialize)]
-struct HealthResponse {
-    status: String,
-    version: String,
-    timestamp: String,
-}
 
 #[derive(Serialize, Deserialize)]
 struct ApiInfo {
@@ -31,28 +25,40 @@ async fn main() {
         .with_env_filter("backend=debug,tower_http=debug")
         .init();
 
-    // Initialize database pool
+    auth::ensure_jwt_secret();
+
     let pool: sqlx::AnyPool = db::init_db().await.expect("Failed to init database");
 
-    // Configure production-safe CORS
-    let cors = CorsLayer::new()
-        .allow_origin("https://glorious-manifestation-ministry.vercel.app"
-            .parse::<HeaderValue>()
-            .unwrap())
-        .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
-        .allow_headers(Any);
+    // Rate limit: 2 req/s per IP, burst 10 (protects login and admin from abuse)
+    let governor_conf = Arc::new(
+        GovernorConfigBuilder::default()
+            .per_second(2)
+            .burst_size(10)
+            .finish()
+            .expect("governor config"),
+    );
 
-    // Build router
     let app = Router::new()
         .route("/", get(root))
-        .route("/health", get(health))
         .route("/api/v1/info", get(api_info))
+        .merge(routes::health_routes(pool.clone()))
         .nest(
             "/api/v1",
-            routes::auth_routes(pool.clone())
+            Router::new()
+                .merge(routes::auth_routes(pool.clone()))
                 .merge(routes::admin_routes(pool.clone()))
+                .merge(routes::course_modules_routes(pool.clone()))
+                .merge(routes::resources_routes(pool.clone()))
                 .merge(routes::events_routes(pool.clone()))
-                .merge(routes::contact_routes(pool)),
+                .merge(routes::church_routes(pool.clone()))
+                .merge(routes::announcements_routes(pool.clone()))
+                .merge(routes::testimonials_routes(pool.clone()))
+                .merge(routes::blog_routes(pool.clone()))
+                .merge(routes::newsletter_routes(pool.clone()))
+                .merge(routes::contact_routes(pool))
+                .layer(GovernorLayer {
+                    config: governor_conf,
+                }),
         )
         .layer(cors)                     // ✅ Attach production CORS
         .layer(TraceLayer::new_for_http());
@@ -66,7 +72,12 @@ async fn main() {
     tracing::info!("🚀 Server starting on http://{}", addr);
 
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .await
+    .unwrap();
 }
 
 // Root endpoint

@@ -196,6 +196,33 @@ export async function selectCourse(courseId: string | null): Promise<UserRespons
 	return json as UserResponse;
 }
 
+export interface UpdateProfileRequest {
+	name?: string;
+	phone?: string;
+	ministry_role?: string;
+	church_name?: string;
+	calling?: string;
+}
+
+export async function updateProfile(profile: UpdateProfileRequest): Promise<UserResponse> {
+	const body: Record<string, string> = {};
+	if (profile.name !== undefined) body.name = profile.name;
+	if (profile.phone !== undefined) body.phone = profile.phone;
+	if (profile.ministry_role !== undefined) body.ministry_role = profile.ministry_role;
+	if (profile.church_name !== undefined) body.church_name = profile.church_name;
+	if (profile.calling !== undefined) body.calling = profile.calling;
+	const res = await fetch(`${API_BASE}/auth/me`, {
+		method: 'PATCH',
+		headers: getAuthHeaders(),
+		body: JSON.stringify(body)
+	});
+	const json = await safeJson<unknown>(res);
+	if (!res.ok) {
+		throw new Error(getErrorMessage(json, 'Failed to update profile'));
+	}
+	return json as UserResponse;
+}
+
 export async function completePayment(): Promise<UserResponse> {
 	const res = await fetch(`${API_BASE}/auth/complete-payment`, {
 		method: 'POST',
@@ -256,18 +283,60 @@ export async function uploadPaymentProof(file: File, note?: string): Promise<Pay
 	return json as PaymentProof;
 }
 
-export async function getCourses(): Promise<Array<{ id: string; name: string; duration: string }>> {
+export async function getCourses(): Promise<
+	Array<{ id: string; name: string; duration: string; teams_class_id?: string | null }>
+> {
 	const res = await fetch(`${API_BASE}/auth/courses`, {
 		headers: getAuthHeaders()
 	});
 	const json = await safeJson<
-		Array<{ id: string; name: string; duration: string }> | Record<string, unknown>
+		| Array<{ id: string; name: string; duration: string; teams_class_id?: string | null }>
+		| Record<string, unknown>
 	>(res);
 	if (!res.ok) {
 		const err = json as Record<string, unknown>;
 		throw new Error((err.message as string) || (err.error as string) || 'Failed to fetch courses');
 	}
 	return Array.isArray(json) ? json : [];
+}
+
+// --- Progress (module completions) ---
+
+export interface ProgressResponse {
+	completed_module_ids: string[];
+}
+
+export async function getMyProgress(courseId: string): Promise<ProgressResponse> {
+	const res = await fetch(`${API_BASE}/auth/me/courses/${encodeURIComponent(courseId)}/progress`, {
+		headers: getAuthHeaders()
+	});
+	const json = await safeJson<ProgressResponse | Record<string, unknown>>(res);
+	if (!res.ok) {
+		throw new Error(getErrorMessage(json, 'Failed to load progress'));
+	}
+	return json as ProgressResponse;
+}
+
+export async function markModuleComplete(courseId: string, moduleId: string): Promise<void> {
+	const res = await fetch(
+		`${API_BASE}/auth/me/courses/${encodeURIComponent(courseId)}/modules/${encodeURIComponent(moduleId)}/complete`,
+		{ method: 'POST', headers: getAuthHeaders() }
+	);
+	if (!res.ok) {
+		const json = await safeJson<Record<string, unknown>>(res);
+		throw new Error(getErrorMessage(json, 'Failed to mark module complete'));
+	}
+}
+
+export async function unmarkModuleComplete(courseId: string, moduleId: string): Promise<void> {
+	const res = await fetch(
+		`${API_BASE}/auth/me/courses/${encodeURIComponent(courseId)}/modules/${encodeURIComponent(moduleId)}/complete`,
+		{ method: 'DELETE', headers: getAuthHeaders() }
+	);
+	if (!res.ok) {
+		const json = await safeJson<Record<string, unknown>>(res);
+		throw new Error(getErrorMessage(json, 'Failed to unmark module'));
+	}
 }
 
 // --- Invitations (admin/super_admin signup) ---
@@ -302,4 +371,35 @@ export async function getInvite(token: string): Promise<InviteInfo | null> {
 	}
 	const info = json as InviteInfo;
 	return info.valid ? info : null;
+}
+
+// --- Notifications (student: list + mark read) ---
+
+export interface Notification {
+	id: string;
+	title: string;
+	message: string;
+	read_at: string | null;
+	created_at: string;
+}
+
+/** GET /me/notifications */
+export async function getNotifications(): Promise<Notification[]> {
+	const res = await fetch(`${API_BASE}/me/notifications`, { headers: getAuthHeaders() });
+	const json = await safeJson<Notification[] | { message?: string }>(res);
+	if (!res.ok)
+		throw new Error((json as { message?: string }).message ?? 'Failed to load notifications');
+	return Array.isArray(json) ? json : [];
+}
+
+/** PATCH /me/notifications/:id/read */
+export async function markNotificationRead(id: string): Promise<void> {
+	const res = await fetch(`${API_BASE}/me/notifications/${encodeURIComponent(id)}/read`, {
+		method: 'PATCH',
+		headers: getAuthHeaders()
+	});
+	if (!res.ok) {
+		const json = await safeJson<{ message?: string }>(res);
+		throw new Error(json?.message ?? 'Failed to mark as read');
+	}
 }

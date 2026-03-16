@@ -47,6 +47,8 @@ export interface AdminCourse {
 	description?: string;
 	price?: number;
 	active: boolean;
+	/** Microsoft Teams class/team id for "Open in Teams" on student dashboard */
+	teams_class_id?: string | null;
 }
 
 export interface LearningPlan {
@@ -110,6 +112,118 @@ export async function getAdminUsers(params?: {
 	return json as { users: AdminUser[]; total: number };
 }
 
+/** Bulk verify selected users (admin only). */
+export async function bulkVerifyUsers(userIds: string[]): Promise<{ updated: number }> {
+	const res = await fetch(`${API_BASE}/admin/users/bulk-verify`, {
+		method: 'POST',
+		headers: getAuthHeaders(),
+		body: JSON.stringify({ user_ids: userIds })
+	});
+	const json = await safeJson<{ updated: number } | { message?: string }>(res);
+	if (!res.ok) throw new Error((json as { message?: string }).message ?? 'Failed to verify users');
+	return json as { updated: number };
+}
+
+/** Bulk mark selected users as paid (admin only). */
+export async function bulkMarkPaidUsers(userIds: string[]): Promise<{ updated: number }> {
+	const res = await fetch(`${API_BASE}/admin/users/bulk-mark-paid`, {
+		method: 'POST',
+		headers: getAuthHeaders(),
+		body: JSON.stringify({ user_ids: userIds })
+	});
+	const json = await safeJson<{ updated: number } | { message?: string }>(res);
+	if (!res.ok)
+		throw new Error((json as { message?: string }).message ?? 'Failed to mark users paid');
+	return json as { updated: number };
+}
+
+/** Download registrations as CSV file (admin only). */
+export async function downloadRegistrationsCsv(): Promise<void> {
+	const url = `${API_BASE}/admin/reports/registrations?format=csv`;
+	const res = await fetch(url, { headers: getAuthHeaders() });
+	if (!res.ok) {
+		const json = await safeJson<{ message?: string }>(res).catch(() => ({ message: undefined }));
+		throw new Error(json?.message ?? 'Failed to download export');
+	}
+	const blob = await res.blob();
+	const disposition = res.headers.get('Content-Disposition');
+	const match = disposition?.match(/filename="?([^";\n]+)"?/);
+	const filename = match?.[1] ?? `registrations-${new Date().toISOString().slice(0, 10)}.csv`;
+	const a = document.createElement('a');
+	a.href = URL.createObjectURL(blob);
+	a.download = filename;
+	a.click();
+	URL.revokeObjectURL(a.href);
+}
+
+// --- Audit log ---
+
+export interface AuditLogEntry {
+	id: string;
+	admin_user_id: string;
+	action: string;
+	target_type: string | null;
+	target_id: string | null;
+	details: string | null;
+	created_at: string;
+}
+
+export async function getAuditLog(params?: {
+	limit?: number;
+	offset?: number;
+}): Promise<AuditLogEntry[]> {
+	const q = new URLSearchParams();
+	if (params?.limit != null) q.set('limit', String(params.limit));
+	if (params?.offset != null) q.set('offset', String(params.offset));
+	const url = `${API_BASE}/admin/reports/audit-log${q.toString() ? '?' + q.toString() : ''}`;
+	const res = await fetch(url, { headers: getAuthHeaders() });
+	const json = await safeJson<AuditLogEntry[] | { message?: string }>(res);
+	if (!res.ok)
+		throw new Error((json as { message?: string }).message ?? 'Failed to load audit log');
+	return Array.isArray(json) ? json : [];
+}
+
+/** POST /admin/notifications — create in-app notifications (all students or selected user_ids). */
+export async function createNotifications(body: {
+	title: string;
+	message: string;
+	user_ids?: string[] | null;
+}): Promise<{ created: number }> {
+	const res = await fetch(`${API_BASE}/admin/notifications`, {
+		method: 'POST',
+		headers: getAuthHeaders(),
+		body: JSON.stringify({
+			title: body.title,
+			message: body.message,
+			user_ids: body.user_ids ?? null
+		})
+	});
+	const json = await safeJson<{ created: number } | { message?: string }>(res);
+	if (!res.ok)
+		throw new Error((json as { message?: string }).message ?? 'Failed to create notifications');
+	return json as { created: number };
+}
+
+/** POST /admin/email-students — send email to students (all or selected user_ids). */
+export async function emailStudents(body: {
+	subject: string;
+	body: string;
+	user_ids?: string[] | null;
+}): Promise<{ sent: number; failed: number }> {
+	const res = await fetch(`${API_BASE}/admin/email-students`, {
+		method: 'POST',
+		headers: getAuthHeaders(),
+		body: JSON.stringify({
+			subject: body.subject,
+			body: body.body,
+			user_ids: body.user_ids ?? null
+		})
+	});
+	const json = await safeJson<{ sent: number; failed: number } | { message?: string }>(res);
+	if (!res.ok) throw new Error((json as { message?: string }).message ?? 'Failed to send emails');
+	return json as { sent: number; failed: number };
+}
+
 function getMockUsers(): AdminUser[] {
 	return [
 		{
@@ -167,6 +281,7 @@ export async function createCourse(data: {
 	duration: string;
 	description?: string;
 	price?: number;
+	teams_class_id?: string | null;
 }): Promise<AdminCourse> {
 	const res = await fetch(`${API_BASE}/admin/courses`, {
 		method: 'POST',
@@ -178,6 +293,144 @@ export async function createCourse(data: {
 	return json as AdminCourse;
 }
 
+export interface AdminCourseModule {
+	id: string;
+	course_id: string;
+	title: string;
+	sort_order: number;
+	link: string | null;
+	description: string | null;
+	created_at: string;
+}
+
+export async function getCourseModules(courseId: string): Promise<AdminCourseModule[]> {
+	const res = await fetch(`${API_BASE}/admin/courses/${encodeURIComponent(courseId)}/modules`, {
+		headers: getAuthHeaders()
+	});
+	const json = await safeJson<AdminCourseModule[] | { message?: string }>(res);
+	if (!res.ok) throw new Error((json as { message?: string }).message ?? 'Failed to load modules');
+	return Array.isArray(json) ? json : [];
+}
+
+export async function createCourseModule(
+	courseId: string,
+	data: { title: string; sort_order?: number; link?: string | null; description?: string | null }
+): Promise<AdminCourseModule> {
+	const res = await fetch(`${API_BASE}/admin/courses/${encodeURIComponent(courseId)}/modules`, {
+		method: 'POST',
+		headers: getAuthHeaders(),
+		body: JSON.stringify(data)
+	});
+	const json = await safeJson<AdminCourseModule | { message?: string }>(res);
+	if (!res.ok) throw new Error((json as { message?: string }).message ?? 'Failed to create module');
+	return json as AdminCourseModule;
+}
+
+export async function updateCourseModule(
+	courseId: string,
+	moduleId: string,
+	data: Partial<{
+		title: string;
+		sort_order: number;
+		link: string | null;
+		description: string | null;
+	}>
+): Promise<AdminCourseModule> {
+	const res = await fetch(
+		`${API_BASE}/admin/courses/${encodeURIComponent(courseId)}/modules/${encodeURIComponent(moduleId)}`,
+		{
+			method: 'PATCH',
+			headers: getAuthHeaders(),
+			body: JSON.stringify(data)
+		}
+	);
+	const json = await safeJson<AdminCourseModule | { message?: string }>(res);
+	if (!res.ok) throw new Error((json as { message?: string }).message ?? 'Failed to update module');
+	return json as AdminCourseModule;
+}
+
+export async function deleteCourseModule(courseId: string, moduleId: string): Promise<void> {
+	const res = await fetch(
+		`${API_BASE}/admin/courses/${encodeURIComponent(courseId)}/modules/${encodeURIComponent(moduleId)}`,
+		{ method: 'DELETE', headers: getAuthHeaders() }
+	);
+	if (res.status === 204) return;
+	const json = await safeJson<{ message?: string }>(res).catch(() => ({ message: undefined }));
+	throw new Error(json?.message ?? 'Failed to delete module');
+}
+
+// --- Resources (library) ---
+
+export interface AdminResource {
+	id: string;
+	course_id: string | null;
+	title: string;
+	url: string;
+	resource_type: string;
+	sort_order: number;
+	created_at: string;
+}
+
+export async function getAdminResources(courseId?: string | null): Promise<AdminResource[]> {
+	const url = courseId
+		? `${API_BASE}/admin/resources?course_id=${encodeURIComponent(courseId)}`
+		: `${API_BASE}/admin/resources`;
+	const res = await fetch(url, { headers: getAuthHeaders() });
+	const json = await safeJson<AdminResource[] | { message?: string }>(res);
+	if (!res.ok)
+		throw new Error((json as { message?: string }).message ?? 'Failed to load resources');
+	return Array.isArray(json) ? json : [];
+}
+
+export async function createResource(data: {
+	course_id?: string | null;
+	title: string;
+	url: string;
+	resource_type?: string;
+	sort_order?: number;
+}): Promise<AdminResource> {
+	const res = await fetch(`${API_BASE}/admin/resources`, {
+		method: 'POST',
+		headers: getAuthHeaders(),
+		body: JSON.stringify(data)
+	});
+	const json = await safeJson<AdminResource | { message?: string }>(res);
+	if (!res.ok)
+		throw new Error((json as { message?: string }).message ?? 'Failed to create resource');
+	return json as AdminResource;
+}
+
+export async function updateResource(
+	id: string,
+	data: Partial<{
+		course_id: string | null;
+		title: string;
+		url: string;
+		resource_type: string;
+		sort_order: number;
+	}>
+): Promise<AdminResource> {
+	const res = await fetch(`${API_BASE}/admin/resources/${encodeURIComponent(id)}`, {
+		method: 'PATCH',
+		headers: getAuthHeaders(),
+		body: JSON.stringify(data)
+	});
+	const json = await safeJson<AdminResource | { message?: string }>(res);
+	if (!res.ok)
+		throw new Error((json as { message?: string }).message ?? 'Failed to update resource');
+	return json as AdminResource;
+}
+
+export async function deleteResource(id: string): Promise<void> {
+	const res = await fetch(`${API_BASE}/admin/resources/${encodeURIComponent(id)}`, {
+		method: 'DELETE',
+		headers: getAuthHeaders()
+	});
+	if (res.status === 204) return;
+	const json = await safeJson<{ message?: string }>(res).catch(() => ({ message: undefined }));
+	throw new Error(json?.message ?? 'Failed to delete resource');
+}
+
 export async function updateCourse(
 	id: string,
 	data: Partial<{
@@ -186,6 +439,7 @@ export async function updateCourse(
 		description: string;
 		price: number;
 		active: boolean;
+		teams_class_id: string | null;
 	}>
 ): Promise<AdminCourse> {
 	const res = await fetch(`${API_BASE}/admin/courses/${id}`, {

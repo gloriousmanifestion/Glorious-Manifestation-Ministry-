@@ -1,12 +1,40 @@
 <script lang="ts">
 	import { SITE } from '$lib/config';
 
+	import { subscribeNewsletter } from '$lib/api/newsletter';
+
 	const quickLinks = [
 		{ href: '/programs', label: 'Programs' },
 		{ href: '/admissions', label: 'Admissions' },
 		{ href: '/events', label: 'Events' },
+		{ href: '/faq', label: 'FAQ' },
+		{ href: '/testimonials', label: 'Testimonials' },
+		{ href: '/blog', label: 'Blog' },
+		{ href: '/newsletter', label: 'Newsletter' },
 		{ href: '/contact', label: 'Contact' }
 	];
+
+	let newsletterEmail = $state('');
+	let newsletterLoading = $state(false);
+	let newsletterSuccess = $state(false);
+	let newsletterError = $state('');
+
+	async function handleNewsletterSubmit(e: Event) {
+		e.preventDefault();
+		if (newsletterLoading || !newsletterEmail.trim()) return;
+		newsletterError = '';
+		newsletterSuccess = false;
+		newsletterLoading = true;
+		try {
+			await subscribeNewsletter(newsletterEmail);
+			newsletterSuccess = true;
+			newsletterEmail = '';
+		} catch (err) {
+			newsletterError = err instanceof Error ? err.message : 'Subscription failed';
+		} finally {
+			newsletterLoading = false;
+		}
+	}
 
 	const legalLinks = [
 		{ href: '/privacy', label: 'Privacy' },
@@ -17,7 +45,7 @@
 
 <footer class="border-t border-slate-200/80 section-separator bg-slate-50 dark:bg-[#1e2642]">
 	<div class="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
-		<div class="grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
+		<div class="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
 			<!-- Brand -->
 			<div class="sm:col-span-2 lg:col-span-1 min-w-0">
 				<a href="/" class="inline-flex items-center gap-3">
@@ -54,6 +82,37 @@
 				</ul>
 			</div>
 
+			<!-- Newsletter -->
+			<div class="min-w-0">
+				<h3 class="text-sm font-semibold uppercase tracking-wider text-slate-900 dark:text-white">Newsletter</h3>
+				<p class="mt-2 text-sm text-slate-600 dark:text-slate-100">Stay updated with news and events.</p>
+				<form class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center" onsubmit={handleNewsletterSubmit}>
+					<label for="footer-newsletter-email" class="sr-only">Newsletter email</label>
+					<input
+						id="footer-newsletter-email"
+						type="email"
+						placeholder="your@email.com"
+						bind:value={newsletterEmail}
+						disabled={newsletterLoading}
+						class="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-500 focus:border-pink-500 focus:outline-none focus:ring-1 focus:ring-pink-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-400"
+						required
+					/>
+					<button
+						type="submit"
+						disabled={newsletterLoading}
+						class="shrink-0 rounded-lg bg-pink-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-pink-700 disabled:opacity-50 dark:bg-pink-500 dark:hover:bg-pink-600"
+					>
+						{newsletterLoading ? 'Subscribing…' : 'Subscribe'}
+					</button>
+				</form>
+				{#if newsletterSuccess}
+					<p class="mt-2 text-sm text-green-600 dark:text-green-400">Thank you for subscribing.</p>
+				{/if}
+				{#if newsletterError}
+					<p class="mt-2 text-sm text-red-600 dark:text-red-400">{newsletterError}</p>
+				{/if}
+			</div>
+
 			<!-- Contact -->
 			<div class="min-w-0">
 				<h3 class="text-sm font-semibold uppercase tracking-wider text-slate-900 dark:text-white">Contact</h3>
@@ -72,7 +131,7 @@
 									d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"
 								/>
 							</svg>
-							{SITE.whatsapp}
+							{SITE.whatsappDisplay}
 						</a>
 						<a
 							href="mailto:{SITE.infoEmail}"
@@ -106,9 +165,13 @@
 				href="https://www.1nga.com"
 				target="_blank"
 				rel="noopener noreferrer"
-				class="text-slate-500 transition hover:text-slate-700 dark:text-slate-200 dark:hover:text-white"
+				class="inline-flex items-center gap-1 font-medium text-amber-500 transition hover:text-amber-400 dark:text-amber-400 dark:hover:text-amber-300"
+				aria-label="1nga Solutions (opens in new tab)"
 			>
-				1nga Solutions
+				<span>1nga Solutions</span>
+				<svg class="h-3.5 w-3.5 shrink-0 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+				</svg>
 			</a>
 		</p>
 	</div>

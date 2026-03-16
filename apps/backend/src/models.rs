@@ -18,6 +18,9 @@ pub struct User {
     #[serde(default = "default_role")]
     pub role: String,
     pub created_at: String,
+    /// TOTP secret (base32) for admin 2FA; when set, admin must provide code at login.
+    #[serde(skip_serializing)]
+    pub totp_secret: Option<String>,
 }
 
 fn default_role() -> String {

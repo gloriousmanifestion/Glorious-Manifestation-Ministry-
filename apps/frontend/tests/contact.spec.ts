@@ -8,7 +8,7 @@ test.describe('Contact page', () => {
 			page.getByRole('heading', { name: 'Contact the Pastoral School', level: 1 })
 		).toBeVisible();
 		await expect(page.getByLabel('Name')).toBeVisible();
-		await expect(page.getByLabel('Email')).toBeVisible();
+		await expect(page.getByLabel('Email', { exact: true })).toBeVisible();
 		await expect(page.getByLabel('Subject (optional)')).toBeVisible();
 		await expect(page.getByLabel('Message')).toBeVisible();
 		await expect(page.getByRole('button', { name: 'Send message' })).toBeVisible();

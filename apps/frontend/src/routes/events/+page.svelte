@@ -3,23 +3,66 @@
 	import Nav from '$lib/components/Nav.svelte';
 	import Footer from '$lib/components/Footer.svelte';
 	import AnimateOnView from '$lib/components/AnimateOnView.svelte';
-	import { getEvents } from '$lib/api/events';
-	import type { Event } from '$lib/api/events';
+	import {
+		getEvents,
+		getMyEventRsvps,
+		rsvpEvent,
+		cancelRsvp,
+		type Event
+	} from '$lib/api/events';
+	import { authReady, userStore } from '$lib/auth';
 	import { SITE } from '$lib/config';
+	import EmptySection from '$lib/components/EmptySection.svelte';
 
 	let events = $state<Event[]>([]);
+	let myRsvpIds = $state<Set<string>>(new Set());
 	let loading = $state(true);
+	let rsvpLoading = $state<string | null>(null);
 	let error = $state('');
 
-	onMount(async () => {
+	const isLoggedIn = $derived($authReady && $userStore != null);
+
+	onMount(load);
+
+	async function load() {
+		loading = true;
+		error = '';
 		try {
 			events = await getEvents();
+			try {
+				const ids = await getMyEventRsvps();
+				myRsvpIds = new Set(ids);
+			} catch {
+				myRsvpIds = new Set();
+			}
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to load events';
 		} finally {
 			loading = false;
 		}
-	});
+	}
+
+	async function toggleRsvp(ev: Event) {
+		if (rsvpLoading || !isLoggedIn) return;
+		rsvpLoading = ev.id;
+		error = '';
+		try {
+			if (myRsvpIds.has(ev.id)) {
+				await cancelRsvp(ev.id);
+				myRsvpIds = new Set(myRsvpIds);
+				myRsvpIds.delete(ev.id);
+			} else {
+				await rsvpEvent(ev.id);
+				myRsvpIds = new Set([...myRsvpIds, ev.id]);
+			}
+			// Refresh list to update rsvp_count
+			events = await getEvents();
+		} catch (e) {
+			error = e instanceof Error ? e.message : 'RSVP failed';
+		} finally {
+			rsvpLoading = null;
+		}
+	}
 </script>
 
 <svelte:head>
@@ -54,6 +97,8 @@
 					<div class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">
 						{error}
 					</div>
+				{:else if events.length === 0}
+					<EmptySection type="events" />
 				{:else}
 					<div class="space-y-4 sm:space-y-6">
 						{#each events as event, i}
@@ -66,9 +111,28 @@
 									>
 										<span class="text-xs font-medium uppercase leading-tight">{event.date}</span>
 									</div>
-									<div>
+									<div class="min-w-0 flex-1">
 										<h2 class="text-lg font-bold text-slate-900 dark:text-white">{event.title}</h2>
 										<p class="mt-2 text-slate-600 dark:text-slate-200">{event.description ?? ''}</p>
+										<div class="mt-3 flex flex-wrap items-center gap-3">
+											{#if event.rsvp_count != null && event.rsvp_count > 0}
+												<span class="text-sm text-slate-500 dark:text-slate-400">
+													{event.rsvp_count} going
+												</span>
+											{/if}
+											{#if isLoggedIn}
+												<button
+													type="button"
+													disabled={rsvpLoading === event.id}
+													onclick={() => toggleRsvp(event)}
+													class="rounded-lg px-3 py-1.5 text-sm font-medium transition {myRsvpIds.has(event.id)
+														? 'bg-pink-600 text-white hover:bg-pink-500'
+														: 'border border-pink-500 text-pink-600 hover:bg-pink-50 dark:text-pink-400 dark:hover:bg-pink-950/50'}"
+												>
+													{rsvpLoading === event.id ? '…' : myRsvpIds.has(event.id) ? "You're going" : 'RSVP'}
+												</button>
+											{/if}
+										</div>
 									</div>
 								</article>
 							</AnimateOnView>
@@ -83,7 +147,7 @@
 				<div class="mx-auto max-w-2xl text-center">
 					<p class="text-slate-600 dark:text-slate-200">For the latest event updates, follow us and contact via WhatsApp.</p>
 					<a
-						href="https://wa.me/2348026954759"
+						href="https://wa.me/{SITE.whatsappFull.replace(/\+/g, '')}"
 						target="_blank"
 						rel="noopener noreferrer"
 						class="btn-scale mt-6 inline-flex items-center gap-2 rounded-full bg-[#25d366] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#20bd5a]"

@@ -1,17 +1,20 @@
 version: '3.8'
 
+# Run from repo root: docker compose -f infra/compose.yml up --build
+
 services:
   backend:
     build:
-      context: ./apps/backend
+      context: ../apps/backend
       dockerfile: Dockerfile
     ports:
       - "3000:3000"
     environment:
       - PORT=3000
       - RUST_LOG=debug
-    volumes:
-      - ./apps/backend:/app
+      # Set DATABASE_URL for a persistent DB (default: SQLite in /app/data/pms.db inside container)
+      # - DATABASE_URL=sqlite:///app/data/pms.db
+    # No volume over /app so the built binary runs. For dev with live reload, run the backend locally.
     networks:
       - pgm-network
     healthcheck:

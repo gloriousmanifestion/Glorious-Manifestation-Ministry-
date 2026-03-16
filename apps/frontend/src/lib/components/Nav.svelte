@@ -5,27 +5,58 @@
 	import { userStore } from '$lib/auth';
 	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 
-	// Desktop: all 5 links in header. Mobile bottom bar: first 4 + "More" = 5 items (Contact, Theme, Account live in More sheet).
-	const navLinks = [
+	// Desktop: main nav + Discover mega menu (FAQ, Testimonials, Blog, Events) + Church, Contact.
+	const desktopMainLinks = [
 		{ href: '/', label: 'Home', icon: 'home' },
 		{ href: '/programs', label: 'Programs', icon: 'book' },
-		{ href: '/admissions', label: 'Admissions', icon: 'document' },
+		{ href: '/admissions', label: 'Admissions', icon: 'document' }
+	];
+	const discoverLinks = [
 		{ href: '/events', label: 'Events', icon: 'calendar' },
+		{ href: '/blog', label: 'Blog', icon: 'blog' },
+		{ href: '/testimonials', label: 'Testimonials', icon: 'quote' },
+		{ href: '/faq', label: 'FAQ', icon: 'faq' }
+	];
+	const desktopEndLinks = [
+		{ href: '/church', label: 'Church', icon: 'church' },
 		{ href: '/contact', label: 'Contact', icon: 'envelope' }
 	];
+	// Mobile: same flat list for bottom bar (first 4) + More sheet
+	const navLinks = [
+		...desktopMainLinks,
+		...discoverLinks,
+		...desktopEndLinks
+	];
 	const mobileNavLinks = navLinks.slice(0, 4);
-
-	let sheetOpen = $state(false);
-	let scrolled = $state(false);
-	const user = $derived($userStore);
-	const isLoggedIn = $derived(user !== null);
-	const canAccessAdmin = $derived(user !== null && (user.role === 'admin' || user.role === 'super_admin'));
 	const pathname = $derived($page.url.pathname);
 
 	function isActive(href: string): boolean {
 		if (href === '/') return pathname === '/';
 		return pathname === href || pathname.startsWith(href + '/');
 	}
+
+	const isDiscoverActive = $derived(
+		discoverLinks.some((l) => isActive(l.href))
+	);
+
+	let discoverOpen = $state(false);
+	let discoverTimeout: ReturnType<typeof setTimeout> | null = null;
+	function openDiscover() {
+		if (discoverTimeout) clearTimeout(discoverTimeout);
+		discoverOpen = true;
+	}
+	function closeDiscover() {
+		discoverTimeout = setTimeout(() => (discoverOpen = false), 120);
+	}
+	function keepDiscoverOpen() {
+		if (discoverTimeout) clearTimeout(discoverTimeout);
+	}
+
+	let sheetOpen = $state(false);
+	let scrolled = $state(false);
+	const user = $derived($userStore);
+	const isLoggedIn = $derived(user !== null);
+	const canAccessAdmin = $derived(user !== null && (user.role === 'admin' || user.role === 'super_admin'));
 
 	function iconPath(icon: string): string {
 		switch (icon) {
@@ -39,6 +70,14 @@
 				return 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z';
 			case 'envelope':
 				return 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z';
+			case 'church':
+				return 'M12 2L4 6v2h2v10H4v2h4v-4h4v4h4v-2h-2V8h2V6l-8-4zm0 2.5l5 2.5v1H7v-1l5-2.5zM7 11h2v2H7v-2zm6 0h2v2h-2v-2z';
+			case 'faq':
+				return 'M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z';
+			case 'quote':
+				return 'M7 8h10m-5 8v-4m0-4V8m5 4l3 3m0 0l3-3m-3 3V4';
+			case 'blog':
+				return 'M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z';
 			default:
 				return 'M4 6h16M4 12h16M4 18h16';
 		}
@@ -63,16 +102,16 @@
 	});
 </script>
 
-<!-- Desktop: top header -->
+<!-- Desktop: top header (full width) -->
 <header
 	class="fixed top-0 left-0 right-0 z-50 pt-[env(safe-area-inset-top)] transition-all duration-300 hidden md:block {scrolled
 		? 'border-b border-pink-200/50 section-separator bg-white/90 backdrop-blur-xl dark:bg-[#252d47]/90'
 		: 'border-b border-transparent bg-transparent dark:bg-transparent'}"
 >
-	<nav class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
+	<nav class="mx-auto flex w-full max-w-[100rem] items-center justify-between gap-6 px-4 py-3 sm:px-6 sm:py-4">
 		<a
 			href="/"
-			class="inline-flex items-center gap-2 text-xl font-semibold tracking-tight text-slate-900 transition-all duration-300 hover:text-pink-600 dark:text-white dark:hover:text-pink-400"
+			class="inline-flex shrink-0 items-center gap-2 text-xl font-semibold tracking-tight text-slate-900 transition-all duration-300 hover:text-pink-600 dark:text-white dark:hover:text-pink-400"
 		>
 			<img
 				src="/favicon.png"
@@ -83,12 +122,11 @@
 			<span class="hidden sm:inline">{SITE.shortName} | {SITE.schoolName}</span>
 		</a>
 
-		<div class="flex items-center gap-1">
-			<ThemeToggle />
-			{#each navLinks as link}
+		<div class="flex min-w-0 flex-1 items-center justify-center gap-0.5">
+			{#each desktopMainLinks as link}
 				<a
 					href={link.href}
-					class="rounded-lg px-4 py-2 text-sm font-medium transition-all duration-300 {isActive(link.href)
+					class="rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-300 {isActive(link.href)
 						? 'bg-pink-50 text-pink-600 dark:bg-white/10 dark:text-pink-400'
 						: 'text-slate-600 hover:bg-pink-50 hover:text-pink-600 dark:text-slate-100 dark:hover:bg-white/10 dark:hover:text-pink-400'}"
 					aria-current={isActive(link.href) ? 'page' : undefined}
@@ -96,6 +134,71 @@
 					{link.label}
 				</a>
 			{/each}
+			<!-- Discover mega menu (FAQ, Testimonials, Blog, Events) -->
+			<div
+				class="relative"
+				role="group"
+				aria-label="Discover menu"
+				onmouseenter={openDiscover}
+				onmouseleave={closeDiscover}
+				onfocusin={openDiscover}
+				onfocusout={closeDiscover}
+			>
+				<button
+					type="button"
+					class="rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-300 flex items-center gap-1 {discoverOpen || isDiscoverActive
+						? 'bg-pink-50 text-pink-600 dark:bg-white/10 dark:text-pink-400'
+						: 'text-slate-600 hover:bg-pink-50 hover:text-pink-600 dark:text-slate-100 dark:hover:bg-white/10 dark:hover:text-pink-400'}"
+					aria-expanded={discoverOpen}
+					aria-haspopup="true"
+					aria-label="Discover: Events, Blog, Testimonials, FAQ"
+				>
+					Discover
+					<svg class="h-4 w-4 transition-transform {discoverOpen ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+					</svg>
+				</button>
+				{#if discoverOpen}
+					<div
+						class="absolute left-1/2 top-full z-50 mt-1 w-[min(28rem,90vw)] -translate-x-1/2 rounded-2xl border border-pink-200/50 bg-white/95 p-3 shadow-xl backdrop-blur-xl dark:border-pink-500/30 dark:bg-[#252d47]/95"
+						role="group"
+						aria-label="Discover links"
+						onmouseenter={keepDiscoverOpen}
+					>
+						<div class="grid grid-cols-2 gap-1">
+							{#each discoverLinks as link}
+								<a
+									href={link.href}
+									class="flex items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-medium transition {isActive(link.href)
+										? 'bg-pink-50 text-pink-600 dark:bg-white/10 dark:text-pink-400'
+										: 'text-slate-700 hover:bg-pink-50 hover:text-pink-600 dark:text-slate-200 dark:hover:bg-white/10 dark:hover:text-pink-400'}"
+									aria-current={isActive(link.href) ? 'page' : undefined}
+								>
+									<svg class="h-5 w-5 shrink-0 text-pink-500/80 dark:text-pink-400/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={iconPath(link.icon)} />
+									</svg>
+									{link.label}
+								</a>
+							{/each}
+						</div>
+					</div>
+				{/if}
+			</div>
+			{#each desktopEndLinks as link}
+				<a
+					href={link.href}
+					class="rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-300 {isActive(link.href)
+						? 'bg-pink-50 text-pink-600 dark:bg-white/10 dark:text-pink-400'
+						: 'text-slate-600 hover:bg-pink-50 hover:text-pink-600 dark:text-slate-100 dark:hover:bg-white/10 dark:hover:text-pink-400'}"
+					aria-current={isActive(link.href) ? 'page' : undefined}
+				>
+					{link.label}
+				</a>
+			{/each}
+		</div>
+
+		<div class="flex shrink-0 items-center gap-1">
+			<ThemeToggle />
 			{#if isLoggedIn}
 				{#if canAccessAdmin}
 					<a
@@ -205,7 +308,29 @@
 				<p class="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-400">
 					More
 				</p>
-				<div class="mb-4">
+				<div class="mb-4 flex flex-col gap-1">
+					{#each discoverLinks as link}
+						<a
+							href={link.href}
+							class="rounded-xl px-4 py-3.5 text-base font-medium touch-manipulation {isActive(link.href)
+								? 'bg-pink-50 text-pink-600 dark:bg-white/10 dark:text-pink-400'
+								: 'text-slate-700 hover:bg-pink-50 dark:text-slate-100 dark:hover:bg-white/10'}"
+							aria-current={isActive(link.href) ? 'page' : undefined}
+							onclick={() => (sheetOpen = false)}
+						>
+							{link.label}
+						</a>
+					{/each}
+					<a
+						href="/church"
+						class="rounded-xl px-4 py-3.5 text-base font-medium touch-manipulation {isActive('/church')
+							? 'bg-pink-50 text-pink-600 dark:bg-white/10 dark:text-pink-400'
+							: 'text-slate-700 hover:bg-pink-50 dark:text-slate-100 dark:hover:bg-white/10'}"
+						aria-current={isActive('/church') ? 'page' : undefined}
+						onclick={() => (sheetOpen = false)}
+					>
+						Church
+					</a>
 					<a
 						href="/contact"
 						class="rounded-xl px-4 py-3.5 text-base font-medium touch-manipulation {isActive('/contact')

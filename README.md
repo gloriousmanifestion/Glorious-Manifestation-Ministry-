@@ -39,6 +39,7 @@ This repo powers the **Prophetic Glorious Manifestation Pastoral School** platfo
   - Manage courses and learning plans.
   - Invite additional admins / super admins via secure invite links.
 - The backend sends **transactional emails** (e.g. registration and password reset) using `wangamail-rs` (Microsoft Graph / app registration).
+- **Microsoft Teams**: Courses can be linked to Teams classes; students see an “Open in Teams” link on their dashboard. See [Microsoft Teams integration](apps/docs/docs/microsoft-teams-integration.md) for enabling Workflows in Teams and creating classes via Graph API.
 
 Everything lives in a **pnpm monorepo** with shared scripts, infra and CI/CD.
 

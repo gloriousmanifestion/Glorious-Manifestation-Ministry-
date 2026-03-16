@@ -2,14 +2,17 @@ use axum::{
     extract::{Path, State},
     http::StatusCode,
     response::Json,
-    routing::{get, post},
+    routing::{get, patch, post},
     Router,
 };
 use serde::{Deserialize, Serialize};
 use sqlx::AnyPool;
+use std::sync::Arc;
+use std::time::Duration;
+use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
 use uuid::Uuid;
 
-use crate::auth::{create_token, AuthUser};
+use crate::auth::{create_token, create_token_2fa_pending, verify_token, AuthUser};
 use crate::db;
 use crate::models::{User, UserResponse};
 
@@ -18,6 +21,7 @@ use argon2::{
     Argon2,
 };
 use rand_core::OsRng;
+use totp_rs::{Algorithm, Secret, TOTP};
 use wangamail_rs::{BodyType, GraphMailClient, Message, MessageBody, Recipient, SendMailRequest};
 
 #[derive(Debug, Deserialize)]
@@ -41,6 +45,12 @@ pub struct LoginRequest {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct Verify2FaRequest {
+    pub temp_token: String,
+    pub code: String,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct ForgotPasswordRequest {
     pub email: String,
 }
@@ -57,8 +67,14 @@ pub struct AuthResponse {
     pub token: String,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct SelectCourseRequest {
+/// PATCH /auth/me body: any subset of profile fields (snake_case from frontend).
+#[derive(Debug, Default, Deserialize)]
+pub struct UpdateMeRequest {
+    pub name: Option<String>,
+    pub phone: Option<String>,
+    pub ministry_role: Option<String>,
+    pub church_name: Option<String>,
+    pub calling: Option<String>,
     pub selected_course_id: Option<String>,
 }
 
@@ -77,7 +93,8 @@ fn verify_password(password: &str, hash: &str) -> Result<bool, String> {
         .is_ok())
 }
 
-async fn send_registration_email(to: &str, name: &str) -> Result<(), String> {
+/// Send a single email via Microsoft Graph (used by registration, password reset, and admin email-students).
+pub async fn send_email_to(to: &str, subject: &str, body: &str) -> Result<(), String> {
     let tenant_id =
         std::env::var("AZURE_TENANT_ID").map_err(|_| "AZURE_TENANT_ID is not set".to_string())?;
     let client_id =
@@ -94,8 +111,26 @@ async fn send_registration_email(to: &str, name: &str) -> Result<(), String> {
         .build()
         .map_err(|e| e.to_string())?;
 
+    let message = Message {
+        subject: subject.to_string(),
+        body: MessageBody {
+            content_type: BodyType::Text,
+            content: body.to_string(),
+        },
+        to_recipients: vec![Recipient::new(to)],
+        ..Default::default()
+    };
+
+    let request = SendMailRequest::new(message);
+    client
+        .send_mail(&from_user, request)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+async fn send_registration_email(to: &str, name: &str) -> Result<(), String> {
     let subject = "Welcome to Prophetic Ministry Manifestation Pastoral School";
-    let body_text = format!(
+    let body = format!(
         "Hi {name},\n\n\
 Thank you for registering for the Prophetic Ministry Manifestation Pastoral School.\n\n\
 Your account has been created successfully.\n\
@@ -104,23 +139,7 @@ If you did not create this account, please ignore this email.\n\n\
 Blessings,\n\
 Prophetic Ministry Manifestation Pastoral School"
     );
-
-    let message = Message {
-        subject: subject.to_string(),
-        body: MessageBody {
-            content_type: BodyType::Text,
-            content: body_text,
-        },
-        to_recipients: vec![Recipient::new(to)],
-        ..Default::default()
-    };
-
-    let request = SendMailRequest::new(message);
-
-    client
-        .send_mail(&from_user, request)
-        .await
-        .map_err(|e| e.to_string())
+    send_email_to(to, subject, &body).await
 }
 
 #[derive(Debug, Serialize)]
@@ -142,19 +161,110 @@ struct InviteRow {
 }
 
 pub fn auth_routes(pool: AnyPool) -> Router {
-    Router::new()
-        .route("/auth/register", post(register))
+    // Stricter rate limit for login/register only: 5/min, burst 3
+    let auth_strict_config = Arc::new(
+        GovernorConfigBuilder::default()
+            .period(Duration::from_secs(12))
+            .burst_size(3)
+            .finish()
+            .expect("auth governor config"),
+    );
+    let auth_strict = Router::new()
         .route("/auth/login", post(login))
+        .route("/auth/register", post(register))
+        .layer(GovernorLayer {
+            config: auth_strict_config,
+        })
+        .with_state(pool.clone());
+    let auth_rest = Router::new()
         .route("/auth/forgot-password", post(forgot_password))
         .route("/auth/reset-password", post(reset_password))
         .route("/auth/me", get(me).patch(update_me))
         .route("/auth/verify", post(verify))
+        .route("/auth/2fa/verify", post(verify_2fa))
         .route("/auth/complete-payment", post(complete_payment))
         .route("/auth/courses", get(list_courses))
         .route("/auth/invite/:token", get(get_invite))
         .route("/payments/proofs", post(upload_payment_proof))
         .route("/payments/proofs/me", get(list_my_payment_proofs))
-        .with_state(pool)
+        .route("/auth/me/courses/:course_id/progress", get(get_my_progress))
+        .route(
+            "/auth/me/courses/:course_id/modules/:module_id/complete",
+            post(mark_module_complete).delete(unmark_module_complete),
+        )
+        .route("/me/notifications", get(get_my_notifications))
+        .route("/me/notifications/:id/read", patch(mark_notification_read))
+        .with_state(pool);
+    auth_strict.merge(auth_rest)
+}
+
+#[derive(Debug, Serialize, sqlx::FromRow)]
+struct NotificationRow {
+    id: String,
+    title: String,
+    message: String,
+    read_at: Option<String>,
+    created_at: String,
+}
+
+async fn get_my_notifications(
+    State(pool): State<AnyPool>,
+    AuthUser(user_id): AuthUser,
+) -> Result<Json<Vec<NotificationRow>>, (StatusCode, Json<serde_json::Value>)> {
+    let sql = if db::is_postgres() {
+        "SELECT id, title, message, read_at, created_at FROM notifications WHERE user_id = $1 ORDER BY created_at DESC LIMIT 50"
+    } else {
+        "SELECT id, title, message, read_at, created_at FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 50"
+    };
+    let rows = sqlx::query_as::<_, NotificationRow>(sql)
+        .bind(&user_id)
+        .fetch_all(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Get notifications error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"message": "Could not load notifications"})),
+            )
+        })?;
+    Ok(Json(rows))
+}
+
+async fn mark_notification_read(
+    State(pool): State<AnyPool>,
+    AuthUser(user_id): AuthUser,
+    Path(id): Path<String>,
+) -> Result<StatusCode, (StatusCode, Json<serde_json::Value>)> {
+    let now = chrono::Utc::now().to_rfc3339();
+    let result = if db::is_postgres() {
+        sqlx::query("UPDATE notifications SET read_at = $1 WHERE id = $2 AND user_id = $3 AND read_at IS NULL")
+            .bind(&now)
+            .bind(&id)
+            .bind(&user_id)
+            .execute(&pool)
+            .await
+    } else {
+        sqlx::query("UPDATE notifications SET read_at = ? WHERE id = ? AND user_id = ? AND read_at IS NULL")
+            .bind(&now)
+            .bind(&id)
+            .bind(&user_id)
+            .execute(&pool)
+            .await
+    }
+    .map_err(|e| {
+        tracing::error!("Mark notification read error: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"message": "Could not update"})),
+        )
+    })?;
+    if result.rows_affected() == 0 {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"message": "Notification not found"})),
+        ));
+    }
+    Ok(StatusCode::NO_CONTENT)
 }
 
 async fn get_invite(
@@ -407,6 +517,7 @@ async fn register(
         payment_complete: false,
         role: role.clone(),
         created_at: now,
+        totp_secret: None,
     };
 
     // Fire-and-forget registration email via Microsoft Graph using wangamail-rs.
@@ -431,11 +542,11 @@ async fn register(
 async fn login(
     State(pool): State<AnyPool>,
     axum::Json(req): axum::Json<LoginRequest>,
-) -> Result<Json<AuthResponse>, (StatusCode, Json<serde_json::Value>)> {
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     let login_sql = if db::is_postgres() {
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE email = $1"
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at, totp_secret FROM users WHERE email = $1"
     } else {
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE email = ?"
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at, totp_secret FROM users WHERE email = ?"
     };
     let user: Option<User> = sqlx::query_as(login_sql)
         .bind(&req.email)
@@ -463,6 +574,22 @@ async fn login(
         ));
     }
 
+    let requires_2fa =
+        user.totp_secret.is_some() && (user.role == "admin" || user.role == "super_admin");
+
+    if requires_2fa {
+        let temp_token = create_token_2fa_pending(&user.id, &user.role).map_err(|_| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "token_failed", "message": "Could not create token"})),
+            )
+        })?;
+        return Ok(Json(serde_json::json!({
+            "requires_2fa": true,
+            "temp_token": temp_token,
+        })));
+    }
+
     let token = create_token(&user.id, &user.role).map_err(|_| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -470,10 +597,135 @@ async fn login(
         )
     })?;
 
-    Ok(Json(AuthResponse {
-        user: user.to_response(),
-        token,
-    }))
+    Ok(Json(serde_json::json!({
+        "user": user.to_response(),
+        "token": token,
+    })))
+}
+
+async fn verify_2fa(
+    State(pool): State<AnyPool>,
+    axum::Json(req): axum::Json<Verify2FaRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    let claims = verify_token(req.temp_token.trim())
+        .map_err(|_| {
+            (
+                StatusCode::UNAUTHORIZED,
+                Json(serde_json::json!({"error": "invalid_token", "message": "Invalid or expired code. Please log in again."})),
+            )
+        })?;
+    if !claims.two_fa_pending {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(
+                serde_json::json!({"error": "invalid_token", "message": "Not a 2FA pending token"}),
+            ),
+        ));
+    }
+
+    let user_id = &claims.sub;
+    let totp_secret: Option<String> = if db::is_postgres() {
+        sqlx::query_scalar("SELECT totp_secret FROM users WHERE id = $1")
+            .bind(user_id)
+            .fetch_optional(&pool)
+            .await
+    } else {
+        sqlx::query_scalar("SELECT totp_secret FROM users WHERE id = ?")
+            .bind(user_id)
+            .fetch_optional(&pool)
+            .await
+    }
+    .map_err(|e| {
+        tracing::error!("Fetch totp_secret error: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": "server_error", "message": "Could not verify"})),
+        )
+    })?;
+
+    let secret = totp_secret.ok_or((
+        StatusCode::BAD_REQUEST,
+        Json(serde_json::json!({"error": "no_2fa", "message": "2FA not enabled for this account"})),
+    ))?;
+
+    let totp = TOTP::new(
+        Algorithm::SHA1,
+        6,
+        1,
+        30,
+        Secret::Encoded(secret).to_bytes().map_err(|_| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "server_error", "message": "Invalid 2FA config"})),
+            )
+        })?,
+        None,
+        String::new(),
+    )
+    .map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": "server_error", "message": "Invalid 2FA config"})),
+        )
+    })?;
+
+    let code = req.code.trim();
+    if !totp.check_current(code).unwrap_or(false) {
+        return Err((
+            StatusCode::UNAUTHORIZED,
+            Json(
+                serde_json::json!({"error": "invalid_code", "message": "Invalid or expired code"}),
+            ),
+        ));
+    }
+
+    let role: String = if db::is_postgres() {
+        sqlx::query_scalar("SELECT role FROM users WHERE id = $1")
+            .bind(user_id)
+            .fetch_one(&pool)
+            .await
+    } else {
+        sqlx::query_scalar("SELECT role FROM users WHERE id = ?")
+            .bind(user_id)
+            .fetch_one(&pool)
+            .await
+    }
+    .unwrap_or_else(|_| "student".to_string());
+
+    let token = create_token(user_id, &role).map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": "token_failed", "message": "Could not create token"})),
+        )
+    })?;
+
+    let user_sql = if db::is_postgres() {
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at, totp_secret FROM users WHERE id = $1"
+    } else {
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at, totp_secret FROM users WHERE id = ?"
+    };
+    let user: Option<User> = sqlx::query_as(user_sql)
+        .bind(user_id)
+        .fetch_optional(&pool)
+        .await
+        .map_err(|_| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(
+                    serde_json::json!({"error": "server_error", "message": "Could not load user"}),
+                ),
+            )
+        })?;
+
+    let user = user.ok_or((
+        StatusCode::NOT_FOUND,
+        Json(serde_json::json!({"error": "user_not_found", "message": "User not found"})),
+    ))?;
+
+    Ok(Json(serde_json::json!({
+        "user": user.to_response(),
+        "token": token,
+    })))
 }
 
 async fn send_password_reset_email(to: &str, name: &str, reset_link: &str) -> Result<(), String> {
@@ -538,9 +790,9 @@ async fn forgot_password(
     }
 
     let user_sql = if db::is_postgres() {
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE email = $1"
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at, totp_secret FROM users WHERE email = $1"
     } else {
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE email = ?"
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at, totp_secret FROM users WHERE email = ?"
     };
 
     let user: Option<User> = sqlx::query_as(user_sql)
@@ -706,9 +958,9 @@ async fn me(
     AuthUser(user_id): AuthUser,
 ) -> Result<Json<UserResponse>, (StatusCode, Json<serde_json::Value>)> {
     let me_sql = if db::is_postgres() {
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE id = $1"
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at, totp_secret FROM users WHERE id = $1"
     } else {
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE id = ?"
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at, totp_secret FROM users WHERE id = ?"
     };
     let user: Option<User> = sqlx::query_as(me_sql)
         .bind(&user_id)
@@ -735,30 +987,102 @@ async fn me(
 async fn update_me(
     State(pool): State<AnyPool>,
     AuthUser(user_id): AuthUser,
-    axum::Json(req): axum::Json<SelectCourseRequest>,
+    axum::Json(req): axum::Json<UpdateMeRequest>,
 ) -> Result<Json<UserResponse>, (StatusCode, Json<serde_json::Value>)> {
-    let update_course_sql = if db::is_postgres() {
-        "UPDATE users SET selected_course_id = $1 WHERE id = $2"
-    } else {
-        "UPDATE users SET selected_course_id = ? WHERE id = ?"
-    };
-    sqlx::query(update_course_sql)
-        .bind(&req.selected_course_id)
-        .bind(&user_id)
-        .execute(&pool)
-        .await
-        .map_err(|e| {
-            tracing::error!("Update me error: {:?}", e);
+    if let Some(v) = &req.name {
+        let sql = if db::is_postgres() {
+            "UPDATE users SET name = $1 WHERE id = $2"
+        } else {
+            "UPDATE users SET name = ? WHERE id = ?"
+        };
+        sqlx::query(sql).bind(v).bind(&user_id).execute(&pool).await.map_err(|e| {
+            tracing::error!("Update me name error: {:?}", e);
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({"error": "update_failed", "message": "Could not update"})),
             )
         })?;
+    }
+    if let Some(v) = &req.phone {
+        let sql = if db::is_postgres() {
+            "UPDATE users SET phone = $1 WHERE id = $2"
+        } else {
+            "UPDATE users SET phone = ? WHERE id = ?"
+        };
+        sqlx::query(sql).bind(v).bind(&user_id).execute(&pool).await.map_err(|e| {
+            tracing::error!("Update me phone error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "update_failed", "message": "Could not update"})),
+            )
+        })?;
+    }
+    if let Some(v) = &req.ministry_role {
+        let sql = if db::is_postgres() {
+            "UPDATE users SET ministry_role = $1 WHERE id = $2"
+        } else {
+            "UPDATE users SET ministry_role = ? WHERE id = ?"
+        };
+        sqlx::query(sql).bind(v).bind(&user_id).execute(&pool).await.map_err(|e| {
+            tracing::error!("Update me ministry_role error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "update_failed", "message": "Could not update"})),
+            )
+        })?;
+    }
+    if let Some(v) = &req.church_name {
+        let sql = if db::is_postgres() {
+            "UPDATE users SET church_name = $1 WHERE id = $2"
+        } else {
+            "UPDATE users SET church_name = ? WHERE id = ?"
+        };
+        sqlx::query(sql).bind(v).bind(&user_id).execute(&pool).await.map_err(|e| {
+            tracing::error!("Update me church_name error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "update_failed", "message": "Could not update"})),
+            )
+        })?;
+    }
+    if let Some(v) = &req.calling {
+        let sql = if db::is_postgres() {
+            "UPDATE users SET calling = $1 WHERE id = $2"
+        } else {
+            "UPDATE users SET calling = ? WHERE id = ?"
+        };
+        sqlx::query(sql).bind(v).bind(&user_id).execute(&pool).await.map_err(|e| {
+            tracing::error!("Update me calling error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "update_failed", "message": "Could not update"})),
+            )
+        })?;
+    }
+    if req.selected_course_id.is_some() {
+        let sql = if db::is_postgres() {
+            "UPDATE users SET selected_course_id = $1 WHERE id = $2"
+        } else {
+            "UPDATE users SET selected_course_id = ? WHERE id = ?"
+        };
+        sqlx::query(sql)
+            .bind(&req.selected_course_id)
+            .bind(&user_id)
+            .execute(&pool)
+            .await
+            .map_err(|e| {
+                tracing::error!("Update me selected_course_id error: {:?}", e);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({"error": "update_failed", "message": "Could not update"})),
+                )
+            })?;
+    }
 
     let me_sql2 = if db::is_postgres() {
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE id = $1"
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at, totp_secret FROM users WHERE id = $1"
     } else {
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE id = ?"
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at, totp_secret FROM users WHERE id = ?"
     };
     let user: Option<User> = sqlx::query_as(me_sql2)
         .bind(&user_id)
@@ -798,9 +1122,9 @@ async fn verify(
         })?;
 
     let verify_select_sql = if db::is_postgres() {
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE id = $1"
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at, totp_secret FROM users WHERE id = $1"
     } else {
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE id = ?"
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at, totp_secret FROM users WHERE id = ?"
     };
     let user: Option<User> = sqlx::query_as(verify_select_sql)
         .bind(&user_id)
@@ -840,9 +1164,9 @@ async fn complete_payment(
         })?;
 
     let payment_select_sql = if db::is_postgres() {
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE id = $1"
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at, totp_secret FROM users WHERE id = $1"
     } else {
-        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at FROM users WHERE id = ?"
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at, totp_secret FROM users WHERE id = ?"
     };
     let user: Option<User> = sqlx::query_as(payment_select_sql)
         .bind(&user_id)
@@ -865,21 +1189,27 @@ struct CourseRow {
     id: String,
     name: String,
     duration: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    teams_class_id: Option<String>,
 }
 
 async fn list_courses(
     State(pool): State<AnyPool>,
 ) -> Result<Json<Vec<CourseRow>>, (StatusCode, Json<serde_json::Value>)> {
-    let courses: Vec<CourseRow> = sqlx::query_as("SELECT id, name, duration FROM courses")
-        .fetch_all(&pool)
-        .await
-        .map_err(|e| {
-            tracing::error!("List courses error: {:?}", e);
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({"error": "fetch_failed", "message": "Could not fetch courses"})),
-            )
-        })?;
+    let courses: Vec<CourseRow> = sqlx::query_as(
+        "SELECT id, name, duration, teams_class_id FROM courses",
+    )
+    .fetch_all(&pool)
+    .await
+    .map_err(|e| {
+        tracing::error!("List courses error: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(
+                serde_json::json!({"error": "fetch_failed", "message": "Could not fetch courses"}),
+            ),
+        )
+    })?;
     Ok(Json(courses))
 }
 
@@ -1064,4 +1394,131 @@ async fn list_my_payment_proofs(
         })
         .collect();
     Ok(Json(list))
+}
+
+// ---------- Progress (module completions) ----------
+
+#[derive(Debug, Serialize)]
+struct ProgressResponse {
+    completed_module_ids: Vec<String>,
+}
+
+async fn get_my_progress(
+    State(pool): State<AnyPool>,
+    AuthUser(user_id): AuthUser,
+    Path(course_id): Path<String>,
+) -> Result<Json<ProgressResponse>, (StatusCode, Json<serde_json::Value>)> {
+    let sql = if db::is_postgres() {
+        "SELECT mc.course_module_id FROM module_completions mc
+         INNER JOIN course_modules m ON m.id = mc.course_module_id AND m.course_id = $1
+         WHERE mc.user_id = $2 ORDER BY mc.completed_at"
+    } else {
+        "SELECT mc.course_module_id FROM module_completions mc
+         INNER JOIN course_modules m ON m.id = mc.course_module_id AND m.course_id = ?
+         WHERE mc.user_id = ? ORDER BY mc.completed_at"
+    };
+    let rows: Vec<(String,)> = sqlx::query_as(sql)
+        .bind(&course_id)
+        .bind(&user_id)
+        .fetch_all(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Get my progress error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(
+                    serde_json::json!({"error": "fetch_failed", "message": "Could not load progress"}),
+                ),
+            )
+        })?;
+    let completed_module_ids: Vec<String> = rows.into_iter().map(|r| r.0).collect();
+    Ok(Json(ProgressResponse {
+        completed_module_ids,
+    }))
+}
+
+async fn mark_module_complete(
+    State(pool): State<AnyPool>,
+    AuthUser(user_id): AuthUser,
+    Path((course_id, module_id)): Path<(String, String)>,
+) -> Result<StatusCode, (StatusCode, Json<serde_json::Value>)> {
+    // Ensure module belongs to course
+    let check_sql = if db::is_postgres() {
+        "SELECT id FROM course_modules WHERE id = $1 AND course_id = $2"
+    } else {
+        "SELECT id FROM course_modules WHERE id = ? AND course_id = ?"
+    };
+    let exists: Option<(String,)> = sqlx::query_as(check_sql)
+        .bind(&module_id)
+        .bind(&course_id)
+        .fetch_optional(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Check module error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(
+                    serde_json::json!({"error": "db_error", "message": "Could not verify module"}),
+                ),
+            )
+        })?;
+    if exists.is_none() {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(
+                serde_json::json!({"error": "not_found", "message": "Module not found for this course"}),
+            ),
+        ));
+    }
+    let now = chrono::Utc::now().to_rfc3339();
+    let insert_sql = if db::is_postgres() {
+        "INSERT INTO module_completions (user_id, course_module_id, completed_at) VALUES ($1, $2, $3) ON CONFLICT (user_id, course_module_id) DO NOTHING"
+    } else {
+        "INSERT OR IGNORE INTO module_completions (user_id, course_module_id, completed_at) VALUES (?, ?, ?)"
+    };
+    sqlx::query(insert_sql)
+        .bind(&user_id)
+        .bind(&module_id)
+        .bind(&now)
+        .execute(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Mark complete error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(
+                    serde_json::json!({"error": "update_failed", "message": "Could not mark module complete"}),
+                ),
+            )
+        })?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+async fn unmark_module_complete(
+    State(pool): State<AnyPool>,
+    AuthUser(user_id): AuthUser,
+    Path((course_id, module_id)): Path<(String, String)>,
+) -> Result<StatusCode, (StatusCode, Json<serde_json::Value>)> {
+    // Optional: verify module belongs to course (for consistency)
+    let delete_sql = if db::is_postgres() {
+        "DELETE FROM module_completions WHERE user_id = $1 AND course_module_id = $2 AND course_module_id IN (SELECT id FROM course_modules WHERE course_id = $3)"
+    } else {
+        "DELETE FROM module_completions WHERE user_id = ? AND course_module_id = ? AND course_module_id IN (SELECT id FROM course_modules WHERE course_id = ?)"
+    };
+    let _ = sqlx::query(delete_sql)
+        .bind(&user_id)
+        .bind(&module_id)
+        .bind(&course_id)
+        .execute(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Unmark complete error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(
+                    serde_json::json!({"error": "update_failed", "message": "Could not unmark module"}),
+                ),
+            )
+        })?;
+    Ok(StatusCode::NO_CONTENT)
 }

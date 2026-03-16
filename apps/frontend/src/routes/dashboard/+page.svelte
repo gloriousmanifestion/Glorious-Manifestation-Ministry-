@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { get } from 'svelte/store';
 	import { goto } from '$app/navigation';
 	import Nav from '$lib/components/Nav.svelte';
 	import Footer from '$lib/components/Footer.svelte';
@@ -7,10 +8,22 @@
 	import type { Course, PaymentProof } from '$lib/auth';
 	import { SITE } from '$lib/config';
 	import { getCourseDetailById } from '$lib/courses';
+	import { getAnnouncements, type Announcement } from '$lib/api/announcements';
+	import { getCourseModules, type CourseModule } from '$lib/api/course-modules';
+	import {
+		getNotifications,
+		markNotificationRead,
+		type Notification,
+		type ProgressResponse
+	} from '$lib/auth-api';
 
 	let mounted = $state(false);
 	let courses = $state<Course[]>([]);
 	let paymentProofs = $state<PaymentProof[]>([]);
+	let announcements = $state<Announcement[]>([]);
+	let notifications = $state<Notification[]>([]);
+	let courseModules = $state<CourseModule[]>([]);
+	let progress = $state<ProgressResponse | null>(null);
 	let uploadingProof = $state(false);
 	let proofError = $state('');
 
@@ -30,8 +43,27 @@
 			try {
 				paymentProofs = await auth.getMyPaymentProofs();
 			} catch {
-				// POP API may not yet be implemented; fail softly.
 				paymentProofs = [];
+			}
+			try {
+				announcements = await getAnnouncements();
+			} catch {
+				announcements = [];
+			}
+			try {
+				notifications = await getNotifications();
+			} catch {
+				notifications = [];
+			}
+			const user = get(userStore);
+			if (user?.selectedCourseId) {
+				try {
+					courseModules = await getCourseModules(user.selectedCourseId);
+					progress = await auth.getMyProgress(user.selectedCourseId);
+				} catch {
+					courseModules = [];
+					progress = null;
+				}
 			}
 		} catch {
 			// Fallback empty - user can still use dashboard
@@ -103,6 +135,135 @@
 				{#if actionError}
 					<div class="mb-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">
 						{actionError}
+					</div>
+				{/if}
+
+				<!-- Next steps checklist -->
+				<div class="mb-6 sm:mb-8 rounded-2xl border border-slate-200/80 section-separator card-premium bg-white/95 p-4 sm:p-6 shadow-sm dark:bg-[#1e2642]">
+					<h2 class="text-lg font-semibold text-slate-900 dark:text-white">Your next steps</h2>
+					<ul class="mt-4 space-y-3" role="list">
+						<li class="flex items-center gap-3">
+							<span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full {user.verified ? 'bg-green-100 text-green-600 dark:bg-green-900/50 dark:text-green-300' : 'bg-amber-100 text-amber-600 dark:bg-amber-900/50 dark:text-amber-300'}">
+								{#if user.verified}
+									<svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+								{:else}
+									<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+								{/if}
+							</span>
+							<span class="{user.verified ? 'text-slate-500 dark:text-slate-400' : 'font-medium text-slate-900 dark:text-white'}">Verify your account</span>
+							{#if !user.verified}
+								<button type="button" onclick={handleVerify} disabled={verifyLoading} class="ml-auto text-sm font-medium text-pink-600 hover:text-pink-700 dark:text-pink-400">Verify now</button>
+							{/if}
+						</li>
+						<li class="flex items-center gap-3">
+							<span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full {selectedCourse ? 'bg-green-100 text-green-600 dark:bg-green-900/50 dark:text-green-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400'}">
+								{#if selectedCourse}
+									<svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+								{:else}
+									<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+								{/if}
+							</span>
+							<span class="{selectedCourse ? 'text-slate-500 dark:text-slate-400' : 'font-medium text-slate-900 dark:text-white'}">Select a course</span>
+						</li>
+						<li class="flex items-center gap-3">
+							<span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full {user.paymentComplete ? 'bg-green-100 text-green-600 dark:bg-green-900/50 dark:text-green-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400'}">
+								{#if user.paymentComplete}
+									<svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+								{:else}
+									<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+								{/if}
+							</span>
+							<span class="{user.paymentComplete ? 'text-slate-500 dark:text-slate-400' : 'font-medium text-slate-900 dark:text-white'}">Complete payment</span>
+							{#if !user.paymentComplete && selectedCourse}
+								<a href={SITE.selarPaymentUrl} target="_blank" rel="noopener noreferrer" class="ml-auto text-sm font-medium text-pink-600 hover:text-pink-700 dark:text-pink-400">Pay via Selar</a>
+							{/if}
+						</li>
+						<li class="flex items-center gap-3">
+							<span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full {user.verified && user.paymentComplete ? 'bg-green-100 text-green-600 dark:bg-green-900/50 dark:text-green-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400'}">
+								{#if user.verified && user.paymentComplete}
+									<svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+								{:else}
+									<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+								{/if}
+							</span>
+							<span class="{user.verified && user.paymentComplete ? 'text-slate-500 dark:text-slate-400' : 'font-medium text-slate-900 dark:text-white'}">View your certificate</span>
+							{#if user.verified && user.paymentComplete}
+								<a href="/dashboard/certificate" class="ml-auto text-sm font-medium text-pink-600 hover:text-pink-700 dark:text-pink-400">View certificate</a>
+							{/if}
+						</li>
+					</ul>
+				</div>
+
+				<!-- Notifications -->
+				{#if notifications.length > 0}
+					<div class="mb-6 sm:mb-8 rounded-2xl border border-slate-200/80 section-separator card-premium bg-white/95 p-4 sm:p-6 shadow-sm dark:bg-[#1e2642]">
+						<h2 class="text-lg font-semibold text-slate-900 dark:text-white">Notifications</h2>
+						<ul class="mt-4 space-y-3" role="list">
+							{#each notifications as n}
+								<li
+									class="rounded-xl border border-slate-200/80 p-3 dark:border-slate-700 {n.read_at
+										? 'bg-slate-50/50 dark:bg-slate-800/30'
+										: 'bg-pink-50/50 dark:bg-pink-900/20 border-pink-200/50 dark:border-pink-800/50'}"
+								>
+									<div class="flex items-start justify-between gap-3">
+										<div>
+											<p class="font-medium text-slate-900 dark:text-white">{n.title}</p>
+											<p class="mt-1 text-sm text-slate-600 dark:text-slate-200">{n.message}</p>
+											<p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+												{new Date(n.created_at).toLocaleDateString(undefined, {
+													day: 'numeric',
+													month: 'short',
+													year: 'numeric'
+												})}
+											</p>
+										</div>
+										{#if !n.read_at}
+											<button
+												type="button"
+												onclick={async () => {
+													try {
+														await markNotificationRead(n.id);
+														notifications = notifications.map((x) =>
+															x.id === n.id ? { ...x, read_at: new Date().toISOString() } : x
+														);
+													} catch {
+														// ignore
+													}
+												}}
+												class="shrink-0 rounded-lg bg-pink-600 px-2 py-1 text-xs font-medium text-white hover:bg-pink-500"
+											>
+												Mark read
+											</button>
+										{/if}
+									</div>
+								</li>
+							{/each}
+						</ul>
+					</div>
+				{/if}
+
+				<!-- Course progress (when curriculum exists) -->
+				{#if selectedCourse && (courseModules.length > 0 || (progress && progress.completed_module_ids.length > 0))}
+					<div class="mb-6 sm:mb-8 rounded-2xl border border-slate-200/80 section-separator card-premium bg-white/95 p-4 sm:p-6 shadow-sm dark:bg-[#1e2642]">
+						<h2 class="text-lg font-semibold text-slate-900 dark:text-white">Course progress</h2>
+						<p class="mt-1 text-slate-600 dark:text-slate-200">
+							{progress?.completed_module_ids.length ?? 0} / {courseModules.length} modules completed
+						</p>
+						<div class="mt-3 flex flex-wrap items-center gap-4">
+							<a
+								href="/courses/{selectedCourse.id}"
+								class="inline-flex items-center gap-2 text-sm font-medium text-pink-600 hover:text-pink-700 dark:text-pink-400"
+							>
+								View curriculum
+								<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+							</a>
+							<a
+								href={selectedCourse ? `/resources?course_id=${encodeURIComponent(selectedCourse.id)}` : '/resources'}
+								class="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+							>
+								Resource library
+							</a>
+						</div>
 					</div>
 				{/if}
 
@@ -185,11 +346,37 @@
 					{/if}
 				</div>
 
+				<!-- Announcements (latest 3) -->
+				{#if announcements.length > 0}
+					<div class="mb-6 sm:mb-8">
+						<h2 class="mb-3 text-lg font-semibold text-slate-900 dark:text-white">Announcements</h2>
+						<div class="space-y-3">
+							{#each announcements.slice(0, 3) as ann}
+								<div class="rounded-2xl border border-slate-200/80 section-separator card-premium bg-white/95 p-4 shadow-sm dark:bg-[#1e2642] dark:border-white/[0.08]">
+									<h3 class="font-medium text-slate-900 dark:text-white">{ann.title}</h3>
+									<p class="mt-1 whitespace-pre-wrap text-sm text-slate-600 dark:text-slate-200">{ann.body}</p>
+									<p class="mt-2 text-xs text-slate-500 dark:text-slate-400">
+										{new Date(ann.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+									</p>
+								</div>
+							{/each}
+						</div>
+					</div>
+				{/if}
+
 				<!-- Dashboard cards -->
 				<div class="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
 					<!-- Profile card -->
 					<div class="rounded-2xl border border-slate-200/80 section-separator card-premium bg-white/95 p-4 sm:p-6 shadow-sm dark:bg-[#1e2642]">
-						<h2 class="text-lg font-semibold text-slate-900 dark:text-white">Your profile</h2>
+						<div class="flex items-center justify-between">
+							<h2 class="text-lg font-semibold text-slate-900 dark:text-white">Your profile</h2>
+							<a
+								href="/dashboard/profile"
+								class="text-sm font-medium text-pink-600 hover:text-pink-700 dark:text-pink-400 dark:hover:text-pink-300"
+							>
+								Edit profile
+							</a>
+						</div>
 						<dl class="mt-4 space-y-3">
 							<div>
 								<dt class="text-sm font-medium text-slate-600 dark:text-slate-200">Name</dt>
@@ -218,6 +405,19 @@
 									</span>
 								</dd>
 							</div>
+							{#if user.verified && user.paymentComplete}
+								<div>
+									<dt class="text-sm font-medium text-slate-600 dark:text-slate-200">Certificate</dt>
+									<dd class="mt-0.5">
+										<a
+											href="/dashboard/certificate"
+											class="text-sm font-medium text-pink-600 hover:text-pink-700 dark:text-pink-400 dark:hover:text-pink-300"
+										>
+											View / print certificate
+										</a>
+									</dd>
+								</div>
+							{/if}
 						</dl>
 					</div>
 
@@ -235,15 +435,33 @@
 										<p class="text-sm text-slate-500 dark:text-slate-300">{selectedCourse.duration} • {SITE.schedule}</p>
 									</div>
 								</div>
-								<a
-									href="/courses/{selectedCourse.id}"
-									class="mt-3 inline-flex items-center gap-1 text-sm font-medium text-pink-600 hover:text-pink-700 dark:text-pink-400 dark:hover:text-pink-300"
-								>
-									Review full course details & schedule
-									<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-									</svg>
-								</a>
+								<div class="mt-3 flex flex-wrap gap-3">
+									<a
+										href="/courses/{selectedCourse.id}"
+										class="inline-flex items-center gap-1 text-sm font-medium text-pink-600 hover:text-pink-700 dark:text-pink-400 dark:hover:text-pink-300"
+									>
+										Review full course details & schedule
+										<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+										</svg>
+									</a>
+									{#if selectedCourse.teams_class_id}
+										<span class="flex flex-col gap-0.5">
+											<a
+												href="https://teams.microsoft.com/l/team/{selectedCourse.teams_class_id}"
+												target="_blank"
+												rel="noopener noreferrer"
+												class="inline-flex items-center gap-1 text-sm font-medium text-[#6264a7] hover:text-[#464775] dark:text-[#9db2e6] dark:hover:text-[#b4c4ed]"
+											>
+												Open in Teams
+												<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+												</svg>
+											</a>
+											<span class="text-xs text-slate-500 dark:text-slate-400">Works with any email (Gmail, Yahoo, etc.); sign in as guest if prompted.</span>
+										</span>
+									{/if}
+								</div>
 							</div>
 							{#if !user.paymentComplete}
 								<a

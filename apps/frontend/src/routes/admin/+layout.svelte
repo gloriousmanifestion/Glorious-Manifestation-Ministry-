@@ -16,6 +16,14 @@
 		{ href: '/admin/users', label: 'Users', icon: 'users' as const },
 		{ href: '/admin/courses', label: 'Courses', icon: 'book' as const },
 		{ href: '/admin/learning-plans', label: 'Learning plans', icon: 'academic' as const },
+		{ href: '/admin/church', label: 'Church', icon: 'church' as const },
+		{ href: '/admin/faq', label: 'FAQ', icon: 'faq' as const },
+		{ href: '/admin/announcements', label: 'Announcements', icon: 'announcements' as const },
+		{ href: '/admin/events', label: 'Events', icon: 'events' as const },
+		{ href: '/admin/testimonials', label: 'Testimonials', icon: 'quote' as const },
+		{ href: '/admin/blog', label: 'Blog', icon: 'blog' as const },
+		{ href: '/admin/resources', label: 'Resources', icon: 'resources' as const },
+		{ href: '/admin/reports', label: 'Reports', icon: 'reports' as const },
 		...(user?.role === 'super_admin' ? [{ href: '/admin/team', label: 'Team & invites', icon: 'invite' as const }] : [])
 	]);
 
@@ -52,6 +60,22 @@
 				return 'M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z';
 			case 'invite':
 				return 'M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z';
+			case 'church':
+				return 'M12 2L9 5v2H5v2h4v10h2V9h4V7h-4V5l-3-3zm0 2.5l1.5 1.5H12v1h-1V6l.5-.5z';
+			case 'faq':
+				return 'M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z';
+			case 'announcements':
+				return 'M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z';
+			case 'events':
+				return 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z';
+			case 'quote':
+				return 'M7 8h10m-5 8v-4m0-4V8m5 4l3 3m0 0l3-3m-3 3V4';
+			case 'blog':
+				return 'M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z';
+			case 'reports':
+				return 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z';
+			case 'resources':
+				return 'M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M8 19h8m-4 4v-4m-4 0h4';
 			default:
 				return 'M4 6h16M4 12h16M4 18h16';
 		}
