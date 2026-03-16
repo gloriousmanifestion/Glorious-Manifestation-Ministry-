@@ -162,8 +162,13 @@ function createAuthStore() {
 			await api.resetPassword(token, password);
 		},
 		async verifyAccount() {
-			const r = await api.verifyAccount();
-			const user = toUser(r);
+			// (Re)send verification email; user remains unverified until they click the email link.
+			await api.verifyAccount();
+		},
+		async confirmEmailVerification(token: string) {
+			const res = await api.confirmVerification(token);
+			localStorage.setItem(TOKEN_KEY, res.token);
+			const user = toUser(res.user);
 			userStore.set(user);
 			saveUser(user);
 		},

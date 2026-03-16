@@ -171,16 +171,33 @@ export async function getMe(): Promise<UserResponse | null> {
 	return json as UserResponse;
 }
 
-export async function verifyAccount(): Promise<UserResponse> {
+export async function verifyAccount(): Promise<void> {
+	// Request (re)send of verification email for the current user.
 	const res = await fetch(`${API_BASE}/auth/verify`, {
 		method: 'POST',
 		headers: getAuthHeaders()
 	});
 	const json = await safeJson<unknown>(res);
 	if (!res.ok) {
+		throw new Error(getErrorMessage(json, 'Failed to send verification email'));
+	}
+}
+
+export interface ConfirmVerificationRequest {
+	token: string;
+}
+
+export async function confirmVerification(token: string): Promise<AuthResponse> {
+	const res = await fetch(`${API_BASE}/auth/verify/confirm`, {
+		method: 'POST',
+		headers: getAuthHeaders(),
+		body: JSON.stringify({ token })
+	});
+	const json = await safeJson<unknown>(res);
+	if (!res.ok) {
 		throw new Error(getErrorMessage(json, 'Verification failed'));
 	}
-	return json as UserResponse;
+	return json as AuthResponse;
 }
 
 export async function selectCourse(courseId: string | null): Promise<UserResponse> {

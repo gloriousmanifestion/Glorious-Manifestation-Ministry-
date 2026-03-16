@@ -67,6 +67,11 @@ pub struct AuthResponse {
     pub token: String,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct ConfirmVerificationRequest {
+    pub token: String,
+}
+
 /// PATCH /auth/me body: any subset of profile fields (snake_case from frontend).
 #[derive(Debug, Default, Deserialize)]
 pub struct UpdateMeRequest {
@@ -134,7 +139,7 @@ async fn send_registration_email(to: &str, name: &str) -> Result<(), String> {
         "Hi {name},\n\n\
 Thank you for registering for the Prophetic Ministry Manifestation Pastoral School.\n\n\
 Your account has been created successfully.\n\
-Please log in with your email and password to complete your profile and verification.\n\n\
+You can now log in with your email and password. After logging in, use the dashboard to request a verification email.\n\n\
 If you did not create this account, please ignore this email.\n\n\
 Blessings,\n\
 Prophetic Ministry Manifestation Pastoral School"
@@ -180,7 +185,8 @@ pub fn auth_routes(pool: AnyPool) -> Router {
         .route("/auth/forgot-password", post(forgot_password))
         .route("/auth/reset-password", post(reset_password))
         .route("/auth/me", get(me).patch(update_me))
-        .route("/auth/verify", post(verify))
+        .route("/auth/verify", post(request_verification_email))
+        .route("/auth/verify/confirm", post(confirm_verification))
         .route("/auth/2fa/verify", post(verify_2fa))
         .route("/auth/complete-payment", post(complete_payment))
         .route("/auth/courses", get(list_courses))
@@ -527,6 +533,223 @@ async fn register(
     }
 
     let token = create_token(&id, &role).map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": "token_failed", "message": "Could not create token"})),
+        )
+    })?;
+
+    Ok(Json(AuthResponse {
+        user: user.to_response(),
+        token,
+    }))
+}
+
+/// POST /auth/verify – (re)send verification email for the authenticated user.
+async fn request_verification_email(
+    State(pool): State<AnyPool>,
+    AuthUser(user_id): AuthUser,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    // Load user email/name and current verified status.
+    let sql = if db::is_postgres() {
+        "SELECT email, name, verified FROM users WHERE id = $1"
+    } else {
+        "SELECT email, name, verified FROM users WHERE id = ?"
+    };
+    let row: Option<(String, String, i64)> = sqlx::query_as(sql)
+        .bind(&user_id)
+        .fetch_optional(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Request verification: fetch user error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "verify_failed", "message": "Could not start verification"})),
+            )
+        })?;
+
+    let Some((email, name, verified)) = row else {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error": "user_not_found", "message": "User not found"})),
+        ));
+    };
+
+    // If already verified, just return success.
+    if verified != 0 {
+        return Ok(Json(serde_json::json!({
+            "status": "ok",
+            "message": "Account already verified."
+        })));
+    }
+
+    let id = Uuid::new_v4().to_string();
+    let token = Uuid::new_v4().to_string();
+    let now = chrono::Utc::now();
+    let expires_at = (now + chrono::Duration::hours(24)).to_rfc3339();
+    let created_at = now.to_rfc3339();
+
+    let insert_sql = if db::is_postgres() {
+        "INSERT INTO email_verification_tokens (id, user_id, token, expires_at, created_at) VALUES ($1, $2, $3, $4, $5)"
+    } else {
+        "INSERT INTO email_verification_tokens (id, user_id, token, expires_at, created_at) VALUES (?, ?, ?, ?, ?)"
+    };
+
+    sqlx::query(insert_sql)
+        .bind(&id)
+        .bind(&user_id)
+        .bind(&token)
+        .bind(&expires_at)
+        .bind(&created_at)
+        .execute(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Request verification: insert token error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "verify_failed", "message": "Could not create verification token"})),
+            )
+        })?;
+
+    let base_url =
+        std::env::var("APP_BASE_URL").unwrap_or_else(|_| "http://localhost:5173".to_string());
+    let verify_link = format!(
+        "{}/verify-email?token={}",
+        base_url.trim_end_matches('/'),
+        token
+    );
+    let subject = "Verify your Pastoral School account";
+    let body = format!(
+        "Hi {name},\n\n\
+Please verify your Prophetic Ministry Manifestation Pastoral School account by clicking the link below:\n\
+{verify_link}\n\n\
+If you did not create this account, you can safely ignore this email.\n\n\
+Blessings,\n\
+Prophetic Ministry Manifestation Pastoral School"
+    );
+
+    if let Err(e) = send_email_to(&email, subject, &body).await {
+        tracing::error!("Request verification email error for {}: {}", email, e);
+        // Do not fail the request – avoid leaking email issues to user.
+    }
+
+    Ok(Json(serde_json::json!({
+        "status": "ok",
+        "message": "Verification email sent. Please check your inbox."
+    })))
+}
+
+/// POST /auth/verify/confirm – confirm email verification by token, mark verified, and log user in.
+async fn confirm_verification(
+    State(pool): State<AnyPool>,
+    axum::Json(req): axum::Json<ConfirmVerificationRequest>,
+) -> Result<Json<AuthResponse>, (StatusCode, Json<serde_json::Value>)> {
+    let token = req.token.trim();
+    if token.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(
+                serde_json::json!({"error": "invalid_token", "message": "Invalid or missing token"}),
+            ),
+        ));
+    }
+
+    #[derive(Debug, sqlx::FromRow)]
+    struct EmailVerifRow {
+        id: String,
+        user_id: String,
+        expires_at: String,
+        used_at: Option<String>,
+    }
+
+    let now = chrono::Utc::now().to_rfc3339();
+    let select_sql = if db::is_postgres() {
+        "SELECT id, user_id, expires_at, used_at FROM email_verification_tokens WHERE token = $1 AND (used_at IS NULL OR used_at = '') AND expires_at > $2"
+    } else {
+        "SELECT id, user_id, expires_at, used_at FROM email_verification_tokens WHERE token = ? AND (used_at IS NULL OR used_at = '') AND expires_at > ?"
+    };
+
+    let row: Option<EmailVerifRow> = sqlx::query_as(select_sql)
+        .bind(&token)
+        .bind(&now)
+        .fetch_optional(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Confirm verification: token lookup error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "verify_failed", "message": "Could not verify token"})),
+            )
+        })?;
+
+    let row = row.ok_or((
+        StatusCode::BAD_REQUEST,
+        Json(
+            serde_json::json!({"error": "invalid_token", "message": "Invalid or expired verification link"}),
+        ),
+    ))?;
+
+    // Mark user as verified.
+    let update_user_sql = if db::is_postgres() {
+        "UPDATE users SET verified = 1 WHERE id = $1"
+    } else {
+        "UPDATE users SET verified = 1 WHERE id = ?"
+    };
+    sqlx::query(update_user_sql)
+        .bind(&row.user_id)
+        .execute(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Confirm verification: update user error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(
+                    serde_json::json!({"error": "verify_failed", "message": "Could not verify account"}),
+                ),
+            )
+        })?;
+
+    // Mark token as used.
+    let update_token_sql = if db::is_postgres() {
+        "UPDATE email_verification_tokens SET used_at = $1 WHERE id = $2"
+    } else {
+        "UPDATE email_verification_tokens SET used_at = ? WHERE id = ?"
+    };
+    if let Err(e) = sqlx::query(update_token_sql)
+        .bind(&now)
+        .bind(&row.id)
+        .execute(&pool)
+        .await
+    {
+        tracing::error!("Confirm verification: mark token used error: {:?}", e);
+    }
+
+    // Load freshly updated user.
+    let user_sql = if db::is_postgres() {
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at, totp_secret FROM users WHERE id = $1"
+    } else {
+        "SELECT id, email, password_hash, name, phone, ministry_role, church_name, calling, selected_course_id, verified, payment_complete, role, created_at, totp_secret FROM users WHERE id = ?"
+    };
+    let user: Option<User> = sqlx::query_as(user_sql)
+        .bind(&row.user_id)
+        .fetch_optional(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Confirm verification: fetch user error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(
+                    serde_json::json!({"error": "fetch_failed", "message": "Could not load user after verification"}),
+                ),
+            )
+        })?;
+
+    let user = user.ok_or((
+        StatusCode::NOT_FOUND,
+        Json(serde_json::json!({"error": "user_not_found", "message": "User not found"})),
+    ))?;
+
+    let token = create_token(&user.id, &user.role).map_err(|_| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({"error": "token_failed", "message": "Could not create token"})),
