@@ -4,8 +4,13 @@
 
 // Use different Selar checkout URLs per environment.
 // PUBLIC_APP_ENV is already used elsewhere (e.g. env banner).
+type PublicEnv = {
+	PUBLIC_APP_ENV?: string;
+};
+
 const envName =
-	(typeof import.meta.env !== 'undefined' && (import.meta.env as any).PUBLIC_APP_ENV) || 'production';
+	(typeof import.meta.env !== 'undefined' && (import.meta.env as PublicEnv).PUBLIC_APP_ENV) ||
+	'production';
 const selarPaymentUrl =
 	envName === 'production' ? 'https://selar.com/k7t41ibp26' : 'https://selar.com/577p7vtjkr';
 
