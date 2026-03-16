@@ -21,8 +21,8 @@ use argon2::{
     Argon2,
 };
 use rand_core::OsRng;
+use reqwest::Client;
 use totp_rs::{Algorithm, Secret, TOTP};
-use wangamail_rs::{BodyType, GraphMailClient, Message, MessageBody, Recipient, SendMailRequest};
 
 #[derive(Debug, Deserialize)]
 pub struct RegisterRequest {
@@ -100,6 +100,16 @@ fn verify_password(password: &str, hash: &str) -> Result<bool, String> {
 
 /// Send a single email via Microsoft Graph (used by registration, password reset, and admin email-students).
 pub async fn send_email_to(to: &str, subject: &str, body: &str) -> Result<(), String> {
+    send_graph_mail(to, subject, body, "HTML").await
+}
+
+/// Low-level helper to send mail via Microsoft Graph using reqwest.
+async fn send_graph_mail(
+    to: &str,
+    subject: &str,
+    body: &str,
+    content_type: &str,
+) -> Result<(), String> {
     let tenant_id =
         std::env::var("AZURE_TENANT_ID").map_err(|_| "AZURE_TENANT_ID is not set".to_string())?;
     let client_id =
@@ -109,29 +119,72 @@ pub async fn send_email_to(to: &str, subject: &str, body: &str) -> Result<(), St
     let from_user = std::env::var("WANGAMAIL_FROM_USER")
         .map_err(|_| "WANGAMAIL_FROM_USER is not set".to_string())?;
 
-    let client = GraphMailClient::builder()
-        .tenant_id(tenant_id)
-        .client_id(client_id)
-        .client_secret(client_secret)
-        .build()
-        .map_err(|e| e.to_string())?;
+    let client = Client::new();
 
-    let message = Message {
-        subject: subject.to_string(),
-        body: MessageBody {
-            // Use HTML for rich, responsive emails.
-            content_type: BodyType::HTML,
-            content: body.to_string(),
-        },
-        to_recipients: vec![Recipient::new(to)],
-        ..Default::default()
-    };
-
-    let request = SendMailRequest::new(message);
-    client
-        .send_mail(&from_user, request)
+    // Acquire access token using client credentials flow.
+    let token_url = format!("https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token");
+    let token_resp = client
+        .post(&token_url)
+        .form(&[
+            ("client_id", client_id.as_str()),
+            ("client_secret", client_secret.as_str()),
+            ("grant_type", "client_credentials"),
+            ("scope", "https://graph.microsoft.com/.default"),
+        ])
+        .send()
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Graph token request failed: {e}"))?;
+
+    if !token_resp.status().is_success() {
+        let status = token_resp.status();
+        let text = token_resp.text().await.unwrap_or_default();
+        return Err(format!("Graph token request failed: {status} {text}"));
+    }
+
+    let token_json: serde_json::Value = token_resp
+        .json()
+        .await
+        .map_err(|e| format!("Graph token JSON parse failed: {e}"))?;
+    let access_token = token_json
+        .get("access_token")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| "Graph token response missing access_token".to_string())?;
+
+    // Build Graph sendMail payload. Note the required emailAddress casing.
+    let mail_url = format!("https://graph.microsoft.com/v1.0/users/{from_user}/sendMail");
+    let payload = serde_json::json!({
+        "message": {
+            "subject": subject,
+            "body": {
+                "contentType": content_type,
+                "content": body,
+            },
+            "toRecipients": [
+                {
+                    "emailAddress": {
+                        "address": to
+                    }
+                }
+            ]
+        },
+        "saveToSentItems": false
+    });
+
+    let resp = client
+        .post(&mail_url)
+        .bearer_auth(access_token)
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|e| format!("Graph sendMail request failed: {e}"))?;
+
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let text = resp.text().await.unwrap_or_default();
+        return Err(format!("Graph sendMail failed: {status} {text}"));
+    }
+
+    Ok(())
 }
 
 async fn send_registration_email(to: &str, name: &str, verify_link: &str) -> Result<(), String> {
@@ -1133,22 +1186,6 @@ async fn verify_2fa(
 }
 
 async fn send_password_reset_email(to: &str, name: &str, reset_link: &str) -> Result<(), String> {
-    let tenant_id =
-        std::env::var("AZURE_TENANT_ID").map_err(|_| "AZURE_TENANT_ID is not set".to_string())?;
-    let client_id =
-        std::env::var("AZURE_CLIENT_ID").map_err(|_| "AZURE_CLIENT_ID is not set".to_string())?;
-    let client_secret = std::env::var("AZURE_CLIENT_SECRET")
-        .map_err(|_| "AZURE_CLIENT_SECRET is not set".to_string())?;
-    let from_user = std::env::var("WANGAMAIL_FROM_USER")
-        .map_err(|_| "WANGAMAIL_FROM_USER is not set".to_string())?;
-
-    let client = GraphMailClient::builder()
-        .tenant_id(tenant_id)
-        .client_id(client_id)
-        .client_secret(client_secret)
-        .build()
-        .map_err(|e| e.to_string())?;
-
     let subject = "Reset your Prophetic Ministry Manifestation Pastoral School password";
     let body_text = format!(
         "Hi {name},\n\n\
@@ -1159,23 +1196,8 @@ If you did not request a password reset, you can safely ignore this email.\n\n\
 Blessings,\n\
 Prophetic Ministry Manifestation Pastoral School"
     );
-
-    let message = Message {
-        subject: subject.to_string(),
-        body: MessageBody {
-            content_type: BodyType::Text,
-            content: body_text,
-        },
-        to_recipients: vec![Recipient::new(to)],
-        ..Default::default()
-    };
-
-    let request = SendMailRequest::new(message);
-
-    client
-        .send_mail(&from_user, request)
-        .await
-        .map_err(|e| e.to_string())
+    // Plain-text email is fine here.
+    send_graph_mail(to, subject, &body_text, "Text").await
 }
 
 async fn forgot_password(
