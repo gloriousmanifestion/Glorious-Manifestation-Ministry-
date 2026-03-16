@@ -181,7 +181,34 @@ async fn send_graph_mail(
     if !resp.status().is_success() {
         let status = resp.status();
         let text = resp.text().await.unwrap_or_default();
-        return Err(format!("Graph sendMail failed: {status} {text}"));
+
+        // If Graph denies sendMail, probe whether the app can read the sender user.
+        // This helps distinguish "bad mailbox / not found" from "permission blocked / access policy".
+        let mut extra = String::new();
+        if status == StatusCode::FORBIDDEN || status == StatusCode::UNAUTHORIZED {
+            let probe_url = format!(
+                "https://graph.microsoft.com/v1.0/users/{from_user}?$select=id,userPrincipalName,mail"
+            );
+            let probe = client
+                .get(&probe_url)
+                .bearer_auth(access_token)
+                .send()
+                .await;
+            match probe {
+                Ok(r) => {
+                    let ps = r.status();
+                    let pt = r.text().await.unwrap_or_default();
+                    extra = format!("; probe_sender_user={ps} {pt}");
+                }
+                Err(e) => {
+                    extra = format!("; probe_sender_user_request_failed={e}");
+                }
+            }
+        }
+
+        return Err(format!(
+            "Graph sendMail failed: {status} {text}; from_user={from_user}{extra}"
+        ));
     }
 
     Ok(())
