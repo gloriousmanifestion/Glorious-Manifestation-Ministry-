@@ -78,7 +78,7 @@
 
 	const user = $derived($userStore);
 	const showVerifyBanner = $derived(user && !user.verified);
-	const showPaymentBanner = $derived(user && !user.paymentComplete);
+	const showPaymentBanner = $derived(user && user.verified && !user.paymentComplete);
 	const selectedCourse = $derived(user?.selectedCourseId ? courses.find((c) => c.id === user.selectedCourseId) : null);
 
 	const latestProof = $derived(
@@ -164,7 +164,12 @@
 									<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
 								{/if}
 							</span>
-							<span class="{selectedCourse ? 'text-slate-500 dark:text-slate-400' : 'font-medium text-slate-900 dark:text-white'}">Select a course</span>
+							<span class="{selectedCourse ? 'text-slate-500 dark:text-slate-400' : 'font-medium text-slate-900 dark:text-white'}">
+								Select a course
+								{#if !user.verified}
+									<span class="ml-2 text-xs font-normal text-amber-600 dark:text-amber-300">(verify email first)</span>
+								{/if}
+							</span>
 						</li>
 						<li class="flex items-center gap-3">
 							<span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full {user.paymentComplete ? 'bg-green-100 text-green-600 dark:bg-green-900/50 dark:text-green-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400'}">
@@ -174,9 +179,18 @@
 									<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
 								{/if}
 							</span>
-							<span class="{user.paymentComplete ? 'text-slate-500 dark:text-slate-400' : 'font-medium text-slate-900 dark:text-white'}">Complete payment</span>
-							{#if !user.paymentComplete && selectedCourse}
-								<a href={SITE.selarPaymentUrl} target="_blank" rel="noopener noreferrer" class="ml-auto text-sm font-medium text-pink-600 hover:text-pink-700 dark:text-pink-400">Pay via Selar</a>
+							<span class="{user.paymentComplete ? 'text-slate-500 dark:text-slate-400' : 'font-medium text-slate-900 dark:text-white'}">
+								Make payment to start course
+							</span>
+							{#if !user.paymentComplete && user.verified && selectedCourse}
+								<a
+									href={SITE.selarPaymentUrl}
+									target="_blank"
+									rel="noopener noreferrer"
+									class="ml-auto text-sm font-medium text-pink-600 hover:text-pink-700 dark:text-pink-400"
+								>
+									Make payment
+								</a>
 							{/if}
 						</li>
 						<li class="flex items-center gap-3">
@@ -311,33 +325,31 @@
 								<div>
 									<h3 class="font-semibold text-slate-900 dark:text-white">Complete your enrollment</h3>
 									<p class="mt-1 text-sm text-slate-600 dark:text-slate-200">
-										{#if selectedCourse}
-											You've selected {selectedCourse.name}. Complete payment to secure your spot.
+										{#if !user.verified}
+											Verify your email first, then choose a course and make your payment to start.
+										{:else if selectedCourse}
+											You've selected {selectedCourse.name}. Make your payment to start your course.
 										{:else}
-											Choose a course and complete payment to secure your spot in the program.
+											Choose a course and make your payment to start your course.
 										{/if}
 									</p>
 								</div>
 							</div>
 							<div class="flex shrink-0 flex-col gap-2 sm:flex-row w-full sm:w-auto">
-								{#if !selectedCourse}
-									<select
-										class="rounded-xl border border-pink-200 bg-white px-4 py-3 text-base sm:text-sm font-medium text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#252d47] dark:text-white touch-manipulation"
-										onchange={(e) => handleSelectCourse((e.target as HTMLSelectElement).value)}
-									>
-										<option value="">Choose course</option>
-										{#each courses as course}
-											<option value={course.id}>{course.name}</option>
-										{/each}
-									</select>
-								{/if}
 								<a
-									href={SITE.selarPaymentUrl}
-									target="_blank"
-									rel="noopener noreferrer"
-									class="btn-scale inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-pink-500 to-purple-600 px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:from-pink-600 hover:to-purple-700 touch-manipulation"
+									href={user.verified && selectedCourse ? SITE.selarPaymentUrl : undefined}
+									target={user.verified && selectedCourse ? '_blank' : undefined}
+									rel={user.verified && selectedCourse ? 'noopener noreferrer' : undefined}
+									class="btn-scale inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-pink-500 to-purple-600 px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:from-pink-600 hover:to-purple-700 touch-manipulation disabled:opacity-60"
+									aria-disabled={!user.verified || !selectedCourse}
 								>
-									{selectedCourse ? 'Pay via Selar' : 'Select & pay via Selar'}
+									{#if !user.verified}
+										Verify email to make payment
+									{:else if !selectedCourse}
+										Choose a course to make payment
+									{:else}
+										Make payment
+									{/if}
 									<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
 										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
 									</svg>
@@ -514,16 +526,22 @@
 								</div>
 							{/if}
 						{:else}
-							<p class="mt-4 text-slate-700 dark:text-slate-100">No course selected yet.</p>
-							<select
-								class="mt-4 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#252d47] dark:text-white"
-								onchange={(e) => handleSelectCourse((e.target as HTMLSelectElement).value)}
-							>
-								<option value="">Select a course</option>
-								{#each courses as course}
-									<option value={course.id}>{course.name}</option>
-								{/each}
-							</select>
+							{#if !user.verified}
+								<p class="mt-4 text-slate-700 dark:text-slate-100">
+									Verify your email to unlock course selection.
+								</p>
+							{:else}
+								<p class="mt-4 text-slate-700 dark:text-slate-100">No course selected yet.</p>
+								<select
+									class="mt-4 block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 dark:border-white/[0.12] dark:bg-[#252d47] dark:text-white"
+									onchange={(e) => handleSelectCourse((e.target as HTMLSelectElement).value)}
+								>
+									<option value="">Select a course</option>
+									{#each courses as course}
+										<option value={course.id}>{course.name}</option>
+									{/each}
+								</select>
+							{/if}
 						{/if}
 					</div>
 				</div>

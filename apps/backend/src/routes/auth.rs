@@ -264,7 +264,7 @@ async fn send_registration_email(to: &str, name: &str, verify_link: &str) -> Res
                 </p>
                 <ul style="margin:0 0 16px 20px;padding:0;font-size:14px;color:#0f172a;">
                   <li>Select your course in the dashboard.</li>
-                  <li>Complete your enrollment and payment.</li>
+                  <li>Make your payment to start your course.</li>
                   <li>Access announcements, resources, and your learning journey.</li>
                 </ul>
                 <p style="margin:0 0 12px 0;font-size:13px;color:#64748b;">
