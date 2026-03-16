@@ -13,8 +13,10 @@ pub struct User {
     pub church_name: String,
     pub calling: String,
     pub selected_course_id: Option<String>,
-    pub verified: bool,
-    pub payment_complete: bool,
+    /// Stored as INTEGER (0/1) in the database (SQLite & Postgres).
+    pub verified: i64,
+    /// Stored as INTEGER (0/1) in the database (SQLite & Postgres).
+    pub payment_complete: i64,
     #[serde(default = "default_role")]
     pub role: String,
     pub created_at: String,
@@ -38,8 +40,8 @@ impl User {
             church_name: self.church_name.clone(),
             calling: self.calling.clone(),
             selected_course_id: self.selected_course_id.clone(),
-            verified: self.verified,
-            payment_complete: self.payment_complete,
+            verified: self.verified != 0,
+            payment_complete: self.payment_complete != 0,
             role: self.role.clone(),
             created_at: self.created_at.clone(),
         }
