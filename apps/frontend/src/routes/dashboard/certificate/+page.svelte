@@ -7,6 +7,12 @@
 	import type { Course } from '$lib/auth';
 	import { SITE } from '$lib/config';
 	import { getCourseDetailById } from '$lib/courses';
+	import { pageSeo } from '$lib/stores/pageSeo';
+
+	pageSeo.set({
+		title: `Certificate — ${SITE.name} Pastoral School`,
+		description: 'Your certificate of completion.'
+	});
 
 	let mounted = $state(false);
 	let courses = $state<Course[]>([]);
@@ -55,11 +61,6 @@
 		window.print();
 	}
 </script>
-
-<svelte:head>
-	<title>Certificate — {SITE.name} Pastoral School</title>
-	<meta name="description" content="Your certificate of completion." />
-</svelte:head>
 
 {#if !mounted || !$authReady}
 	<div class="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-[#252d47]">

@@ -3,6 +3,12 @@
 	import * as adminApi from '$lib/admin-api';
 	import type { AdminMetrics, AdminUser, AdminPaymentProof } from '$lib/admin-api';
 	import { SITE } from '$lib/config';
+	import { pageSeo } from '$lib/stores/pageSeo';
+
+	pageSeo.set({
+		title: `Dashboard — Admin — ${SITE.schoolName}`,
+		noIndex: true
+	});
 
 	let metrics = $state<AdminMetrics | null>(null);
 	let recentUsers = $state<AdminUser[]>([]);
@@ -58,10 +64,6 @@
 		}
 	}
 </script>
-
-<svelte:head>
-	<title>Dashboard — Admin — {SITE.schoolName}</title>
-</svelte:head>
 
 <div class="mx-auto max-w-7xl">
 	<header class="mb-8">

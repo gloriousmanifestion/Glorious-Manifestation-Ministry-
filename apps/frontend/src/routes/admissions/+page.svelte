@@ -3,6 +3,12 @@
 	import Footer from '$lib/components/Footer.svelte';
 	import AnimateOnView from '$lib/components/AnimateOnView.svelte';
 	import { SITE } from '$lib/config';
+	import { pageSeo } from '$lib/stores/pageSeo';
+
+	pageSeo.set({
+		title: `Admissions — ${SITE.name} Pastoral School`,
+		description: 'Apply to the Pastoral School at Prophetic Glorious Manifestation. For pastors, ministers and prophets. February to July, Owerri, Imo State.'
+	});
 
 	const requirements = [
 		'A genuine call to pastoral, ministerial, or prophetic ministry',
@@ -19,14 +25,6 @@
 		{ num: 4, title: 'Begin classes', desc: 'Start your journey in February and complete by July.' }
 	];
 </script>
-
-<svelte:head>
-	<title>Admissions — {SITE.name} Pastoral School</title>
-	<meta
-		name="description"
-		content="Apply to the Pastoral School at Prophetic Glorious Manifestation. For pastors, ministers and prophets. February to July, Owerri, Imo State."
-	/>
-</svelte:head>
 
 <div class="min-h-screen flex flex-col">
 	<Nav />

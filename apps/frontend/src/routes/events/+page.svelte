@@ -13,6 +13,12 @@
 	import { authReady, userStore } from '$lib/auth';
 	import { SITE } from '$lib/config';
 	import EmptySection from '$lib/components/EmptySection.svelte';
+	import { pageSeo } from '$lib/stores/pageSeo';
+
+	pageSeo.set({
+		title: `Events — ${SITE.name} Pastoral School`,
+		description: 'Upcoming events at Prophetic Glorious Manifestation Pastoral School. School opening, revivals, graduation, and weekly chapel in Owerri.'
+	});
 
 	let events = $state<Event[]>([]);
 	let myRsvpIds = $state<Set<string>>(new Set());
@@ -64,14 +70,6 @@
 		}
 	}
 </script>
-
-<svelte:head>
-	<title>Events — {SITE.name} Pastoral School</title>
-	<meta
-		name="description"
-		content="Upcoming events at Prophetic Glorious Manifestation Pastoral School. School opening, revivals, graduation, and weekly chapel in Owerri."
-	/>
-</svelte:head>
 
 <div class="min-h-screen flex flex-col">
 	<Nav />

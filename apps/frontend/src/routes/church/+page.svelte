@@ -7,8 +7,14 @@
 	import { getChurchServices, getChurchContent, getChurchVideos, churchImageUrl, churchVideoUrl } from '$lib/api/church';
 	import type { ChurchService, ChurchVideo } from '$lib/api/church';
 	import EmptySection from '$lib/components/EmptySection.svelte';
+	import { pageSeo } from '$lib/stores/pageSeo';
 
 	const church = SITE.church;
+
+	pageSeo.set({
+		title: `Church — ${SITE.name} Pastoral School`,
+		description: `Learn about ${church.shortName}: church details, service times, and how we worship and serve together in ${SITE.location}.`
+	});
 
 	let services = $state<ChurchService[]>([]);
 	let aboutContent = $state<string | null>(null);
@@ -58,14 +64,6 @@
 		return '#';
 	}
 </script>
-
-<svelte:head>
-	<title>Church — {SITE.name} Pastoral School</title>
-	<meta
-		name="description"
-		content="Learn about {church.shortName}: church details, service times, and how we worship and serve together in {SITE.location}."
-	/>
-</svelte:head>
 
 <div class="min-h-screen flex flex-col">
 	<Nav />

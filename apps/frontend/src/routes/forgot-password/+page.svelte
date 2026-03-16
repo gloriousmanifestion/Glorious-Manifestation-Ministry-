@@ -3,6 +3,12 @@
 	import Footer from '$lib/components/Footer.svelte';
 	import { SITE } from '$lib/config';
 	import { auth } from '$lib/auth';
+	import { pageSeo } from '$lib/stores/pageSeo';
+
+	pageSeo.set({
+		title: `Forgot password — ${SITE.name} Pastoral School`,
+		description: 'Request a password reset link for your Pastoral School account.'
+	});
 
 	let email = $state('');
 	let error = $state('');
@@ -32,11 +38,6 @@
 		}
 	}
 </script>
-
-<svelte:head>
-	<title>Forgot password — {SITE.name} Pastoral School</title>
-	<meta name="description" content="Request a password reset link for your Pastoral School account." />
-</svelte:head>
 
 <div class="min-h-screen flex flex-col bg-slate-50 dark:bg-[#252d47]">
 	<Nav />

@@ -13,6 +13,7 @@
 	} from '$lib/api/blog';
 	import { userStore, authReady } from '$lib/auth';
 	import { SITE } from '$lib/config';
+	import { pageSeo } from '$lib/stores/pageSeo';
 
 	let post = $state<BlogPost | null>(null);
 	let comments = $state<BlogComment[]>([]);
@@ -53,6 +54,17 @@
 			loading = false;
 		}
 	}
+
+	$effect(() => {
+		if (post) {
+			pageSeo.set({
+				title: `${post.title} — ${SITE.name} Pastoral School`,
+				description: post.body.slice(0, 160).trim() + (post.body.length > 160 ? '…' : '')
+			});
+		} else if (!loading) {
+			pageSeo.set({ title: 'Post not found', description: 'Blog post' });
+		}
+	});
 
 	async function submitComment() {
 		if (!slug || !commentBody.trim() || commentSubmitting || !isLoggedIn) return;
@@ -109,11 +121,6 @@
 		}
 	}
 </script>
-
-<svelte:head>
-	<title>{post?.title ?? 'Post'} — {SITE.name} Pastoral School</title>
-	<meta name="description" content={post ? post.body.slice(0, 160) + '…' : 'Blog post'} />
-</svelte:head>
 
 <div class="min-h-screen flex flex-col">
 	<Nav />

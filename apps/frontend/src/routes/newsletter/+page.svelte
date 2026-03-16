@@ -4,6 +4,12 @@
 	import AnimateOnView from '$lib/components/AnimateOnView.svelte';
 	import { subscribeNewsletter } from '$lib/api/newsletter';
 	import { SITE } from '$lib/config';
+	import { pageSeo } from '$lib/stores/pageSeo';
+
+	pageSeo.set({
+		title: `Newsletter — ${SITE.name} Pastoral School`,
+		description: `Subscribe to the ${SITE.name} Pastoral School newsletter for news, events, and updates.`
+	});
 
 	let email = $state('');
 	let loading = $state(false);
@@ -27,14 +33,6 @@
 		}
 	}
 </script>
-
-<svelte:head>
-	<title>Newsletter — {SITE.name} Pastoral School</title>
-	<meta
-		name="description"
-		content="Subscribe to the {SITE.name} Pastoral School newsletter for news, events, and updates."
-	/>
-</svelte:head>
 
 <div class="min-h-screen flex flex-col bg-white dark:bg-[#252d47]">
 	<Nav />

@@ -3,6 +3,12 @@
 	import * as adminApi from '$lib/admin-api';
 	import type { AdminUser } from '$lib/admin-api';
 	import { SITE } from '$lib/config';
+	import { pageSeo } from '$lib/stores/pageSeo';
+
+	pageSeo.set({
+		title: `Users — Admin — ${SITE.schoolName}`,
+		noIndex: true
+	});
 
 	let users = $state<AdminUser[]>([]);
 	let total = $state(0);
@@ -96,10 +102,6 @@
 		load();
 	}
 </script>
-
-<svelte:head>
-	<title>Users — Admin — {SITE.schoolName}</title>
-</svelte:head>
 
 <div class="mx-auto max-w-7xl">
 	<header class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

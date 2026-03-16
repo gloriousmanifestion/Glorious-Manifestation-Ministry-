@@ -3,6 +3,12 @@
 	import * as adminApi from '$lib/admin-api';
 	import type { AdminCourse } from '$lib/admin-api';
 	import { SITE } from '$lib/config';
+	import { pageSeo } from '$lib/stores/pageSeo';
+
+	pageSeo.set({
+		title: `Courses — Admin — ${SITE.schoolName}`,
+		noIndex: true
+	});
 
 	let courses = $state<AdminCourse[]>([]);
 	let loading = $state(true);

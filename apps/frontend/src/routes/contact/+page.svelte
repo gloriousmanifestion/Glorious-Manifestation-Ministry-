@@ -4,6 +4,12 @@
 	import AnimateOnView from '$lib/components/AnimateOnView.svelte';
 	import { submitContact } from '$lib/api/contact';
 	import { SITE } from '$lib/config';
+	import { pageSeo } from '$lib/stores/pageSeo';
+
+	pageSeo.set({
+		title: `Contact — ${SITE.name} Pastoral School`,
+		description: `Contact ${SITE.name} Pastoral School. ${SITE.infoEmail}. ${SITE.address}, ${SITE.location}.`
+	});
 
 	const mapUrl = 'https://maps.google.com/?q=' + encodeURIComponent(SITE.address);
 	const whatsappUrl = 'https://wa.me/' + SITE.whatsappFull.replace('+', '');
@@ -40,14 +46,6 @@
 		}
 	}
 </script>
-
-<svelte:head>
-	<title>Contact — {SITE.name} Pastoral School</title>
-	<meta
-		name="description"
-		content="Contact {SITE.name} Pastoral School. {SITE.infoEmail}. {SITE.address}, {SITE.location}."
-	/>
-</svelte:head>
 
 <div class="min-h-screen flex flex-col bg-white dark:bg-[#252d47]">
 	<Nav />

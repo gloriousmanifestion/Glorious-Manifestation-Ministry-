@@ -4,7 +4,14 @@
 	import { page } from '$app/stores';
 	import { userStore, authReady } from '$lib/auth';
 	import { SITE } from '$lib/config';
+	import { pageSeo } from '$lib/stores/pageSeo';
 	import type { Snippet } from 'svelte';
+
+	pageSeo.set({
+		title: `Admin — ${SITE.schoolName}`,
+		description: 'Admin area for Pastoral School.',
+		noIndex: true
+	});
 
 	let { children }: { children?: Snippet } = $props();
 	let mounted = $state(false);
@@ -81,10 +88,6 @@
 		}
 	}
 </script>
-
-<svelte:head>
-	<title>Admin — {SITE.schoolName}</title>
-</svelte:head>
 
 {#if !mounted || !$authReady}
 	<div class="flex min-h-screen items-center justify-center bg-slate-950">

@@ -5,6 +5,12 @@
 	import Footer from '$lib/components/Footer.svelte';
 	import { auth } from '$lib/auth';
 	import { SITE } from '$lib/config';
+	import { pageSeo } from '$lib/stores/pageSeo';
+
+	pageSeo.set({
+		title: `Log in — ${SITE.name} Pastoral School`,
+		description: 'Log in to your Pastoral School dashboard.'
+	});
 
 	let email = $state('');
 	let password = $state('');
@@ -32,11 +38,6 @@
 		}
 	}
 </script>
-
-<svelte:head>
-	<title>Log in — {SITE.name} Pastoral School</title>
-	<meta name="description" content="Log in to your Pastoral School dashboard." />
-</svelte:head>
 
 <div class="min-h-screen flex flex-col bg-slate-50 dark:bg-[#252d47]">
 	<Nav />

@@ -5,6 +5,13 @@
 	import LeaderSection from '$lib/components/LeaderSection.svelte';
 	import { SITE } from '$lib/config';
 	import { COURSE_CATALOG } from '$lib/courses';
+	import { pageSeo } from '$lib/stores/pageSeo';
+
+	pageSeo.set({
+		title: 'Pastoral School',
+		description:
+			'Pastoral School under Prophetic Glorious Manifestation. Training pastors, ministers and prophets in Owerri, Imo State. Our mission, values, programs and admissions. February to July program.'
+	});
 
 	const values = [
 		{ title: 'Biblical Foundation', description: 'All teaching rooted in Scripture and sound doctrine.' },
@@ -13,14 +20,6 @@
 		{ title: 'Community', description: 'Building lasting fellowship among ministers and prophets.' }
 	];
 </script>
-
-<svelte:head>
-	<title>Pastoral School — {SITE.name}</title>
-	<meta
-		name="description"
-		content="Pastoral School under Prophetic Glorious Manifestation. Training pastors, ministers and prophets in Owerri, Imo State. Our mission, values, programs and admissions. February to July program."
-	/>
-</svelte:head>
 
 <div class="min-h-screen flex flex-col dark:bg-[#252d47]">
 	<Nav />

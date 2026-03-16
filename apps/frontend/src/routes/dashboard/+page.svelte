@@ -16,6 +16,12 @@
 		type Notification,
 		type ProgressResponse
 	} from '$lib/auth-api';
+	import { pageSeo } from '$lib/stores/pageSeo';
+
+	pageSeo.set({
+		title: `Dashboard — ${SITE.name} Pastoral School`,
+		description: 'Your Pastoral School dashboard.'
+	});
 
 	let mounted = $state(false);
 	let courses = $state<Course[]>([]);
@@ -106,11 +112,6 @@
 	}
 
 </script>
-
-<svelte:head>
-	<title>Dashboard — {SITE.name} Pastoral School</title>
-	<meta name="description" content="Your Pastoral School dashboard." />
-</svelte:head>
 
 {#if !mounted || !$authReady}
 	<div class="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-[#252d47]">

@@ -2,15 +2,13 @@
 	import Nav from '$lib/components/Nav.svelte';
 	import Footer from '$lib/components/Footer.svelte';
 	import { SITE } from '$lib/config';
-</script>
+	import { pageSeo } from '$lib/stores/pageSeo';
 
-<svelte:head>
-	<title>Cookie Policy — {SITE.schoolName}</title>
-	<meta
-		name="description"
-		content="Cookie Policy for the Pastoral School under Prophetic Glorious Manifestation."
-	/>
-</svelte:head>
+	pageSeo.set({
+		title: `Cookie Policy — ${SITE.schoolName}`,
+		description: 'Cookie Policy for the Pastoral School under Prophetic Glorious Manifestation.'
+	});
+</script>
 
 <div class="min-h-screen flex flex-col bg-white dark:bg-[#252d47]">
 	<Nav />

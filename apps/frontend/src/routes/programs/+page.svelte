@@ -5,6 +5,12 @@
 	import HeroCarousel from '$lib/components/HeroCarousel.svelte';
 	import { SITE } from '$lib/config';
 	import { COURSE_CATALOG } from '$lib/courses';
+	import { pageSeo } from '$lib/stores/pageSeo';
+
+	pageSeo.set({
+		title: `Programs & Courses — ${SITE.name} Pastoral School`,
+		description: `Learn about our Pastoral School: all courses, mission, values, and helpful information. Pastoral Leadership, Prophetic Ministry, Ministerial Training, Biblical Studies, Worship, and Evangelism. ${SITE.location}.`
+	});
 
 	const heroSlides = [
 		{
@@ -71,14 +77,6 @@
 		}
 	];
 </script>
-
-<svelte:head>
-	<title>Programs &amp; Courses — {SITE.name} Pastoral School</title>
-	<meta
-		name="description"
-		content="Learn about our Pastoral School: all courses, mission, values, and helpful information. Pastoral Leadership, Prophetic Ministry, Ministerial Training, Biblical Studies, Worship, and Evangelism. {SITE.location}."
-	/>
-</svelte:head>
 
 <div class="min-h-screen flex flex-col">
 	<Nav />

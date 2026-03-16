@@ -2,15 +2,13 @@
 	import '../../app.css';
 	import { plusUrl, businessUrl } from '$lib/urls';
 	import Footer from '$lib/components/Footer.svelte';
-</script>
+	import { pageSeo } from '$lib/stores/pageSeo';
 
-<svelte:head>
-	<title>Careers — 1nga Solutions</title>
-	<meta
-		name="description"
-		content="Join 1nga Solutions and its subsidiaries. Build the future of digital transformation with us."
-	/>
-</svelte:head>
+	pageSeo.set({
+		title: 'Careers — 1nga Solutions',
+		description: 'Join 1nga Solutions and its subsidiaries. Build the future of digital transformation with us.'
+	});
+</script>
 
 <div class="min-h-screen flex flex-col bg-[#FFFCFA] dark:bg-[#252d47]">
 	<!-- Nav -->
