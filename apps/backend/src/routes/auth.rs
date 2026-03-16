@@ -791,17 +791,8 @@ async fn request_verification_email(
         base_url.trim_end_matches('/'),
         token
     );
-    let subject = "Verify your Pastoral School account";
-    let body = format!(
-        "Hi {name},\n\n\
-Please verify your Prophetic Ministry Manifestation Pastoral School account by clicking the link below:\n\
-{verify_link}\n\n\
-If you did not create this account, you can safely ignore this email.\n\n\
-Blessings,\n\
-Prophetic Ministry Manifestation Pastoral School"
-    );
-
-    if let Err(e) = send_email_to(&email, subject, &body).await {
+    // Reuse the same elegant HTML email as initial registration.
+    if let Err(e) = send_registration_email(&email, &name, &verify_link).await {
         tracing::error!("Request verification email error for {}: {}", email, e);
         // Do not fail the request – avoid leaking email issues to user.
     }
