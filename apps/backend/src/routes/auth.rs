@@ -1,6 +1,6 @@
 use axum::{
     extract::{Path, State},
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     response::Json,
     routing::{get, patch, post},
     Router,
@@ -193,6 +193,7 @@ pub fn auth_routes(pool: AnyPool) -> Router {
         .route("/auth/invite/:token", get(get_invite))
         .route("/payments/proofs", post(upload_payment_proof))
         .route("/payments/proofs/me", get(list_my_payment_proofs))
+        .route("/payments/selar-webhook", post(selar_webhook))
         .route("/auth/me/courses/:course_id/progress", get(get_my_progress))
         .route(
             "/auth/me/courses/:course_id/modules/:module_id/complete",
@@ -760,6 +761,129 @@ async fn confirm_verification(
         user: user.to_response(),
         token,
     }))
+}
+
+// ---------- Selar payment webhook (mark payment_complete based on Selar sale) ----------
+
+#[derive(Debug, Deserialize)]
+struct SelarWebhookPayload {
+    // Adjust these fields to match the actual payload Selar/Zapier sends.
+    email: String,
+    amount: Option<f64>,
+    currency: Option<String>,
+    reference: Option<String>,
+    status: Option<String>, // e.g. "completed"
+}
+
+/// POST /payments/selar-webhook
+/// Expects a JSON payload from Selar (or Zapier) when a sale is completed.
+/// Uses X-Selar-Secret header to authenticate.
+async fn selar_webhook(
+    State(pool): State<AnyPool>,
+    headers: HeaderMap,
+    axum::Json(payload): axum::Json<SelarWebhookPayload>,
+) -> Result<StatusCode, (StatusCode, Json<serde_json::Value>)> {
+    // 1) Verify shared secret
+    let expected = std::env::var("SELAR_WEBHOOK_SECRET").map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": "config_error", "message": "Webhook secret not configured"})),
+        )
+    })?;
+    let provided = headers
+        .get("x-selar-secret")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    if provided != expected {
+        return Err((
+            StatusCode::UNAUTHORIZED,
+            Json(serde_json::json!({"error": "unauthorized", "message": "Invalid webhook secret"})),
+        ));
+    }
+
+    // 2) Only process successful payments
+    if payload.status.as_deref() != Some("completed") {
+        return Ok(StatusCode::NO_CONTENT);
+    }
+
+    let email = payload.email.trim().to_lowercase();
+    if email.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"error": "invalid_payload", "message": "Missing email"})),
+        ));
+    }
+
+    // 3) Lookup user by email
+    let sql = if db::is_postgres() {
+        "SELECT id FROM users WHERE LOWER(email) = LOWER($1)"
+    } else {
+        "SELECT id FROM users WHERE LOWER(email) = LOWER(?)"
+    };
+    let user_id: Option<(String,)> = sqlx::query_as(sql)
+        .bind(&email)
+        .fetch_optional(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Selar webhook: user lookup error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "db_error", "message": "Could not lookup user"})),
+            )
+        })?;
+
+    let Some((user_id,)) = user_id else {
+        tracing::warn!("Selar webhook: no user found for email {}", email);
+        return Ok(StatusCode::NO_CONTENT);
+    };
+
+    // 4) Mark payment complete
+    let update_sql = if db::is_postgres() {
+        "UPDATE users SET payment_complete = 1 WHERE id = $1"
+    } else {
+        "UPDATE users SET payment_complete = 1 WHERE id = ?"
+    };
+    sqlx::query(update_sql)
+        .bind(&user_id)
+        .execute(&pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Selar webhook: update user payment_complete error: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "db_error", "message": "Could not update user"})),
+            )
+        })?;
+
+    // 5) Optional: create a notification
+    let notif_id = Uuid::new_v4().to_string();
+    let now = chrono::Utc::now().to_rfc3339();
+    let title = "Payment received";
+    let msg = format!(
+        "We have received your payment{}.",
+        payload
+            .amount
+            .map(|a| format!(" of {} {}", a, payload.currency.as_deref().unwrap_or("NGN")))
+            .unwrap_or_else(|| "".to_string())
+    );
+    let notif_sql = if db::is_postgres() {
+        "INSERT INTO notifications (id, user_id, title, message, created_at) VALUES ($1, $2, $3, $4, $5)"
+    } else {
+        "INSERT INTO notifications (id, user_id, title, message, created_at) VALUES (?, ?, ?, ?, ?)"
+    };
+    if let Err(e) = sqlx::query(notif_sql)
+        .bind(&notif_id)
+        .bind(&user_id)
+        .bind(&title)
+        .bind(&msg)
+        .bind(&now)
+        .execute(&pool)
+        .await
+    {
+        tracing::error!("Selar webhook: insert notification error: {:?}", e);
+    }
+
+    Ok(StatusCode::NO_CONTENT)
 }
 
 async fn login(
