@@ -1204,18 +1204,73 @@ async fn verify_2fa(
 }
 
 async fn send_password_reset_email(to: &str, name: &str, reset_link: &str) -> Result<(), String> {
-    let subject = "Reset your Prophetic Ministry Manifestation Pastoral School password";
-    let body_text = format!(
-        "Hi {name},\n\n\
-We received a request to reset your password for the Prophetic Ministry Manifestation Pastoral School.\n\n\
-You can reset your password using the link below:\n\
-{reset_link}\n\n\
-If you did not request a password reset, you can safely ignore this email.\n\n\
-Blessings,\n\
-Prophetic Ministry Manifestation Pastoral School"
+    let subject = "Reset your Pastoral School password";
+    // Simple responsive HTML layout reusing the registration style.
+    let body = format!(
+        r#"<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reset your password</title>
+  </head>
+  <body style="margin:0;padding:0;background-color:#f3f4f6;">
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+      <tr>
+        <td align="center" style="padding:24px 12px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:560px;background-color:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 10px 30px rgba(15,23,42,0.08);">
+            <tr>
+              <td style="padding:24px 24px 12px 24px;background:linear-gradient(135deg,#db2777,#4f46e5);color:#f9fafb;text-align:center;">
+                <h1 style="margin:0;font-size:22px;line-height:1.3;font-family:System,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+                  Prophetic Glorious Manifestation<br/>
+                  <span style="font-weight:400;font-size:16px;opacity:0.9;">Pastoral School</span>
+                </h1>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px 24px 8px 24px;font-family:System,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#0f172a;font-size:15px;line-height:1.6;">
+                <p style="margin:0 0 12px 0;">Hi {name},</p>
+                <p style="margin:0 0 12px 0;">
+                  We received a request to reset the password for your
+                  <strong>Prophetic Ministry Manifestation Pastoral School</strong> account.
+                </p>
+                <p style="margin:0 0 16px 0;">
+                  Click the button below to create a new password:
+                </p>
+                <div style="text-align:center;margin:20px 0;">
+                  <a href="{reset_link}"
+                     style="display:inline-block;padding:12px 28px;border-radius:999px;background-color:#4f46e5;color:#f9fafb;text-decoration:none;font-weight:600;font-size:14px;font-family:System,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+                    Reset my password
+                  </a>
+                </div>
+                <p style="margin:0 0 12px 0;font-size:13px;color:#64748b;">
+                  If the button above does not work, copy and paste this link into your browser:
+                  <br/>
+                  <span style="word-break:break-all;color:#4f46e5;">{reset_link}</span>
+                </p>
+                <p style="margin:16px 0 12px 0;font-size:13px;color:#64748b;">
+                  If you did not request a password reset, you can safely ignore this email.
+                </p>
+                <p style="margin:8px 0 0 0;">
+                  Blessings,<br/>
+                  <strong>Prophetic Glorious Manifestation Pastoral School</strong>
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:16px 24px 20px 24px;background-color:#f9fafb;font-family:System,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:11px;color:#6b7280;text-align:center;">
+                You are receiving this email because a password reset was requested for your Pastoral School account.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>"#
     );
-    // Plain-text email is fine here.
-    send_graph_mail(to, subject, &body_text, "Text").await
+
+    send_graph_mail(to, subject, &body, "HTML").await
 }
 
 async fn forgot_password(
