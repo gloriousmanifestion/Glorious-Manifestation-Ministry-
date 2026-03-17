@@ -598,7 +598,7 @@ jobs:
  
   deploy:
     name: Deploy (systemd)
-    runs-on: self-hosted
+    runs-on: self-hosted 
     needs: [get-version, build]
     environment: ${{ github.event.pull_request.base.ref == 'production' && 'pgmm-production' || 'pgmm-staging' }}
     if: |
