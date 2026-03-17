@@ -1,7 +1,7 @@
 name: Backend CI/CD
 
 on:
-  pull_request:
+  pull_request: 
     types: [opened, synchronize, closed]
     paths:
       - 'apps/backend/**'
