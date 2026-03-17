@@ -328,9 +328,9 @@
 										{#if !user.verified}
 											Verify your email first, then choose a course and make your payment to start.
 										{:else if selectedCourse}
-											You've selected {selectedCourse.name}. Make your payment to start your course.
+											You've selected {selectedCourse.name}. You can make your payment online or via bank transfer to start your course.
 										{:else}
-											Choose a course and make your payment to start your course.
+											Choose a course and make your payment (online or via bank transfer) to start your course.
 										{/if}
 									</p>
 								</div>
@@ -491,12 +491,25 @@
 								<!-- Proof of payment helper -->
 								<div class="mt-4 rounded-xl border border-slate-200/70 bg-slate-50/80 p-3 text-xs text-slate-600 dark:border-white/10 dark:bg-[#1e2642] dark:text-slate-100">
 									<p class="font-medium text-slate-700 dark:text-slate-100">
-										Already paid via bank transfer or other method?
+										Prefer direct bank transfer?
 									</p>
 									<p class="mt-1">
-										Upload a clear proof of payment so the admin team can verify and mark your payment
-										as complete.
+										You can pay your course fee into the account below, then upload your proof of payment so the admin team can verify and mark your payment as complete.
 									</p>
+									<div class="mt-2 grid gap-1 text-[11px] sm:grid-cols-3">
+										<div>
+											<p class="font-semibold text-slate-800 dark:text-slate-50">Account Name</p>
+											<p class="text-slate-700 dark:text-slate-200">Glorious Manifestation Ministry</p>
+										</div>
+										<div>
+											<p class="font-semibold text-slate-800 dark:text-slate-50">Account Number</p>
+											<p class="text-slate-700 dark:text-slate-200">8523474076</p>
+										</div>
+										<div>
+											<p class="font-semibold text-slate-800 dark:text-slate-50">Bank</p>
+											<p class="text-slate-700 dark:text-slate-200">Sterling Bank Plc</p>
+										</div>
+									</div>
 									{#if latestProof}
 										<p class="mt-2">
 											<span class="font-semibold">Latest proof status:</span>
