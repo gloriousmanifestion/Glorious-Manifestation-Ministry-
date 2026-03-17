@@ -161,6 +161,48 @@
 			</div>
 		</section>
 
+		<!-- Give & support -->
+		<section
+			id="give"
+			class="border-t border-pink-200/50 section-separator bg-white/70 py-16 sm:py-20 px-4 sm:px-6 dark:bg-[#252d47]"
+		>
+			<AnimateOnView animation="fade-up">
+				<div class="mx-auto max-w-4xl rounded-2xl border border-pink-200/60 card-premium bg-white/95 p-6 sm:p-8 shadow-sm dark:bg-[#1e2642] dark:border-pink-500/30">
+					<h2 class="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl dark:text-white">
+						Give &amp; support the ministry
+					</h2>
+					<p class="mt-3 text-sm sm:text-base text-slate-600 dark:text-slate-100">
+						If you would like to partner with <span class="font-semibold">{SITE.church.name}</span> beyond your
+						class fees, you can give a seed or support the work of the ministry using the bank details below.
+					</p>
+					<div class="mt-5 grid gap-4 sm:grid-cols-3 text-sm text-slate-800 dark:text-slate-50">
+						<div>
+							<p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">
+								Account Name
+							</p>
+							<p class="mt-1 font-medium">Glorious Manifestation Ministry</p>
+						</div>
+						<div>
+							<p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">
+								Account Number
+							</p>
+							<p class="mt-1 font-mono text-base">8523474076</p>
+						</div>
+						<div>
+							<p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">
+								Bank
+							</p>
+							<p class="mt-1 font-medium">Sterling Bank Plc</p>
+						</div>
+					</div>
+					<p class="mt-4 text-xs sm:text-sm text-slate-500 dark:text-slate-300">
+						Thank you for standing with us in prayer and in giving. Your support helps us raise and equip
+						pastors, ministers and prophets for effective ministry.
+					</p>
+				</div>
+			</AnimateOnView>
+		</section>
+
 		<!-- CTA strip -->
 		<section class="border-t border-pink-200/50 section-separator bg-gradient-to-r from-pink-500/10 via-purple-500/10 to-pink-500/10 py-16 sm:py-20 px-4 sm:px-6 dark:from-pink-500/20 dark:via-purple-500/20 dark:to-pink-500/20">
 			<AnimateOnView animation="scale" duration={600}>
